@@ -7,4 +7,4 @@ bun new.mjs chat ~/talk --name Talk --bundle-id com.example.talk --exact2 ~/Deve
 cd ~/talk && bun exact.mjs test web
 ```
 
-`AGENTS.md` explains how templates are found, used and added.
+`bun new.mjs --develop chat` makes `chat/app` runnable where it is, to work on the template. `AGENTS.md` explains how templates are found, used, worked on and added.

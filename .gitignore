@@ -1,0 +1,21 @@
+# What `bun new.mjs --develop <template>` and its builds add to a template's app/, for this
+# machine only
+*/app/.cargo/
+*/app/.exact/
+*/app/.gitignore
+*/app/.vscode/
+*/app/AGENTS.md
+*/app/CLAUDE.md
+*/app/Cargo.lock
+*/app/Cargo.toml
+*/app/app.contract.d.ts
+*/app/apple/
+*/app/dist*
+*/app/exact.mjs
+*/app/linux/
+*/app/node_modules/
+*/app/package.json
+*/app/rust-toolchain.toml
+*/app/target/
+*/app/web/
+.DS_Store

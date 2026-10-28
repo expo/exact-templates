@@ -44,4 +44,4 @@ Exact at `e3fac2586a` (branch `chat/messages-1123`, on `08677d8584`), which adds
 
 ## Limits
 
-A wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height. Hardware and floating keyboards are untested. A held row in the iPad's sidebar shows no highlight. A popover opened from inside the + card by a control without glass, or a `popover="manual"` one, shows behind the card.
+`QUEUE.md` has what is left to do. In short, a wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height. Hardware and floating keyboards are untested. A held row in the iPad's sidebar shows no highlight. A popover opened from inside the + card by a control without glass, or a `popover="manual"` one, shows behind the card.
