@@ -1,0 +1,51 @@
+{
+  "name": "Chat",
+  "short_name": "Chat",
+  "id": "com.example.chat",
+  "start_url": "/",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ],
+  "app": {
+    "id": "com.example.chat",
+    "name": "Chat"
+  },
+  "host": {
+    "ios": {
+      "icon": "art/AppIcon.icon",
+      "minimumOS": "26.0",
+      "deviceFamily": [
+        "iphone",
+        "ipad"
+      ]
+    },
+    "macos": {
+      "icon": "art/AppIcon.icon",
+      "minimumOS": "14.0",
+      "window": {
+        "width": 900,
+        "height": 700
+      }
+    },
+    "web": {}
+  },
+  "verify": {
+    "accept": [
+      {
+        "finding": "contrast",
+        "node": "outgoing-text-*",
+        "why": "Sent balloons keep white text over a blue gradient, #5AC8FA to #0088FF (dark: #409CFF to #0091FF)."
+      },
+      {
+        "finding": "target",
+        "node": "composer",
+        "why": "The field is a 40-point single line, keeping native text and caret geometry; the plus and send controls beside it have 44-point hit areas."
+      }
+    ]
+  }
+}

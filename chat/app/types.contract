@@ -1,0 +1,71 @@
+shape Message
+  id: string
+  body: string
+  mine: bool
+  at: number
+  stamp: string
+  reply: string
+  endsRun: bool
+  last: bool
+  receipt: string
+
+// A person in the list of conversations with their conversation
+shape Thread
+  id: string
+  name: string
+  short: string
+  initials: string
+  // The unsent draft and the message it replies to
+  draft: string
+  reply: string
+  messages: Message[]
+
+shape Change
+  id: string
+  error: string
+
+shape Viewport
+  height: number
+  prefersReducedMotion: bool
+
+shape Time
+  epochAtZero: number
+
+style Ink
+  color="light-dark(#000000, #ffffff)"
+
+style Secondary
+  color="-exact-secondary-label"
+
+style Canvas
+  background-color="light-dark(#ffffff, #000000)"
+
+style GlassButton
+  width=40 height=40 border-radius=20 flex-shrink=0
+  display="flex" align-items="center" justify-content="center"
+
+// A row of the + card: a 38-point tile 34 points in, the label 27 points
+// after it
+style CardRow
+  display="flex" flex-direction="row" align-items="center" gap=27 min-height=56 padding-left=34 padding-right=24 text-align="left"
+
+style CardTile
+  width=38 height=38 border-radius=19 flex-shrink=0
+  display="flex" align-items="center" justify-content="center"
+
+style CardGlyph
+  font-size="1.058824rem" color="light-dark(#ffffff, #ffffff)"
+
+// A received balloon pops in from its tail's corner
+keyframes arrive
+  from opacity=0 scale=0.9
+  to opacity=1 scale=1
+
+keyframes receipt
+  from opacity=0 scale=0.21
+  22% opacity=1
+  to opacity=1 scale=1
+
+keyframes dot
+  from opacity=0.2
+  to opacity=0.45

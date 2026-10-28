@@ -1,0 +1,335 @@
+use Message, Thread, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph from "./types.contract"
+use MessageRow, Typing, Balloon, Sent from "./bubble.contract"
+use Composer from "./composer.contract"
+
+// The conversation is pushed over the list of conversations, so it has the
+// platform's Back. A wide window (an iPad, the iPhone Duo open) shows
+// the list beside it, its rows links so the split marks the open one selected.
+routes nav
+  inbox "/"
+    thread "/conversations/:id"
+
+component ExactChat
+  // The draft and reply of `editing`, the conversation being written in;
+  // another's are the ones saved with it
+  state editing = ""
+  state editedDraft = ""
+  state editedReply = ""
+  state submitted = ""
+  state submittedReply = ""
+  state typing = false
+  state selectedId = ""
+  state selectedBody = ""
+  state elapsed = 0
+  state bodySize = 17
+  // A send's flight: a copy of the balloon starts as the field, its text where the field had
+  // it, narrows to the balloon while it squashes and swells, and rises to the
+  // row on a spring. Phases: 1 laid out but not shown, 2 shown as the field,
+  // 3 narrowing, 4 swelling; the rise starts 55 ms in, once the row is there.
+  state flightPhase = 0
+  state flightId = ""
+  state flightBody = ""
+  state flightAt = 0
+  state squashAt = 0
+  state riseAt = 0
+  // Where the copy is laid out in the conversation: across the transcript's
+  // rows, its bottom at the field's
+  state flightLeft = 0
+  state flightRight = 0
+  state flightBottom = 0
+  state fieldX = 0
+  state flightTrough = 0.77
+  state flierY = 0
+  state flightReach = 0
+  state flightNarrow = 0
+  state flightNarrowed = 0
+  state flightShift = 0
+  state flightRise = 0
+  state flightScale = 1
+  state arrivedId = ""
+  // The conversation the list's long-press menu was opened on
+  state peeked = ""
+  resource viewport = exactViewport() as shape Viewport
+  resource wall = exactTime() as shape Time
+  resource inbox = loadInbox() as shape Thread[] else empty()
+  mutation changed as shape Change queue refreshes inbox then afterChange
+  mutation drafted as shape Change queue refreshes inbox
+  derive openId = top(nav).name == "thread" ? top(nav).params.id : ""
+  derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", draft="", reply="", messages=[]) }
+  derive draft = editing == openId ? editedDraft : conversation.draft
+  derive reply = editing == openId ? editedReply : conversation.reply
+  derive now = wall.epochAtZero + elapsed
+  derive composerHeight = max(60, min(263.158, viewport.height * 0.45))
+  // A receipt shows only while the conversation ends with yours
+  derive receiptId = match conversation.messages.at(-1) { case some(last) => (last.mine ? (match conversation.messages.filter(m => m.mine and (m.receipt != "" or now - m.at >= 1130)).at(-1) { case some(m) => m.id, case none => "" }) : ""), case none => "" }
+  derive awaitingReceipt = conversation.messages.filter(m => m.mine and m.receipt == "" and now - m.at < 2000).length > 0
+  derive sendError = match changed { case some(c) => c.error, case none => "" }
+  derive squashMotion = "177ms cubic-bezier(0.41, 0.2, 0.6, 1)"
+  derive riseMotion = "translate -exact-spring(141.75909, 23.8125, 1)"
+  derive flightMotion = flightPhase == 3 ? `${riseMotion}, scale ${squashMotion}` : (flightPhase == 4 ? `${riseMotion}, scale -exact-spring(320, 50.5964, 2)` : riseMotion)
+  derive narrowMotion = flightPhase >= 3 ? `translate ${squashMotion}` : "none"
+  derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, stamp="", reply="", endsRun=true, last=true, receipt="")] : [])
+
+  action edit(value: string)
+    write(value, reply)
+  action write(text: string, quoted: string)
+    editing = openId
+    editedDraft = text
+    editedReply = quoted
+    send drafted = command("draft", openId, text, quoted, wall.epochAtZero + performanceNow())
+  action fontChanged(width: number, height: number)
+    bodySize = height
+  action began
+    // The newest message comes up with the keys
+    let newest = match transcript.at(-1) { case some(m) => m.id, case none => "" }
+    if newest != ""
+      scrollIntoView("transcript", newest, block="end")
+  action send
+    if draft.trim() != "" and not pending(changed)
+      submitted = draft
+      submittedReply = reply
+      elapsed = performanceNow()
+      flightBody = draft.trim()
+      flightId = ""
+      flightAt = performanceNow()
+      riseAt = 0
+      flightRise = 0
+      flightScale = 1
+      flightNarrowed = 0
+      let page = frame("conversation")
+      let rows = frame("transcript")
+      let pill = frame("composer-pill")
+      flightLeft = rows.x - page.x + 16
+      flightRight = page.x + page.width - rows.x - rows.width + 16
+      flightBottom = page.y + page.height - pill.y - pill.height
+      fieldX = pill.x
+      // A taller field's balloon squashes less: 0.77 for one line, 0.2 more
+      // at seven
+      flightTrough = 0.77 + 0.2 * min(1, max(0, (pill.height - 40.3333) / (6 * 40.3333)))
+      flightPhase = viewport.prefersReducedMotion or page.unavailable or pill.unavailable ? 0 : 1
+      send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
+    focus("composer")
+  // The field keeps only what was typed after the send
+  action handOff
+    write(draft == submitted ? "" : draft, "")
+  action afterChange
+    let id = match changed { case some(c) => c.id, case none => "" }
+    if sendError == "" and id.startsWith("sent-")
+      // A flight not yet shown takes the draft from the field as it shows
+      if flightPhase != 1
+        handOff()
+      flightId = id
+      scrollIntoView("transcript", id, block="end")
+    if sendError == "" and id.startsWith("received-")
+      arrivedId = id
+    if sendError != ""
+      flightPhase = 0
+      // The flight took the draft from the field: it goes back
+      if draft == ""
+        write(submitted, submittedReply)
+  action tick
+    elapsed = performanceNow()
+  task delivery when awaitingReceipt
+    every(50, tick)
+  action animate
+    let stamp = performanceNow()
+    if flightPhase == 1
+      // The copy is laid out where the row's balloon will be, unseen: it is
+      // shown as the field, which it takes the draft from in the same frame
+      let flier = frame("flying-balloon")
+      if not flier.unavailable
+        flierY = flier.y
+        flightReach = fieldX - frame("send-flight").x
+        flightNarrow = flier.x - fieldX
+        flightShift = fieldX + 16 - flier.x - 14
+        flightPhase = 2
+        flightAt = stamp
+        handOff()
+      else if stamp - flightAt > 500
+        flightPhase = 0
+        handOff()
+    else if flightPhase == 2 and stamp - flightAt >= 16
+      flightNarrowed = flightNarrow
+      flightShift = 0
+      flightScale = flightTrough
+      flightPhase = 3
+      squashAt = stamp
+    else if flightPhase == 3 and stamp - squashAt >= 193
+      flightScale = 1
+      flightPhase = 4
+    else if flightPhase >= 2 and stamp - flightAt > 2500
+      flightPhase = 0
+    else if flightPhase >= 2 and flightId != "" and stamp - flightAt >= 55 and not frame(`bubble-${flightId}`).unavailable
+      // The rise follows the row, which a scroll or the receipt's room can move
+      let target = frame(`bubble-${flightId}`).y - flierY
+      if riseAt == 0
+        riseAt = stamp
+        flightRise = target
+      else if flightPhase == 4 and stamp - riseAt >= 750 and stamp - squashAt >= 800
+        flightPhase = 0
+      else if max(target - flightRise, flightRise - target) > 0.5
+        flightRise = target
+  task sending when flightPhase > 0
+    every(frame, animate)
+  action menuOpened
+    elapsed = performanceNow()
+  action contactPressed
+    elapsed = performanceNow()
+    showPopover("conversation-menu")
+  action landed
+    arrivedId = ""
+  task arrival when arrivedId != "" key=arrivedId
+    after(300, landed)
+  action receive
+    typing = false
+    flightPhase = 0
+    elapsed = performanceNow()
+    send changed = command("receive", openId, "That sounds perfect. See you soon!", "", wall.epochAtZero + performanceNow())
+  action toggleTyping
+    typing = not typing
+  action history
+    send changed = command("history", openId, "", "", wall.epochAtZero + performanceNow())
+  action reset
+    editing = openId
+    editedDraft = ""
+    editedReply = ""
+    typing = false
+    send changed = command("reset", openId, "", "", wall.epochAtZero + performanceNow())
+  action peek(id: string)
+    peeked = id
+  action resetPeeked
+    if editing == peeked
+      editedDraft = ""
+      editedReply = ""
+    send changed = command("reset", peeked, "", "", wall.epochAtZero + performanceNow())
+  action aim(id: string, body: string)
+    selectedId = id
+    selectedBody = body
+  action copy
+    copyText(selectedBody)
+  action replyTo(body: string)
+    write(draft, body)
+    focus("composer")
+  action replySelected
+    write(draft, selectedBody)
+    focus("composer")
+  action cancelReply
+    write(draft, "")
+  action remove
+    send changed = command("delete", openId, selectedId, "", wall.epochAtZero + performanceNow())
+  action follow(url: string)
+    typing = false
+    flightPhase = 0
+    arrivedId = ""
+    // Beside the list a row swaps the open conversation, where a push would stack it
+    if top(nav).name == "thread" and url.startsWith("/conversations/")
+      nav = replace(nav, url)
+    else
+      nav = go(nav, url)
+  action back
+    nav = back(nav)
+
+  view
+    main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content" viewport-fit="cover" width="100%" height="100%" class=Canvas
+      box position="absolute" width=0 height="1rem" resize=fontChanged aria-hidden=true pointer-events="none"
+      for entry in stack(nav) key=entry.id
+        if entry.name == "thread"
+          // The route clears its safe area itself, except at the bottom and
+          // the sides, where the composer's blur reaches the screen's edges
+          // and its content pads by the route's insets (LLP 1123 D3, D4):
+          // the transcript's rows, the composer and the flight. Its header is the
+          // platform's bar, which the iPhone Duo's closed screen moves into
+          // its side strip: the contact, a control with its avatar, is the
+          // bar's title, and Options its trailing item.
+          column id="conversation" navigationKey=`${entry.id}` -exact-safe-area="bottom left right" position="absolute" inset=0 class=Canvas
+            header display="flex" align-items="center"
+              button press=contactPressed testId="contact" display="flex" align-items="center" gap=8
+                column width="2.235294rem" height="2.235294rem" border-radius="1.117647rem" align-items="center" justify-content="center" background-color="light-dark(#636d7f, #636d7f)" background-image="linear-gradient(to bottom, #737d8d, #596476)"
+                  text conversation.initials font-size="0.941176rem" font-weight=500 color="light-dark(#ffffff, #ffffff)"
+                text conversation.short role="heading" aria-level=2 testId="contact-name"
+              button press=menuOpened popovertarget="conversation-menu" aria-label="Conversation options" testId="options"
+                image "symbol:more"
+            // Each conversation its own transcript: another's rows, whose ids
+            // repeat, would move from where these were
+            for open in [entry.params.id] key=open
+              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=true keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+                for message in transcript key=message.id
+                  column
+                    if message.id == "typing"
+                      Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
+                    else
+                      MessageRow(message=message, receiptId=receiptId, now=now, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
+            if failed(inbox)
+              text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))"
+            Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
+            if flightPhase >= 1
+              // Laid out as a row is, from the field's bottom. While it is
+              // as wide as the field, a surface reaching from the field's
+              // edge fills it out: it slides right under the balloon, clipped
+              // inside the balloon's body, so its left edge comes to the
+              // balloon's, and the squash takes both about the tail's corner.
+              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + var(--exact-safe-area-inset-left))` right=`calc(${flightRight}px + var(--exact-safe-area-inset-right))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : 1) translate=`0px ${flightRise}px` scale=flightScale transform-origin="100% 100%" transition=flightMotion pointer-events="none" z-index=20
+                if flightPhase <= 3
+                  box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
+                    box position="absolute" inset=0 border-radius=((bodySize * 1.193359 + 20) / 2) class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
+                box max-width="min(85%, calc(100% - 89.333333px))"
+                  Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion)
+        if entry.name == "inbox"
+          // Its ground is the platform's: beside the conversation, UIKit's sidebar
+          column navigationKey=`${entry.id}` position="absolute" inset=0
+            header
+              h2 "Chats"
+            list appearance="auto" listStyle="plain" flex=1 min-height=0
+              section
+                for person in inbox key=person.id
+                  // The avatar sits in the row's leading padding, where a
+                  // list cell's image sits, so the platform's line under the
+                  // row starts at the name (45-point avatar, text 84 points
+                  // in). A long press peeks at the conversation.
+                  link href=path("thread", person.id) testId=`conversation-${person.id}` aria-label=person.name contextmenu=peek(person.id) contextPopover="conversation-peek" position="relative" display="flex" flex-direction="column" gap=2 padding-top=12 padding-bottom=12 padding-right=16 padding-left=84 min-height=69 justify-content="center" box-sizing="border-box"
+                    row aria-hidden=true position="absolute" left=26 top=0 bottom=0 align-items="center"
+                      column width=45 height=45 border-radius=22.5 background-color="light-dark(#596476, #596476)" align-items="center" justify-content="center"
+                        text person.initials color="light-dark(#ffffff, #ffffff)" font-size=18
+                    text person.name font="-exact-headline"
+                    text (match person.messages.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary
+      // The + card: opened from the + glass, it is UIKit's popover,
+      // which grows out of the + and lies over the keys. Its rows are a
+      // tinted tile and a label at the body's size.
+      column id="add-menu" popover="auto" aria-label="Add to conversation" min-width=240 padding-top=11 padding-bottom=11
+        button appearance="none" press=receive popovertarget="add-menu" popovertargetaction="hide" testId="receive" class=CardRow
+          box class=CardTile background-color="-exact-system-blue"
+            image "symbol:messages" class=CardGlyph
+          text "Receive a message" class=Ink
+        button appearance="none" press=toggleTyping popovertarget="add-menu" popovertargetaction="hide" testId="toggle-typing" class=CardRow
+          box class=CardTile background-color="-exact-system-gray"
+            image "symbol:ellipsis" class=CardGlyph
+          text (typing ? "Stop typing indicator" : "Show typing indicator") class=Ink
+      // The peek: the conversation's latest balloons, which open it, and
+      // what can be done to it
+      column id="conversation-peek" popover="auto" role="menu"
+        for thread in inbox.filter(t => t.id == peeked) key=thread.id
+          button contextPreview=true press=follow(path("thread", thread.id)) popovertarget="conversation-peek" popovertargetaction="hide" aria-label=`Open ${thread.name}` testId="peek-preview" display="flex" flex-direction="column" justify-content="flex-end" width="18.823529rem" padding-top=12 padding-bottom=12 box-sizing="border-box" class=Canvas
+            for m in thread.messages.slice(-5) key=m.id
+              row justify-content=(m.mine ? "flex-end" : "flex-start") padding-left=12 padding-right=12 padding-top=2 padding-bottom=(m.endsRun ? 8 : 2)
+                box max-width="80%"
+                  Balloon(body=m.body, mine=m.mine, tail=m.endsRun, bodySize=bodySize, identifier=`peek-${m.id}`, shift=0, shiftMotion="none")
+        button press=resetPeeked popovertarget="conversation-peek" popovertargetaction="hide" destructive=true testId="peek-reset"
+          text "Reset Conversation"
+          image "symbol:refresh"
+      column id="conversation-menu" popover="auto" role="menu"
+        button press=history popovertarget="conversation-menu" popovertargetaction="hide" testId="load-history"
+          text "Load earlier messages"
+          image "symbol:download"
+        button press=reset popovertarget="conversation-menu" popovertargetaction="hide" destructive=true testId="reset"
+          text "Reset conversation"
+          image "symbol:refresh"
+      column id="message-menu" popover="auto" role="menu"
+        button press=copy popovertarget="message-menu" popovertargetaction="hide" testId="copy-message"
+          text "Copy"
+          image "symbol:copy"
+        button press=replySelected popovertarget="message-menu" popovertargetaction="hide" testId="reply-message"
+          text "Reply"
+          image "symbol:reply"
+        button press=remove popovertarget="message-menu" popovertargetaction="hide" destructive=true testId="delete-message"
+          text "Delete"
+          image "symbol:delete"

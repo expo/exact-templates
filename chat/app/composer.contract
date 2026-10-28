@@ -1,0 +1,61 @@
+use GlassButton, Ink, Secondary from "./types.contract"
+
+component Composer
+  props
+    draft: string
+    reply: string
+    busy: bool
+    maximumHeight: number
+    error: string
+    edit: action
+    began: action
+    send: action
+    cancelReply: action
+    menuOpened: action
+  view
+    // The bar rises 16 points from the keys and docks 28 from
+    // the screen's bottom, 57 and 69 points tall: docked is wherever the
+    // route has a bottom safe area. A route the keys end has none, as a view
+    // on UIKit's keyboard layout guide has none (LLP 1123 D9), and the
+    // layout that follows runs in the keyboard's own animation, so the bar
+    // moves between the two on the keyboard's curve in either direction.
+    // Docked, a side that meets a rounded corner of the display comes in by
+    // up to 12 points more, as UIKit's corner-adapted safe area says it does
+    // (28 from an iPhone's sides): not beside a sidebar, a side strip or a
+    // corner the safe area already clears.
+    column id="composer-bar" testId="composer-bar" position="relative" flex-shrink=0 padding-top=0.6667 padding-left="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)) + var(--exact-safe-area-inset-left))" padding-right="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)) + var(--exact-safe-area-inset-right))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+      // The bar blurs what passes under it: the chrome material at 0.7,
+      // rising 12 points above the bar and fading in over its first 30 on a
+      // smoothstep
+      box position="absolute" left=0 right=0 top=-12 bottom=0 backgroundMaterial="chrome" opacity=0.7 mask-image="linear-gradient(to bottom, rgb(0 0 0 / 0) 0px, rgb(0 0 0 / 0.156) 7.5px, rgb(0 0 0 / 0.5) 15px, rgb(0 0 0 / 0.844) 22.5px, rgb(0 0 0) 30px)" pointer-events="none" aria-hidden=true
+      if error != ""
+        text error testId="send-error" position="relative" color="-exact-system-red" font="-exact-footnote" margin-left=52 margin-bottom=8
+      if reply != ""
+        row position="relative" margin-left=52 margin-bottom=10 gap=8 align-items="center" border-left="2px solid light-dark(#0088ff, #0091ff)" padding-left=10
+          column flex=1 min-width=0
+            text "Replying to" font="-exact-caption1" color="light-dark(#0088ff, #0091ff)"
+            text reply testId="reply-preview" font="-exact-footnote" class=Secondary line-clamp=2
+          button press=cancelReply retainFocus=true aria-label="Cancel reply" testId="cancel-reply" width=44 height=44
+            image "symbol:close" font-size="0.823529rem" color="-exact-secondary-label"
+      // One glass group: a press swells either glass, and
+      // within 12 points the two merge
+      row align-items="flex-end" gap=12 glassGroup=12
+        button appearance="none" press=menuOpened popovertarget="add-menu" retainFocus=true testId="add" aria-label="Add to conversation" class=GlassButton backgroundMaterial="glass"
+          box width=15.3333 height=15.3333 position="relative"
+            box position="absolute" left=6.54165 top=0 width=2.25 height=15.3333 border-radius=1.125 background-color="light-dark(#858e99, #b0b5bd)"
+            box position="absolute" top=6.54165 left=0 height=2.25 width=15.3333 border-radius=1.125 background-color="light-dark(#858e99, #b0b5bd)"
+        row id="composer-pill" testId="composer-pill" position="relative" flex=1 min-width=0 min-height=40.3333 border-radius=20 backgroundMaterial="glass" padding-right=6.5 align-items="flex-end" box-sizing="border-box"
+          textarea appearance="none" id="composer" testId="composer" aria-label="Message" value=draft input=edit focus=began placeholder="Message" font-size="1rem" font-family="system-ui" line-height="1.193359rem" field-sizing="content" min-height=40.3333 max-height=maximumHeight flex=1 min-width=0 padding-left=16 padding-right=5 padding-top=10.0231 padding-bottom=10.0231 border-width=0 box-sizing="border-box" background-color="transparent" caret-color="light-dark(#0088ff, #0091ff)" class=Ink
+          box width=38 height=40.3333 flex-shrink=0
+          button appearance="none" position="absolute" right=0.6667 bottom=-2 press=send retainFocus=true disabled=(draft.trim() == "" or busy) testId="send" aria-label="Send message" width=44 height=44
+            row position="absolute" left=0 top=8 width=38 height=28 border-radius=14 background-color=(draft.trim() != "" ? "light-dark(#0088ff, #0091ff)" : "transparent") align-items="center" justify-content="center"
+              if draft.trim() != ""
+                svg width=18 height=20 viewBox="0 0 18 20" aria-hidden=true
+                  path d="M 9 17 L 9 2 M 3.5 7.5 L 9 2 L 14.5 7.5" fill="none" stroke="#ffffff" stroke-width=2 stroke-linecap="round" stroke-linejoin="round"
+              else
+                row align-items="center" gap=2 margin-right=5.4 aria-hidden=true
+                  box width=2 height=4 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"
+                  box width=2 height=8 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"
+                  box width=2 height=16 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"
+                  box width=2 height=8 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"
+                  box width=2 height=4 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"

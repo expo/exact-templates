@@ -1,0 +1,107 @@
+epoch 1792694460000
+time-zone "America/Los_Angeles"
+
+test "sending clears the draft and saves the message across a relaunch"
+  tap "conversation-alex"
+  clock settle
+  expect disabled "send"
+  type "composer" "I’m on my way!"
+  expect enabled "send"
+  tap "send"
+  clock data
+  // The flight takes the draft from the field in its first frame shown
+  clock +50
+  expect text "composer" == ""
+  expect text "outgoing-text-bubble-sent-1" == "I’m on my way!"
+  clock +2000
+  expect state flightPhase == 0
+  expect state awaitingReceipt == false
+  expect text "receipt-sent-1" == "Delivered"
+  reload
+  clock data
+  expect state inbox.0.messages.12.body == "I’m on my way!"
+
+test "whitespace is not sendable and a multiline draft survives a relaunch"
+  tap "conversation-alex"
+  clock settle
+  type "composer" "   "
+  expect disabled "send"
+  type "composer" "First line\nSecond line\nThird line"
+  expect enabled "send"
+  clock data
+  reload
+  clock data
+  expect state inbox.0.draft == "First line\nSecond line\nThird line"
+
+test "the + card receives messages and toggles typing"
+  tap "conversation-alex"
+  clock settle
+  tap "add"
+  tap "toggle-typing"
+  expect tree has "typing-indicator"
+  tap "add"
+  tap "receive"
+  clock data
+  clock settle
+  expect tree missing "typing-indicator"
+  expect text "incoming-text-bubble-received-1" == "That sounds perfect. See you soon!"
+
+test "a long transcript keeps the composer usable and the newest message accessible"
+  tap "conversation-alex"
+  clock settle
+  tap "options"
+  tap "load-history"
+  clock data
+  expect state conversation.messages.length == 252
+  type "composer" "Still here after the earlier messages."
+  tap "send"
+  clock data
+  clock settle
+  expect text "outgoing-text-bubble-sent-1" == "Still here after the earlier messages."
+  clock +2000
+  expect state flightPhase == 0
+
+test "a message can be replied to and the reply dismissed"
+  tap "conversation-alex"
+  clock settle
+  tap "bubble-seed-12" contextmenu
+  tap "reply-message"
+  expect text "reply-preview" == "See you there 🙂"
+  tap "cancel-reply"
+  expect tree missing "reply-preview"
+
+test "the conversation reopens from the list"
+  tap "conversation-alex"
+  clock settle
+  // The list by its location: beside the list, on an iPad, the conversation has no Back
+  type "app" "/"
+  clock settle
+  tap "conversation-alex"
+  clock settle
+  expect tree has "composer"
+
+test "each person keeps their own conversation and draft"
+  expect tree has "conversation-priya"
+  expect tree has "conversation-jordan"
+  tap "conversation-priya"
+  clock settle
+  expect text "contact-name" == "Priya"
+  type "composer" "For Priya"
+  clock data
+  type "app" "/"
+  clock settle
+  tap "conversation-alex"
+  clock settle
+  expect text "composer" == ""
+  type "app" "/"
+  clock settle
+  tap "conversation-priya"
+  clock settle
+  expect text "composer" == "For Priya"
+
+test "a long press on a conversation peeks at it, and its preview opens it"
+  tap "conversation-priya" contextmenu
+  expect tree has "peek-preview"
+  tap "peek-preview"
+  clock settle
+  expect text "contact-name" == "Priya"

@@ -1,0 +1,12 @@
+{
+  "fill": { "solid": "srgb:0.29412,0.25490,0.87843,1.00000" },
+  "groups": [
+    {
+      "layers": [
+        { "image-name": "received.svg", "name": "Received" },
+        { "image-name": "sent.svg", "name": "Sent" }
+      ]
+    }
+  ],
+  "supported-platforms": { "squares": "shared" }
+}
