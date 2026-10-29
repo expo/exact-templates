@@ -12,7 +12,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 | Behaviour | Where |
 | --- | --- |
-| The conversation list: avatar, name and last message, lines from the text, a long press that peeks at the conversation | `app.contract`, the `inbox` route and `id="conversation-peek"` |
+| The conversation list: avatar, name and last message, lines from the text, a long press that peeks at the conversation; at the accessibility text sizes no avatar | `app.contract`, the `inbox` route and `id="conversation-peek"` |
 | List beside the conversation on an iPad, the iPhone Duo open, or a window 900 px wide; a pushed conversation on a phone | `app.contract`, `routes` and `follow`; the rows are links |
 | A transcript that opens at its newest message and follows it, built only where it shows | `app.contract`, `list id="transcript"` (`virtualized`, `scroll-start="end"`, `scrollFollowEnd`) |
 | 240 earlier messages put above the reader without moving what they read | `app.contract`, `action history` |
@@ -40,7 +40,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Needs
 
-Exact at `6b6bb6ad94` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, a held row's press, and the transcript's keyboard, inset and rubber band handling. That branch is not on Exact's main yet.
+Exact at `34430ac35c` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, a held row's press, and the transcript's keyboard, inset and rubber band handling. That branch is not on Exact's main yet.
 
 ## Limits
 

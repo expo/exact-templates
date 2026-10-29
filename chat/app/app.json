@@ -45,6 +45,11 @@
         "finding": "target",
         "node": "composer",
         "why": "The field is a 40-point single line, keeping native text and caret geometry; the plus and send controls beside it have 44-point hit areas."
+      },
+      {
+        "finding": "fixed-type",
+        "node": "initials-*",
+        "why": "The initials fill the list's fixed 45-point avatar, which the list leaves out at the accessibility text sizes."
       }
     ]
   }

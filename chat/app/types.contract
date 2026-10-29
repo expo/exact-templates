@@ -27,6 +27,7 @@ shape Change
 shape Viewport
   height: number
   prefersReducedMotion: bool
+  accessibilityTextSize: bool
 
 shape Time
   epochAtZero: number

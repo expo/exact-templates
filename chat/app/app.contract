@@ -292,11 +292,14 @@ component ExactChat
                   // The avatar sits in the row's leading padding, where a
                   // list cell's image sits, so the platform's line under the
                   // row starts at the name (45-point avatar, text 84 points
-                  // in). A long press peeks at the conversation.
-                  link href=path("thread", person.id) testId=`conversation-${person.id}` aria-label=person.name contextmenu=peek(person.id) contextPopover="conversation-peek" position="relative" display="flex" flex-direction="column" gap=2 padding-top=12 padding-bottom=12 padding-right=16 padding-left=84 min-height=69 justify-content="center" box-sizing="border-box"
-                    row aria-hidden=true position="absolute" left=26 top=0 bottom=0 align-items="center"
-                      column width=45 height=45 border-radius=22.5 background-color="light-dark(#596476, #596476)" align-items="center" justify-content="center"
-                        text person.initials color="light-dark(#ffffff, #ffffff)" font-size=18
+                  // in). At the accessibility text sizes the row drops it and
+                  // its text takes the width. A long
+                  // press peeks at the conversation.
+                  link href=path("thread", person.id) testId=`conversation-${person.id}` aria-label=person.name contextmenu=peek(person.id) contextPopover="conversation-peek" position="relative" display="flex" flex-direction="column" gap=2 padding-top=12 padding-bottom=12 padding-right=16 padding-left=(viewport.accessibilityTextSize ? 16 : 84) min-height=69 justify-content="center" box-sizing="border-box"
+                    if not viewport.accessibilityTextSize
+                      row aria-hidden=true position="absolute" left=26 top=0 bottom=0 align-items="center"
+                        column width=45 height=45 border-radius=22.5 background-color="light-dark(#596476, #596476)" align-items="center" justify-content="center"
+                          text person.initials testId=`initials-${person.id}` color="light-dark(#ffffff, #ffffff)" font-size=18
                     text person.name font="-exact-headline"
                     text (match person.messages.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary
       // The + card: opened from the + glass, it is UIKit's popover,
