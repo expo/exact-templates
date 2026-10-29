@@ -40,7 +40,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Needs
 
-Exact at `ae58fa91b0` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, a held row's press, the transcript's keyboard, inset and rubber band handling, and a balloon's opacity set in the resize round that measures it; and `verify`'s acceptance of a list row's finding by its templated testId. That branch is not on Exact's main yet.
+Exact at `ea971933c8` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, a held row's press, the transcript's keyboard, inset and rubber band handling, a balloon's opacity set in the resize round that measures it, and a composer that scrolls only once its text overflows; and `verify`'s acceptance of a list row's finding by its templated testId. That branch is not on Exact's main yet.
 
 ## Limits
 
