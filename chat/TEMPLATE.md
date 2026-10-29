@@ -40,8 +40,8 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Needs
 
-Exact at `e3fac2586a` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, and the transcript's keyboard and inset handling. That branch is not on Exact's main yet.
+Exact at `6b6bb6ad94` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, a held row's press, and the transcript's keyboard, inset and rubber band handling. That branch is not on Exact's main yet.
 
 ## Limits
 
-`QUEUE.md` has what is left to do. In short, a wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height. Hardware and floating keyboards are untested. A held row in the iPad's sidebar shows no highlight. A popover opened from inside the + card by a control without glass, or a `popover="manual"` one, shows behind the card.
+`QUEUE.md` has what is left to do. In short, a wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height. Hardware and floating keyboards are untested. A popover opened from inside the + card by a control without glass, or a `popover="manual"` one, shows behind the card.
