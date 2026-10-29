@@ -67,9 +67,8 @@ component Balloon
   view
     box id=identifier testId=identifier position="relative" display="flex" min-width=48 max-width="100%" box-sizing="border-box" padding="8px 14px"
       box position="absolute" inset=0 resize=measured aria-hidden=true pointer-events="none"
-      // Paint nothing until the first measurement: on iOS the clip, unlike
-      // opacity, follows a change made in a resize round
-      box position="absolute" left=0 top=0 right=0 bottom=-8 class=(mine ? Sent : Received) clip-path=(width > 0 ? `path('${outline}')` : "path('M 0 0 L 0.01 0 L 0 0.01 Z')") aria-hidden=true pointer-events="none"
+      // Paint nothing until the first measurement gives the outline its size
+      box position="absolute" left=0 top=0 right=0 bottom=-8 class=(mine ? Sent : Received) clip-path=`path('${outline}')` opacity=(width > 0 ? 1 : 0) aria-hidden=true pointer-events="none"
       // Keep the 10-point inset while allowing ink beyond the tight line box.
       // The first line sits at the font's natural height, so the lead
       // over the line box goes half above the text and half below.
