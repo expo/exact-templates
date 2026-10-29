@@ -9,6 +9,10 @@ routes nav
   inbox "/"
     thread "/conversations/:id"
 
+// When a message was sent, as the stamp heading it reads at `now`: "Today 9:41 AM",
+// "Yesterday 6:12 PM", else the date
+fn sentStamp(at: number, now: number, offset: number): string = `${formatDay(at, now, offset, "day")} ${formatTime(at, offset, "short")}`
+
 component ExactChat
   // The draft and reply of `editing`, the conversation being written in;
   // another's are the ones saved with it
@@ -68,6 +72,9 @@ component ExactChat
   derive riseMotion = "translate -exact-spring(141.75909, 23.8125, 1)"
   derive flightMotion = flightPhase == 3 ? `${riseMotion}, scale ${squashMotion}` : (flightPhase == 4 ? `${riseMotion}, scale -exact-spring(320, 50.5964, 2)` : riseMotion)
   derive narrowMotion = flightPhase >= 3 ? `translate ${squashMotion}` : "none"
+  // A first message with no stamp of its own (one sent after every earlier message was deleted) is
+  // stamped with when it was sent, so every conversation starts with a time
+  derive firstId = match conversation.messages.at(0) { case some(m) => m.id, case none => "" }
   derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, stamp="", reply="", endsRun=true, last=true, receipt="")] : [])
 
   action edit(value: string)
@@ -258,7 +265,7 @@ component ExactChat
                     if message.id == "typing"
                       Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
                     else
-                      MessageRow(message=message, receiptId=receiptId, now=now, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
+                      MessageRow(message=message, stamp=(message.stamp == "" and message.id == firstId ? sentStamp(message.at, now, wall.utcOffset) : message.stamp), receiptId=receiptId, now=now, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
             if failed(inbox)
               text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))"
             Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)

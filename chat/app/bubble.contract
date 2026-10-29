@@ -84,6 +84,8 @@ component Balloon
 component MessageRow
   props
     message: Message
+    // The time heading the row, if any
+    stamp: string
     receiptId: string
     now: number
     bodySize: number
@@ -101,8 +103,8 @@ component MessageRow
   derive roomMotion = reduced ? "none" : (hasReceipt ? "height -exact-spring(438.65, 41.888, 1)" : "height -exact-spring(438.65, 41.888, 1), opacity 100ms ease-out")
   view
     column testId=`row-${message.id}` padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))" padding-top=2 padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
-      if message.stamp != ""
-        text message.stamp testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" font-weight=500 margin-top=12 margin-bottom=16
+      if stamp != ""
+        text stamp testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" font-weight=500 margin-top=12 margin-bottom=16
       if message.reply != ""
         row justify-content=(message.mine ? "flex-end" : "flex-start") margin-bottom=6
           text message.reply class=Secondary border-left="2px solid -exact-separator" padding-left=8 max-width="85%" font-size="0.764706rem" line-clamp=2

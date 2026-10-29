@@ -30,6 +30,7 @@ shape Viewport
 
 shape Time
   epochAtZero: number
+  utcOffset: number
 
 style Ink
   color="light-dark(#000000, #ffffff)"

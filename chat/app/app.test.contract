@@ -70,6 +70,31 @@ test "a message can be replied to and the reply dismissed"
   tap "cancel-reply"
   expect tree missing "reply-preview"
 
+test "a message sent into an emptied conversation is stamped with when it was sent"
+  tap "conversation-priya"
+  clock settle
+  expect text "stamp-seed-1" == "Today 8:05 AM"
+  tap "bubble-seed-1" contextmenu
+  tap "delete-message"
+  clock data
+  // The first message left takes a stamp of its own time (10:05 AM in the tests' time zone)
+  expect text "stamp-seed-2" == "Today 10:05 AM"
+  tap "bubble-seed-2" contextmenu
+  tap "delete-message"
+  clock data
+  tap "bubble-seed-3" contextmenu
+  tap "delete-message"
+  clock data
+  tap "bubble-seed-4" contextmenu
+  tap "delete-message"
+  clock data
+  type "composer" "Starting over"
+  tap "send"
+  clock data
+  clock +2000
+  expect text "outgoing-text-bubble-sent-1" == "Starting over"
+  expect text "stamp-sent-1" == "Today 11:41 AM"
+
 test "the conversation reopens from the list"
   tap "conversation-alex"
   clock settle
