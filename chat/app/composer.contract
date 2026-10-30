@@ -12,6 +12,10 @@ component Composer
     send: action
     cancelReply: action
     menuOpened: action
+  // A flick down on the bar, or on its field while its text fits, puts the
+  // keys away at once; on a field whose text overflows the flick scrolls it
+  action hideKeys
+    blur("composer")
   view
     // The bar rises 16 points from the keys and docks 28 from
     // the screen's bottom, 57 and 69 points tall: docked is wherever the
@@ -23,7 +27,7 @@ component Composer
     // up to 12 points more, as UIKit's corner-adapted safe area says it does
     // (28 from an iPhone's sides): not beside a sidebar, a side strip or a
     // corner the safe area already clears.
-    column id="composer-bar" testId="composer-bar" position="relative" flex-shrink=0 padding-top=0.6667 padding-left="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)) + var(--exact-safe-area-inset-left))" padding-right="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)) + var(--exact-safe-area-inset-right))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+    column id="composer-bar" testId="composer-bar" swipe=hideKeys swipe-direction="down" position="relative" flex-shrink=0 padding-top=0.6667 padding-left="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)) + var(--exact-safe-area-inset-left))" padding-right="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)) + var(--exact-safe-area-inset-right))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
       // The bar blurs what passes under it: the chrome material at 0.7,
       // rising 12 points above the bar and fading in over its first 30 on a
       // smoothstep, and reaching 40 points below it, under the keyboard's
