@@ -110,10 +110,12 @@ component MessageRow
   derive room = hasReceipt ? 6.3333 + bodySize * 0.764706 : (tail and not message.last ? 6.65 : 0)
   derive roomMotion = reduced ? "none" : (hasReceipt ? "height -exact-spring(438.65, 41.888, 1)" : "height -exact-spring(438.65, 41.888, 1), opacity 100ms ease-out")
   view
-    column testId=`row-${message.id}` padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))" padding-top=2 padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
+    // A stamp sits 14.67 points under the run before it, which that run's
+    // room for its tail and its padding make, and 9 over its balloon
+    column testId=`row-${message.id}` padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))" padding-top=(message.stamped ? 0 : 2) padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
       // The day bold and the time regular: "Today 9:41 AM", "Monday 6:12 PM"
       if message.stamped
-        text testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" margin-top=12 margin-bottom=9
+        text testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" margin-bottom=9
           text stampDay(message.at, now, utcOffset) font-weight=600
           text ` ${formatTime(message.at, utcOffset, "short")}`
       if message.reply != ""
