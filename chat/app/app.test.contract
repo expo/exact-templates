@@ -36,6 +36,9 @@ test "whitespace is not sendable and a multiline draft survives a relaunch"
 test "the + card receives messages and toggles typing"
   tap "conversation-alex"
   clock settle
+  // UIKit takes the list's search field out of the bar on the wall's clock,
+  // which `clock settle` does not wait for
+  clock +1000 real
   tap "add"
   tap "toggle-typing"
   expect tree has "typing-indicator"
@@ -130,3 +133,18 @@ test "a long press on a conversation peeks at it, and its preview opens it"
   tap "peek-preview"
   clock settle
   expect text "contact-name" == "Priya"
+
+test "the search finds conversations by name or by a message's text"
+  type "search" "pri"
+  expect tree has "conversation-priya"
+  expect tree missing "conversation-alex"
+  type "search" "snacks"
+  expect tree has "conversation-jordan"
+  expect tree missing "conversation-priya"
+  type "search" "nothing like this"
+  expect tree missing "conversation-alex"
+  expect tree missing "conversation-priya"
+  expect tree missing "conversation-jordan"
+  expect tree has "no-results"
+  type "search" ""
+  expect tree has "conversation-alex"

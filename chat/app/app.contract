@@ -1,6 +1,7 @@
 use Message, Thread, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials from "./types.contract"
 use MessageRow, Typing, Balloon, Sent from "./bubble.contract"
 use Composer from "./composer.contract"
+use EmptyState from "exact:content"
 
 // The conversation is pushed over the list of conversations, so it has the
 // platform's Back. A wide window (an iPad, the iPhone Duo open) shows
@@ -18,6 +19,8 @@ component ExactChat
   state submitted = ""
   state submittedReply = ""
   state typing = false
+  // The list's search: a conversation matches by its person's name or any message's text
+  state query = ""
   state selectedId = ""
   state selectedBody = ""
   state elapsed = 0
@@ -59,6 +62,8 @@ component ExactChat
   derive draft = editing == openId ? editedDraft : conversation.draft
   derive reply = editing == openId ? editedReply : conversation.reply
   derive now = wall.epochAtZero + elapsed
+  derive needle = query.trim().toLowerCase()
+  derive shown = inbox.filter(t => needle == "" or t.name.toLowerCase().includes(needle) or t.messages.filter(m => m.body.toLowerCase().includes(needle)).length > 0)
   derive composerHeight = max(60, min(263.158, viewport.height * 0.45))
   // A receipt shows only while the conversation ends with yours
   derive receiptId = match conversation.messages.at(-1) { case some(last) => (last.mine ? (match conversation.messages.filter(m => m.mine and (m.receipt != "" or now - m.at >= 1130)).at(-1) { case some(m) => m.id, case none => "" }) : ""), case none => "" }
@@ -188,6 +193,8 @@ component ExactChat
     flightPhase = 0
     elapsed = performanceNow()
     send changed = command("receive", openId, "That sounds perfect. See you soon!", "", wall.epochAtZero + performanceNow())
+  action searchChats(value: string)
+    query = value
   action toggleTyping
     typing = not typing
   action history
@@ -282,26 +289,33 @@ component ExactChat
           column navigationKey=`${entry.id}` position="absolute" inset=0
             header
               h2 "Chats"
-            list appearance="auto" listStyle="plain" flex=1 min-height=0
-              section
-                for person in inbox key=person.id
-                  // The avatar sits in the row's leading padding, where a
-                  // list cell's image sits, so the platform's line under the
-                  // row starts at the name (45-point avatar, text 84 points
-                  // in). At the accessibility text sizes the row drops it and
-                  // its text takes the width. A long
-                  // press peeks at the conversation.
-                  link href=path("thread", person.id) testId=`conversation-${person.id}` aria-label=person.name contextmenu=peek(person.id) contextPopover="conversation-peek" position="relative" display="flex" flex-direction="column" gap=2 padding-top=12 padding-bottom=12 padding-right=16 padding-left=(viewport.accessibilityTextSize ? 16 : 84) min-height=69 justify-content="center" box-sizing="border-box"
-                    if not viewport.accessibilityTextSize
-                      row aria-hidden=true position="absolute" left=26 top=0 bottom=0 align-items="center"
-                        column width=45 height=45 border-radius=22.5 align-items="center" justify-content="center" class=Avatar
-                          text person.initials testId=`initials-${person.id}` font-size=20 class=Initials
-                    // The name, and when the latest message was sent: the time
-                    // today, Yesterday, the weekday this week, else the date
-                    row align-items="baseline" gap=8
-                      text person.name font="-exact-headline" flex=1 min-width=0 line-clamp=1
-                      text (match person.messages.at(-1) { case some(m) => formatDay(m.at, now, wall.utcOffset, "list"), case none => "" }) testId=`sent-${person.id}` font="-exact-subheadline" class=Secondary flex-shrink=0
-                    text (match person.messages.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary
+              input type="search" value=query input=searchChats placeholder="Search" aria-label="Search conversations" testId="search"
+            column flex=1 min-height=0 position="relative" display="flex" flex-direction="column"
+              list appearance="auto" listStyle="plain" flex=1 min-height=0
+                section
+                  for person in shown key=person.id
+                    // The avatar sits in the row's leading padding, where a
+                    // list cell's image sits, so the platform's line under the
+                    // row starts at the name (45-point avatar, text 84 points
+                    // in). At the accessibility text sizes the row drops it and
+                    // its text takes the width. A long
+                    // press peeks at the conversation.
+                    link href=path("thread", person.id) testId=`conversation-${person.id}` aria-label=person.name contextmenu=peek(person.id) contextPopover="conversation-peek" position="relative" display="flex" flex-direction="column" gap=2 padding-top=12 padding-bottom=12 padding-right=16 padding-left=(viewport.accessibilityTextSize ? 16 : 84) min-height=69 justify-content="center" box-sizing="border-box"
+                      if not viewport.accessibilityTextSize
+                        row aria-hidden=true position="absolute" left=26 top=0 bottom=0 align-items="center"
+                          column width=45 height=45 border-radius=22.5 align-items="center" justify-content="center" class=Avatar
+                            text person.initials testId=`initials-${person.id}` font-size=20 class=Initials
+                      // The name, and when the latest message was sent: the time
+                      // today, Yesterday, the weekday this week, else the date
+                      row align-items="baseline" gap=8
+                        text person.name font="-exact-headline" flex=1 min-width=0 line-clamp=1
+                        text (match person.messages.at(-1) { case some(m) => formatDay(m.at, now, wall.utcOffset, "list"), case none => "" }) testId=`sent-${person.id}` font="-exact-subheadline" class=Secondary flex-shrink=0
+                      text (match person.messages.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary
+              // No match: the platform's empty state over the empty list, which
+              // keeps the bar's search field
+              if needle != "" and shown.length == 0
+                column position="absolute" inset=0 display="flex" justify-content="center" testId="no-results"
+                  EmptyState(symbol="symbol:search", title="No Results", message=`Nothing matches “${query.trim()}”.`)
       // The + card: opened from the + glass, it is UIKit's popover,
       // which grows out of the + and lies over the keys. Its rows are a
       // tinted tile and a label at the body's size.
