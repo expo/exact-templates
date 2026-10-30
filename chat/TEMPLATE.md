@@ -20,7 +20,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 | A message's long-press menu (copy, reply, delete) and swipe to reply | `bubble.contract`, `contextmenu` and `swiperight`; `app.contract`, `id="message-menu"` |
 | The composer: a growing field in a glass pill, a glass + beside it in one glass group, a blur behind the bar, Send | `composer.contract`, `Composer` |
 | The composer on the keyboard, and the keys' interactive dismissal | `composer.contract`'s padding and comment; `keyboardDismissMode="interactive"` on the transcript |
-| A flick down on the bar, or on its field while its text fits, putting the keys away (iOS) | `composer.contract`, `swipe=hideKeys swipe-direction="down"` on `composer-bar`, `hideKeys` |
+| A flick down on the bar, or on its field while its text fits, putting the keys away (iOS; Android's fling and the Mac's three-finger swipe make it there too) | `composer.contract`, `swipe=hideKeys swipe-direction="down"` on `composer-bar`, `hideKeys` |
 | The + card that opens over the keyboard | `app.contract`, `id="add-menu"`; `types.contract`, `CardRow`, `CardTile`, `CardGlyph` |
 | A send's flight from under the field's glass to its row on the platform's springs, the transcript scrolling to make room, the tail of the balloon before shrinking into it, and a received message popping in | `app.contract`, `action send`, `action animate`, `id="send-flight"`; `types.contract`, `keyframes arrive` |
 | Saving every conversation and its draft in one file, one write at a time | `app.ts`, `answer`; `model.ts`, the people and seeded conversations |
@@ -41,7 +41,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Needs
 
-Exact at `d50b6bc66a` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and its highlight, which stays in the tint while the app is in the background and moves to a conversation its peek opens, a held row's press, the transcript's keyboard, inset and rubber band handling, its glide to an end that moved up (a typing indicator hiding, a message deleted), a balloon's opacity set in the resize round that measures it, a composer that scrolls only once its text overflows, and a header avatar drawn with its gradient and rounded initials; and `verify`'s acceptance of a list row's finding by its templated testId. That branch is not on Exact's main yet.
+Exact at `348dabbc0c` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and its highlight, which stays in the tint while the app is in the background and moves to a conversation its peek opens, a held row's press, the transcript's keyboard, inset and rubber band handling, its glide to an end that moved up (a typing indicator hiding, a message deleted), a balloon's opacity set in the resize round that measures it, a composer that scrolls only once its text overflows, and a header avatar drawn with its gradient and rounded initials; and `verify`'s acceptance of a list row's finding by its templated testId. That branch is not on Exact's main yet.
 
 ## Limits
 
