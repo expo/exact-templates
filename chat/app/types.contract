@@ -81,6 +81,10 @@ keyframes receipt
   22% opacity=1
   to opacity=1 scale=1
 
+// The receipt's old words as they leave
+keyframes fade
+  to opacity=0
+
 keyframes dot
   from opacity=0.2
   to opacity=0.45
