@@ -98,6 +98,29 @@ test "a message sent into an emptied conversation is stamped with when it was se
   expect text "outgoing-text-bubble-sent-1" == "Starting over"
   expect text "stamp-sent-1" == "Today 11:41 AM"
 
+test "a message sent more than a minute after the one before starts a new run"
+  tap "conversation-jordan"
+  clock settle
+  type "composer" "One"
+  tap "send"
+  clock data
+  clock +2000
+  type "composer" "Two"
+  tap "send"
+  clock data
+  clock +2000
+  // Seconds apart, from the same side: one run, whose tail the second has
+  expect state transcript.4.endsRun == false
+  expect state transcript.5.endsRun == true
+  clock +61000
+  type "composer" "Three"
+  tap "send"
+  clock data
+  clock +2000
+  // Over a minute later: the run before it ends, with no stamp between
+  expect state transcript.5.endsRun == true
+  expect state transcript.6.stamped == false
+
 test "the conversation reopens from the list"
   tap "conversation-alex"
   clock settle

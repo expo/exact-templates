@@ -18,6 +18,8 @@ export type SavedMessage = Omit<Message, 'stamped' | 'endsRun' | 'last' | 'readA
 
 /** A message sent this long after the one before it opens a new part of the conversation, headed by the time. */
 const stampGap = 3_600_000;
+/** A message sent more than this long after the one before it starts a new run of balloons, even from the same side. */
+const runGap = 60_000;
 
 export interface Conversation {
   version: 1;
@@ -144,11 +146,15 @@ export function upgrade(saved: unknown): Store | null {
 
 export function present(messages: SavedMessage[]): Message[] {
   const stamped = (index: number): boolean => index === 0 || messages[index]!.at - messages[index - 1]!.at >= stampGap;
+  const endsRun = (index: number): boolean => {
+    const next = messages[index + 1];
+    return next === undefined || next.mine !== messages[index]!.mine || next.at - messages[index]!.at > runGap;
+  };
   return messages.map(({ id, body, mine, at, reply, receipt, readAt }, index): Message => ({
     id, body, mine, at, reply, receipt,
     readAt: readAt ?? 0,
     stamped: stamped(index),
-    endsRun: index === messages.length - 1 || messages[index + 1]!.mine !== mine || stamped(index + 1),
+    endsRun: endsRun(index),
     last: index === messages.length - 1,
   }));
 }
