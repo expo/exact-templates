@@ -110,9 +110,11 @@ component MessageRow
   derive room = hasReceipt ? 6.3333 + bodySize * 0.764706 : (tail and not message.last ? 6.65 : 0)
   derive roomMotion = reduced ? "none" : (hasReceipt ? "height -exact-spring(438.65, 41.888, 1)" : "height -exact-spring(438.65, 41.888, 1), opacity 100ms ease-out")
   view
-    // A stamp sits 14.67 points under the run before it, which that run's
+    // Rows keep the platform's layout margins (the safe area and UIKit's
+    // minimum beside it, 0 beside the iPhone Duo's side strip), 16 points
+    // where a host has none. A stamp sits 14.67 points under the run before it, which that run's
     // room for its tail and its padding make, and 9 over its balloon
-    column testId=`row-${message.id}` padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))" padding-top=(message.stamped ? 0 : 2) padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
+    column testId=`row-${message.id}` padding-left="max(16px, var(--exact-layout-margins-inset-left))" padding-right="max(16px, var(--exact-layout-margins-inset-right))" padding-top=(message.stamped ? 0 : 2) padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
       // The day bold and the time regular: "Today 9:41 AM", "Monday 6:12 PM"
       if message.stamped
         text testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" margin-bottom=9
@@ -133,7 +135,7 @@ component Typing
     name: string
     reduced: bool
   view
-    row testId="typing-indicator" aria-label=`${name} is typing` gap=4 align-items="center" justify-content="center" width=58 height=36 border-radius=18 class=Received margin-left="calc(16px + var(--exact-safe-area-inset-left))" margin-top=8 margin-bottom=4
+    row testId="typing-indicator" aria-label=`${name} is typing` gap=4 align-items="center" justify-content="center" width=58 height=36 border-radius=18 class=Received margin-left="max(16px, var(--exact-layout-margins-inset-left))" margin-top=8 margin-bottom=4
       box width=8.5 height=8.5 border-radius=4.25 background-color="light-dark(#00000033, #ffffff66)" animation=(reduced ? "none" : "dot 500ms ease-in-out infinite alternate")
       box width=8.5 height=8.5 border-radius=4.25 background-color="light-dark(#00000033, #ffffff66)" animation=(reduced ? "none" : "dot 500ms 250ms ease-in-out infinite alternate")
       box width=8.5 height=8.5 border-radius=4.25 background-color="light-dark(#00000033, #ffffff66)" animation=(reduced ? "none" : "dot 500ms 500ms ease-in-out infinite alternate")

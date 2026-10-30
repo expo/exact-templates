@@ -104,8 +104,8 @@ component ExactChat
       let page = frame("conversation")
       let rows = frame("transcript")
       let pill = frame("composer-pill")
-      flightLeft = rows.x - page.x + 16
-      flightRight = page.x + page.width - rows.x - rows.width + 16
+      flightLeft = rows.x - page.x
+      flightRight = page.x + page.width - rows.x - rows.width
       flightBottom = page.y + page.height - pill.y - pill.height
       fieldX = pill.x
       // A taller field's balloon squashes less: 0.77 for one line, 0.2 more
@@ -270,7 +270,7 @@ component ExactChat
                     else
                       MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
             if failed(inbox)
-              text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))"
+              text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="max(16px, var(--exact-layout-margins-inset-left))" padding-right="max(16px, var(--exact-layout-margins-inset-right))"
             Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
             if flightPhase >= 1
               // Laid out as a row is, from the field's bottom. While it is
@@ -278,7 +278,7 @@ component ExactChat
               // edge fills it out: it slides right under the balloon, clipped
               // inside the balloon's body, so its left edge comes to the
               // balloon's, and the squash takes both about the tail's corner.
-              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + var(--exact-safe-area-inset-left))` right=`calc(${flightRight}px + var(--exact-safe-area-inset-right))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : 1) translate=`0px ${flightRise}px` scale=flightScale transform-origin="100% 100%" transition=flightMotion pointer-events="none" z-index=20
+              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + max(16px, var(--exact-layout-margins-inset-left)))` right=`calc(${flightRight}px + max(16px, var(--exact-layout-margins-inset-right)))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : 1) translate=`0px ${flightRise}px` scale=flightScale transform-origin="100% 100%" transition=flightMotion pointer-events="none" z-index=20
                 if flightPhase <= 3
                   box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
                     box position="absolute" inset=0 border-radius=((bodySize * 1.193359 + 20) / 2) class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
