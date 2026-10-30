@@ -36,6 +36,8 @@ component Balloon
     // a send starts with it where the field had it
     shift: number
     shiftMotion: string
+    // How the tail goes and comes, when a later message takes it or gives it back
+    tailMotion: string
   state width = 0
   state height = 0
   action measured(w: number, h: number)
@@ -70,13 +72,22 @@ component Balloon
   derive tailCorner = `C ${point(left, width, width, height - k * 15.80647)} ${point(left, width, width - k * 1.42506, height - k * 11.58438)} ${point(left, width, width - k * 4.05681, height - k * 8.13379)} C ${point(left, width, width - k * 5.12321, height - k * 6.73577)} ${point(left, width, width - k * 6.35449, height - k * 5.50354)} ${point(left, width, width - k * 7.71498, height - k * 4.45517)} C ${point(left, width, width - k * 9.65380, height - k * 2.94340)} ${point(left, width, width - k * 10.49278, height - k * 1.36616)} ${point(left, width, width - k * 10.49278, height + k * 0.40647)} C ${point(left, width, width - k * 10.49278, height + k * 1.59796)} ${point(left, width, width - k * 10.28228, height + k * 2.77536)} ${point(left, width, width - k * 8.57108, height + k * 5.02338)} C ${point(left, width, width - k * 7.75023, height + k * 6.10106)} ${point(left, width, width - k * 8.57410, height + k * 7.20089)} ${point(left, width, width - k * 9.85725, height + k * 6.71342)} C ${point(left, width, width - k * 12.49605, height + k * 5.71128)} ${point(left, width, width - k * 15.50147, height + k * 3.88728)} ${point(left, width, width - k * 18.13424, height + k * 1.94041)} C ${point(left, width, width - k * 20.49305, height + k * 0.19597)} ${point(left, width, width - k * 21.12152, height + k * 0.01972)} ${point(left, width, width - k * 22.22841, height + k * 0.01267)} L ${point(left, width, width - eH, height)}`
   derive roundCorner = `C ${point(left, width, width, height - c1V)} ${point(left, width, width - c2pV, height - c2aV)} ${point(left, width, width - endpV, height - endaV)} C ${point(left, width, width - midpH, height - midaV)} ${point(left, width, width - midaH, height - midpH)} ${point(left, width, width - endaH, height - endpH)} C ${point(left, width, width - c2aH, height - c2pH)} ${point(left, width, width - c1H, height)} ${point(left, width, width - eH, height)}`
   derive bottomLeft = `L ${point(left, width, eH, height)} C ${point(left, width, c1H, height)} ${point(left, width, c2aH, height - c2pH)} ${point(left, width, endaH, height - endpH)} C ${point(left, width, midaH, height - midpH)} ${point(left, width, midpH, height - midaV)} ${point(left, width, endpV, height - endaV)} C ${point(left, width, c2pV, height - c2aV)} ${point(left, width, 0, height - c1V)} ${point(left, width, 0, height - eV)} Z`
-  derive outline = `${topLeft} ${topRight} ${tail ? tailCorner : roundCorner} ${bottomLeft}`
+  derive outline = `${topLeft} ${topRight} ${roundCorner} ${bottomLeft}`
+  // The tail is what lies between the tail's curve and the round corner it
+  // replaces: the tail's curve out to the bottom edge, then the corner's
+  // curves back to where both start
+  derive cornerBack = `C ${point(left, width, width - c1H, height)} ${point(left, width, width - c2aH, height - c2pH)} ${point(left, width, width - endaH, height - endpH)} C ${point(left, width, width - midaH, height - midpH)} ${point(left, width, width - midpH, height - midaV)} ${point(left, width, width - endpV, height - endaV)} C ${point(left, width, width - c2pV, height - c2aV)} ${point(left, width, width, height - c1V)} ${point(left, width, width, height - eV)} Z`
+  derive tailShape = `M ${point(left, width, width, height - eV)} ${tailCorner} ${cornerBack}`
+  // Where the tail shrinks to, inside the body's corner
+  derive tailOrigin = `${(left ? eH : width - eH).toFixed(3)}px ${(height - eV).toFixed(3)}px`
   view
     // Text narrower than the balloon's smallest width sits in its middle;
     // wider text fills the balloon, its lines left-aligned
     box id=identifier testId=identifier position="relative" display="flex" justify-content="center" min-width=48 max-width="100%" box-sizing="border-box" padding="8px 14px"
       box position="absolute" inset=0 resize=measured aria-hidden=true pointer-events="none"
-      // Paint nothing until the first measurement gives the outline its size
+      // Paint nothing until the first measurement gives the outline its size.
+      // The tail lies under the body, so it shrinks into it.
+      box position="absolute" left=0 top=0 right=0 bottom=-8 class=(mine ? Sent : Received) clip-path=`path('${tailShape}')` opacity=(width > 0 and tail ? 1 : 0) scale=(tail ? 1 : 0) transform-origin=tailOrigin transition=tailMotion aria-hidden=true pointer-events="none"
       box position="absolute" left=0 top=0 right=0 bottom=-8 class=(mine ? Sent : Received) clip-path=`path('${outline}')` opacity=(width > 0 ? 1 : 0) aria-hidden=true pointer-events="none"
       // Keep the 10-point inset while allowing ink beyond the tight line box.
       // The first line sits at the font's natural height, so the lead
@@ -125,7 +136,7 @@ component MessageRow
           text message.reply class=Secondary border-left="2px solid -exact-separator" padding-left=8 max-width="85%" font-size="0.764706rem" line-clamp=2
       row justify-content=(message.mine ? "flex-end" : "flex-start")
         box opacity=(hidden ? 0 : 1) max-width="min(85%, calc(100% - 89.333333px))" contextmenu=aim(message.id, message.body) contextPopover="message-menu" swiperight=replyTo(message.body) touch-action="pan-y" animation=(arriving and not reduced ? "arrive 220ms ease-out both" : "none") transform-origin="0% 100%"
-          Balloon(body=message.body, mine=message.mine, tail=tail, bodySize=bodySize, identifier=`bubble-${message.id}`, shift=0, shiftMotion="none")
+          Balloon(body=message.body, mine=message.mine, tail=tail, bodySize=bodySize, identifier=`bubble-${message.id}`, shift=0, shiftMotion="none", tailMotion=(reduced ? "none" : "scale -exact-spring(438.649, 41.8879, 1), opacity -exact-spring(438.649, 41.8879, 1)"))
       column height=room opacity=(hasReceipt ? 1 : 0) transition=roomMotion flex-shrink=0 pointer-events="none"
         if message.mine
           text (message.receipt == "Read" and message.readAt > 0 ? `Read ${formatDay(message.readAt, now, utcOffset, "list")}` : (message.receipt != "" ? message.receipt : "Delivered")) testId=`receipt-${message.id}` aria-hidden=(not hasReceipt) class=Secondary align-self="flex-end" font-size="0.647059rem" line-height="0.764706rem" font-weight=600 margin-top=5.3333 margin-right=19.667 animation=(hasReceipt and message.receipt == "" and now - message.at < 1900 and not reduced ? "receipt 610ms cubic-bezier(0.25, 1, 0.5, 1) 100ms backwards" : "none")

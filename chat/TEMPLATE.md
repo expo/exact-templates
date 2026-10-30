@@ -21,7 +21,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 | The composer: a growing field in a glass pill, a glass + beside it in one glass group, a blur behind the bar, Send | `composer.contract`, `Composer` |
 | The composer on the keyboard, and the keys' interactive dismissal | `composer.contract`'s padding and comment; `keyboardDismissMode="interactive"` on the transcript |
 | The + card that opens over the keyboard | `app.contract`, `id="add-menu"`; `types.contract`, `CardRow`, `CardTile`, `CardGlyph` |
-| A send's flight from the field to its row, and a received message popping in | `app.contract`, `action send`, `action animate`, `id="send-flight"`; `types.contract`, `keyframes arrive` |
+| A send's flight from under the field's glass to its row on the platform's springs, the transcript scrolling to make room, the tail of the balloon before shrinking into it, and a received message popping in | `app.contract`, `action send`, `action animate`, `id="send-flight"`; `types.contract`, `keyframes arrive` |
 | Saving every conversation and its draft in one file, one write at a time | `app.ts`, `answer`; `model.ts`, the people and seeded conversations |
 
 ## Files

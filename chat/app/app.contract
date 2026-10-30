@@ -25,10 +25,11 @@ component ExactChat
   state selectedBody = ""
   state elapsed = 0
   state bodySize = 17
-  // A send's flight: a copy of the balloon starts as the field, its text where the field had
-  // it, narrows to the balloon while it squashes and swells, and rises to the
-  // row on a spring. Phases: 1 laid out but not shown, 2 shown as the field,
-  // 3 narrowing, 4 swelling; the rise starts 55 ms in, once the row is there.
+  // A send's flight: a copy of the balloon starts under the field's glass, its
+  // text where the field had it, narrows to the balloon while it swells, and
+  // rises to the row on a spring. Phases: 1 laid out but not shown, 2 shown as
+  // the field, 3 narrowing, swelling and rising; the rise starts 55 ms in,
+  // once the row is there.
   state flightPhase = 0
   state flightId = ""
   state flightBody = ""
@@ -41,14 +42,13 @@ component ExactChat
   state flightRight = 0
   state flightBottom = 0
   state fieldX = 0
-  state flightTrough = 0.77
+  state flierWidth = 0
   state flierY = 0
   state flightReach = 0
   state flightNarrow = 0
   state flightNarrowed = 0
   state flightShift = 0
   state flightRise = 0
-  state flightScale = 1
   state arrivedId = ""
   // The conversation the list's long-press menu was opened on
   state peeked = ""
@@ -69,10 +69,14 @@ component ExactChat
   derive receiptId = match conversation.messages.at(-1) { case some(last) => (last.mine ? (match conversation.messages.filter(m => m.mine and (m.receipt != "" or now - m.at >= 1130)).at(-1) { case some(m) => m.id, case none => "" }) : ""), case none => "" }
   derive awaitingReceipt = conversation.messages.filter(m => m.mine and m.receipt == "" and now - m.at < 2000).length > 0
   derive sendError = match changed { case some(c) => c.error, case none => "" }
-  derive squashMotion = "177ms cubic-bezier(0.41, 0.2, 0.6, 1)"
-  derive riseMotion = "translate -exact-spring(141.75909, 23.8125, 1)"
-  derive flightMotion = flightPhase == 3 ? `${riseMotion}, scale ${squashMotion}` : (flightPhase == 4 ? `${riseMotion}, scale -exact-spring(320, 50.5964, 2)` : riseMotion)
-  derive narrowMotion = flightPhase >= 3 ? `translate ${squashMotion}` : "none"
+  // The platform's send: the copy narrows to its balloon over 400 ms, and
+  // comes from 0.6 to whole as it does; it swells by two springs whose scales
+  // multiply to 1 (3% at 120 ms, then back), and rises on an underdamped one
+  derive riseMotion = "translate -exact-spring(141.759, 17.3503, 1)"
+  derive narrowCurve = "400ms cubic-bezier(0.541951, 0, 0.58, 1)"
+  derive flightMotion = flightPhase >= 3 ? `${riseMotion}, scale -exact-spring(310, 38, 2), opacity 400ms ease-in` : riseMotion
+  derive swellMotion = flightPhase >= 3 ? "scale -exact-spring(320, 38, 2)" : "none"
+  derive narrowMotion = flightPhase >= 3 ? `translate ${narrowCurve}` : "none"
   derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, reply="", stamped=false, endsRun=true, last=true, receipt="", readAt=0)] : [])
 
   action edit(value: string)
@@ -99,7 +103,6 @@ component ExactChat
       flightAt = performanceNow()
       riseAt = 0
       flightRise = 0
-      flightScale = 1
       flightNarrowed = 0
       let page = frame("conversation")
       let rows = frame("transcript")
@@ -110,7 +113,6 @@ component ExactChat
       fieldX = pill.x
       // A taller field's balloon squashes less: 0.77 for one line, 0.2 more
       // at seven
-      flightTrough = 0.77 + 0.2 * min(1, max(0, (pill.height - 40.3333) / (6 * 40.3333)))
       flightPhase = viewport.prefersReducedMotion or page.unavailable or pill.unavailable ? 0 : 1
       send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
     focus("composer")
@@ -124,7 +126,8 @@ component ExactChat
       if flightPhase != 1
         handOff()
       flightId = id
-      scrollIntoView("transcript", id, block="end")
+      // The transcript makes room by scrolling, as the platform's does in 0.3 s
+      scrollIntoView("transcript", id, block="end", behavior="smooth")
     if sendError == "" and id.startsWith("received-")
       arrivedId = id
     if sendError != ""
@@ -144,6 +147,7 @@ component ExactChat
       let flier = frame("flying-balloon")
       if not flier.unavailable
         flierY = flier.y
+        flierWidth = flier.width
         flightReach = fieldX - frame("send-flight").x
         flightNarrow = flier.x - fieldX
         // From where the copy's text is laid out (the middle of a narrow
@@ -159,12 +163,8 @@ component ExactChat
     else if flightPhase == 2 and stamp - flightAt >= 16
       flightNarrowed = flightNarrow
       flightShift = 0
-      flightScale = flightTrough
       flightPhase = 3
       squashAt = stamp
-    else if flightPhase == 3 and stamp - squashAt >= 193
-      flightScale = 1
-      flightPhase = 4
     else if flightPhase >= 2 and stamp - flightAt > 2500
       flightPhase = 0
     else if flightPhase >= 2 and flightId != "" and stamp - flightAt >= 55 and not frame(`bubble-${flightId}`).unavailable
@@ -173,7 +173,8 @@ component ExactChat
       if riseAt == 0
         riseAt = stamp
         flightRise = target
-      else if flightPhase == 4 and stamp - riseAt >= 750 and stamp - squashAt >= 800
+      // The rise settles in 880 ms and the swell in 810
+      else if stamp - riseAt >= 880 and stamp - squashAt >= 810
         flightPhase = 0
       else if max(target - flightRise, flightRise - target) > 0.5
         flightRise = target
@@ -262,7 +263,7 @@ component ExactChat
             // Each conversation its own transcript: another's rows, whose ids
             // repeat, would move from where these were
             for open in [entry.params.id] key=open
-              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=true keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=true scroll-behavior="smooth" keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
                 for message in transcript key=message.id
                   column
                     if message.id == "typing"
@@ -271,19 +272,22 @@ component ExactChat
                       MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
             if failed(inbox)
               text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="max(16px, var(--exact-layout-margins-inset-left))" padding-right="max(16px, var(--exact-layout-margins-inset-right))"
-            Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
             if flightPhase >= 1
-              // Laid out as a row is, from the field's bottom. While it is
-              // as wide as the field, a surface reaching from the field's
-              // edge fills it out: it slides right under the balloon, clipped
-              // inside the balloon's body, so its left edge comes to the
-              // balloon's, and the squash takes both about the tail's corner.
-              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + max(16px, var(--exact-layout-margins-inset-left)))` right=`calc(${flightRight}px + max(16px, var(--exact-layout-margins-inset-right)))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : 1) translate=`0px ${flightRise}px` scale=flightScale transform-origin="100% 100%" transition=flightMotion pointer-events="none" z-index=20
-                if flightPhase <= 3
-                  box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
-                    box position="absolute" inset=0 border-radius=((bodySize * 1.193359 + 20) / 2) class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
-                box max-width="min(85%, calc(100% - 89.333333px))"
-                  Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion)
+              // Laid out as a row is, from the field's bottom, under the
+              // composer's glass. While it is as wide as the field, a surface
+              // reaching from the field's edge fills it out: it slides right
+              // under the balloon, clipped inside the balloon's body, so its
+              // left edge comes to the balloon's. The swell takes both about
+              // the balloon's middle, as the product of the row's scale and
+              // the one inside it.
+              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + max(16px, var(--exact-layout-margins-inset-left)))` right=`calc(${flightRight}px + max(16px, var(--exact-layout-margins-inset-right)))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : (flightPhase == 2 ? 0.6 : 1)) translate=`0px ${flightRise}px` scale=(flightPhase >= 3 ? 0.713828 : 1) transform-origin=`calc(100% - ${flierWidth / 2}px) 50%` transition=flightMotion pointer-events="none"
+                row position="relative" flex=1 min-width=0 justify-content="flex-end" scale=(flightPhase >= 3 ? 1.4009 : 1) transform-origin=`calc(100% - ${flierWidth / 2}px) 50%` transition=swellMotion
+                  if flightPhase <= 3
+                    box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
+                      box position="absolute" inset=0 border-radius=((bodySize * 1.193359 + 20) / 2) class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
+                  box max-width="min(85%, calc(100% - 89.333333px))"
+                    Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion, tailMotion="none")
+            Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
         if entry.name == "inbox"
           // Its ground is the platform's: beside the conversation, UIKit's sidebar
           column navigationKey=`${entry.id}` position="absolute" inset=0
@@ -336,7 +340,7 @@ component ExactChat
             for m in thread.messages.slice(-5) key=m.id
               row justify-content=(m.mine ? "flex-end" : "flex-start") padding-left=12 padding-right=12 padding-top=2 padding-bottom=(m.endsRun ? 8 : 2)
                 box max-width="80%"
-                  Balloon(body=m.body, mine=m.mine, tail=m.endsRun, bodySize=bodySize, identifier=`peek-${m.id}`, shift=0, shiftMotion="none")
+                  Balloon(body=m.body, mine=m.mine, tail=m.endsRun, bodySize=bodySize, identifier=`peek-${m.id}`, shift=0, shiftMotion="none", tailMotion="none")
         button press=resetPeeked popovertarget="conversation-peek" popovertargetaction="hide" destructive=true testId="peek-reset"
           text "Reset Conversation"
           image "symbol:refresh"
