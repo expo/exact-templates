@@ -73,7 +73,7 @@ test "a message can be replied to and the reply dismissed"
 test "a message sent into an emptied conversation is stamped with when it was sent"
   tap "conversation-priya"
   clock settle
-  expect text "stamp-seed-1" == "Today 8:05 AM"
+  expect text "stamp-seed-1" == "Today 10:05 AM"
   tap "bubble-seed-1" contextmenu
   tap "delete-message"
   clock data

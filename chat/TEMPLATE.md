@@ -12,11 +12,11 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 | Behaviour | Where |
 | --- | --- |
-| The conversation list: avatar, name and last message, lines from the text, a long press that peeks at the conversation; at the accessibility text sizes no avatar | `app.contract`, the `inbox` route and `id="conversation-peek"` |
+| The conversation list: avatar, name, when the last message was sent and the message itself, lines from the text, a long press that peeks at the conversation; at the accessibility text sizes no avatar | `app.contract`, the `inbox` route and `id="conversation-peek"` |
 | List beside the conversation on an iPad, the iPhone Duo open, or a window 900 px wide; a pushed conversation on a phone | `app.contract`, `routes` and `follow`; the rows are links |
 | A transcript that opens at its newest message and follows it, built only where it shows | `app.contract`, `list id="transcript"` (`virtualized`, `scroll-start="end"`, `scrollFollowEnd`) |
 | 240 earlier messages put above the reader without moving what they read | `app.contract`, `action history` |
-| Balloons with tails, grouped in runs; the time stamp over a conversation's first message; the read receipt; the typing indicator | `bubble.contract`, `Balloon`, `MessageRow`, `Typing`; `app.contract`, `sentStamp` |
+| Balloons with tails, grouped in runs, a one-letter balloon's text centred; the time stamp over a conversation's first message and after an hour's gap; the read receipt; the typing indicator | `bubble.contract`, `Balloon`, `MessageRow`, `stampDay`, `Typing`; `model.ts`, `present` |
 | A message's long-press menu (copy, reply, delete) and swipe to reply | `bubble.contract`, `contextmenu` and `swiperight`; `app.contract`, `id="message-menu"` |
 | The composer: a growing field in a glass pill, a glass + beside it in one glass group, a blur behind the bar, Send | `composer.contract`, `Composer` |
 | The composer on the keyboard, and the keys' interactive dismissal | `composer.contract`'s padding and comment; `keyboardDismissMode="interactive"` on the transcript |
@@ -40,7 +40,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Needs
 
-Exact at `d27750f96a` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, a held row's press, the transcript's keyboard, inset and rubber band handling, a balloon's opacity set in the resize round that measures it, and a composer that scrolls only once its text overflows; and `verify`'s acceptance of a list row's finding by its templated testId. That branch is not on Exact's main yet.
+Exact at `e9bd543efa` (branch `chat/messages-1123`, on `08677d8584`), which adds what the composer and the list rely on: the + card over the keyboard, glass that answers a finger around a field, the sidebar's lines and highlight, a held row's press, the transcript's keyboard, inset and rubber band handling, a balloon's opacity set in the resize round that measures it, a composer that scrolls only once its text overflows, and a header avatar drawn with its gradient and rounded initials; and `verify`'s acceptance of a list row's finding by its templated testId. That branch is not on Exact's main yet.
 
 ## Limits
 

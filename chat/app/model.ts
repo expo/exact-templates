@@ -3,15 +3,21 @@ export interface Message {
   body: string;
   mine: boolean;
   at: number;
-  stamp: string;
   reply: string;
+  /** Whether the time heads it: the conversation's first message, or one sent an hour or more after the one before */
+  stamped: boolean;
   endsRun: boolean;
   last: boolean;
   receipt: string;
+  /** When it was read, for a receipt that says "Read" */
+  readAt: number;
 }
 
-/** A message as it is saved: where a run ends is derived when it is shown (`present`). */
-export type SavedMessage = Omit<Message, 'endsRun' | 'last'>;
+/** A message as it is saved: its stamp and where its run ends are derived when it is shown (`present`); files saved before read times have none. */
+export type SavedMessage = Omit<Message, 'stamped' | 'endsRun' | 'last' | 'readAt'> & { readAt?: number };
+
+/** A message sent this long after the one before it opens a new part of the conversation, headed by the time. */
+const stampGap = 3_600_000;
 
 export interface Conversation {
   version: 1;
@@ -48,11 +54,11 @@ export const contacts: Contact[] = [
   { id: 'jordan', name: 'Jordan Lee', short: 'Jordan', initials: 'JL' },
 ];
 
-const seeds: Record<string, { start: number; stamp: string; read: string; bodies: [boolean, string][] }> = {
+/** The seeded conversations: when each began, and how long after that its last sent message was read (0: not read). */
+const seeds: Record<string, { start: number; read: number; bodies: [boolean, string][] }> = {
   alex: {
     start: 1_792_694_460_000,
-    stamp: 'Today 9:41 AM',
-    read: 'Read 9:46 AM',
+    read: 300_000,
     bodies: [
       [false, 'Hey! Are you around this afternoon?'],
       [false, 'I was thinking we could grab a coffee.'],
@@ -70,8 +76,7 @@ const seeds: Record<string, { start: number; stamp: string; read: string; bodies
   },
   priya: {
     start: 1_792_688_700_000,
-    stamp: 'Today 8:05 AM',
-    read: 'Read 8:09 AM',
+    read: 240_000,
     bodies: [
       [false, 'Morning! Did the package arrive?'],
       [true, 'It did, thank you so much!'],
@@ -81,8 +86,7 @@ const seeds: Record<string, { start: number; stamp: string; read: string; bodies
   },
   jordan: {
     start: 1_792_638_720_000,
-    stamp: 'Yesterday 6:12 PM',
-    read: '',
+    read: 0,
     bodies: [
       [true, 'Are we still on for the game on Saturday?'],
       [false, 'Absolutely. I’ll pick you up at 6.'],
@@ -98,11 +102,14 @@ export function seedConversation(id: string): Conversation {
   return {
     version: 1,
     serial: 0,
-    messages: seed.bodies.map(([mine, body], index): SavedMessage => ({
-      ...message(`seed-${index + 1}`, body, mine, seed.start + index * 25_000),
-      stamp: index === 0 ? seed.stamp : '',
-      receipt: mine ? (index === lastMine && seed.read !== '' ? seed.read : 'Delivered') : '',
-    })),
+    messages: seed.bodies.map(([mine, body], index): SavedMessage => {
+      const read = mine && index === lastMine && seed.read > 0;
+      return {
+        ...message(`seed-${index + 1}`, body, mine, seed.start + index * 25_000),
+        receipt: mine ? (read ? 'Read' : 'Delivered') : '',
+        readAt: read ? seed.start + seed.read : 0,
+      };
+    }),
   };
 }
 
@@ -136,15 +143,18 @@ export function upgrade(saved: unknown): Store | null {
 }
 
 export function present(messages: SavedMessage[]): Message[] {
-  return messages.map((item, index): Message => ({
-    ...item,
-    endsRun: messages[index + 1]?.mine !== item.mine || messages[index + 1]?.stamp !== '',
+  const stamped = (index: number): boolean => index === 0 || messages[index]!.at - messages[index - 1]!.at >= stampGap;
+  return messages.map(({ id, body, mine, at, reply, receipt, readAt }, index): Message => ({
+    id, body, mine, at, reply, receipt,
+    readAt: readAt ?? 0,
+    stamped: stamped(index),
+    endsRun: index === messages.length - 1 || messages[index + 1]!.mine !== mine || stamped(index + 1),
     last: index === messages.length - 1,
   }));
 }
 
 export function message(id: string, body: string, mine: boolean, at: number, reply = ''): SavedMessage {
-  return { id, body, mine, at, reply, stamp: '', receipt: '' };
+  return { id, body, mine, at, reply, receipt: '', readAt: 0 };
 }
 
 export function earlierMessages(): SavedMessage[] {
@@ -158,7 +168,6 @@ export function earlierMessages(): SavedMessage[] {
   ];
   return Array.from({ length: 240 }, (_, index): SavedMessage => ({
     ...message(`history-${index}`, samples[index % samples.length]!, index % 4 >= 2, 1_792_608_060_000 + index * 30_000),
-    stamp: index % 40 === 0 ? 'Yesterday' : '',
     receipt: index % 4 >= 2 ? 'Delivered' : '',
   }));
 }
@@ -173,6 +182,6 @@ export function isConversation(value: unknown): value is Conversation {
     && Array.isArray(candidate.messages) && candidate.messages.every((item): boolean =>
       typeof item?.id === 'string' && typeof item.body === 'string' && typeof item.mine === 'boolean'
       && typeof item.at === 'number' && Number.isFinite(item.at) && typeof item.reply === 'string'
-      && typeof item.stamp === 'string' && typeof item.receipt === 'string')
+      && typeof item.receipt === 'string' && (item.readAt === undefined || (typeof item.readAt === 'number' && Number.isFinite(item.readAt))))
     && new Set(candidate.messages.map((item): string => item.id)).size === candidate.messages.length;
 }

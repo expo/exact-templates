@@ -1,4 +1,4 @@
-use Message, Thread, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph from "./types.contract"
+use Message, Thread, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials from "./types.contract"
 use MessageRow, Typing, Balloon, Sent from "./bubble.contract"
 use Composer from "./composer.contract"
 
@@ -8,10 +8,6 @@ use Composer from "./composer.contract"
 routes nav
   inbox "/"
     thread "/conversations/:id"
-
-// When a message was sent, as the stamp heading it reads at `now`: "Today 9:41 AM",
-// "Yesterday 6:12 PM", else the date
-fn sentStamp(at: number, now: number, offset: number): string = `${formatDay(at, now, offset, "day")} ${formatTime(at, offset, "short")}`
 
 component ExactChat
   // The draft and reply of `editing`, the conversation being written in;
@@ -72,10 +68,7 @@ component ExactChat
   derive riseMotion = "translate -exact-spring(141.75909, 23.8125, 1)"
   derive flightMotion = flightPhase == 3 ? `${riseMotion}, scale ${squashMotion}` : (flightPhase == 4 ? `${riseMotion}, scale -exact-spring(320, 50.5964, 2)` : riseMotion)
   derive narrowMotion = flightPhase >= 3 ? `translate ${squashMotion}` : "none"
-  // A first message with no stamp of its own (one sent after every earlier message was deleted) is
-  // stamped with when it was sent, so every conversation starts with a time
-  derive firstId = match conversation.messages.at(0) { case some(m) => m.id, case none => "" }
-  derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, stamp="", reply="", endsRun=true, last=true, receipt="")] : [])
+  derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, reply="", stamped=false, endsRun=true, last=true, receipt="", readAt=0)] : [])
 
   action edit(value: string)
     write(value, reply)
@@ -148,7 +141,10 @@ component ExactChat
         flierY = flier.y
         flightReach = fieldX - frame("send-flight").x
         flightNarrow = flier.x - fieldX
-        flightShift = fieldX + 16 - flier.x - 14
+        // From where the copy's text is laid out (the middle of a narrow
+        // balloon) to where the field's was
+        let words = frame("flying-balloon-text")
+        flightShift = fieldX + 16 - (words.unavailable ? flier.x + 14 : words.x)
         flightPhase = 2
         flightAt = stamp
         handOff()
@@ -251,8 +247,8 @@ component ExactChat
           column id="conversation" navigationKey=`${entry.id}` -exact-safe-area="bottom left right" position="absolute" inset=0 class=Canvas
             header display="flex" align-items="center"
               button press=contactPressed testId="contact" display="flex" align-items="center" gap=8
-                column width="2.235294rem" height="2.235294rem" border-radius="1.117647rem" align-items="center" justify-content="center" background-color="light-dark(#636d7f, #636d7f)" background-image="linear-gradient(to bottom, #737d8d, #596476)"
-                  text conversation.initials font-size="0.941176rem" font-weight=500 color="light-dark(#ffffff, #ffffff)"
+                column width="2.235294rem" height="2.235294rem" border-radius="1.117647rem" align-items="center" justify-content="center" class=Avatar
+                  text conversation.initials font-size="1rem" class=Initials
                 text conversation.short role="heading" aria-level=2 testId="contact-name"
               button press=menuOpened popovertarget="conversation-menu" aria-label="Conversation options" testId="options"
                 image "symbol:more"
@@ -265,7 +261,7 @@ component ExactChat
                     if message.id == "typing"
                       Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
                     else
-                      MessageRow(message=message, stamp=(message.stamp == "" and message.id == firstId ? sentStamp(message.at, now, wall.utcOffset) : message.stamp), receiptId=receiptId, now=now, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
+                      MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
             if failed(inbox)
               text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="calc(16px + var(--exact-safe-area-inset-left))" padding-right="calc(16px + var(--exact-safe-area-inset-right))"
             Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
@@ -298,9 +294,13 @@ component ExactChat
                   link href=path("thread", person.id) testId=`conversation-${person.id}` aria-label=person.name contextmenu=peek(person.id) contextPopover="conversation-peek" position="relative" display="flex" flex-direction="column" gap=2 padding-top=12 padding-bottom=12 padding-right=16 padding-left=(viewport.accessibilityTextSize ? 16 : 84) min-height=69 justify-content="center" box-sizing="border-box"
                     if not viewport.accessibilityTextSize
                       row aria-hidden=true position="absolute" left=26 top=0 bottom=0 align-items="center"
-                        column width=45 height=45 border-radius=22.5 background-color="light-dark(#596476, #596476)" align-items="center" justify-content="center"
-                          text person.initials testId=`initials-${person.id}` color="light-dark(#ffffff, #ffffff)" font-size=18
-                    text person.name font="-exact-headline"
+                        column width=45 height=45 border-radius=22.5 align-items="center" justify-content="center" class=Avatar
+                          text person.initials testId=`initials-${person.id}` font-size=20 class=Initials
+                    // The name, and when the latest message was sent: the time
+                    // today, Yesterday, the weekday this week, else the date
+                    row align-items="baseline" gap=8
+                      text person.name font="-exact-headline" flex=1 min-width=0 line-clamp=1
+                      text (match person.messages.at(-1) { case some(m) => formatDay(m.at, now, wall.utcOffset, "list"), case none => "" }) testId=`sent-${person.id}` font="-exact-subheadline" class=Secondary flex-shrink=0
                     text (match person.messages.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary
       // The + card: opened from the + glass, it is UIKit's popover,
       // which grows out of the + and lies over the keys. Its rows are a

@@ -3,11 +3,15 @@ shape Message
   body: string
   mine: bool
   at: number
-  stamp: string
   reply: string
+  // The time heads it: the conversation's first message, or one sent an
+  // hour or more after the one before
+  stamped: bool
   endsRun: bool
   last: bool
   receipt: string
+  // When it was read, for a receipt that says "Read"
+  readAt: number
 
 // A person in the list of conversations with their conversation
 shape Thread
@@ -38,6 +42,15 @@ style Ink
 
 style Secondary
   color="-exact-secondary-label"
+
+// A contact with no photo: initials in the rounded face on a circle that
+// lightens toward its top
+style Avatar
+  background-color="light-dark(#5f6a7d, #5f6a7d)"
+  background-image="linear-gradient(to bottom, #737f94, #4e5868)"
+
+style Initials
+  font-family="ui-rounded" font-weight=600 color="light-dark(#ffffff, #ffffff)"
 
 style Canvas
   background-color="light-dark(#ffffff, #000000)"
