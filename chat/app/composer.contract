@@ -26,8 +26,9 @@ component Composer
     column id="composer-bar" testId="composer-bar" position="relative" flex-shrink=0 padding-top=0.6667 padding-left="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)) + var(--exact-safe-area-inset-left))" padding-right="calc(16px + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)) + var(--exact-safe-area-inset-right))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
       // The bar blurs what passes under it: the chrome material at 0.7,
       // rising 12 points above the bar and fading in over its first 30 on a
-      // smoothstep
-      box position="absolute" left=0 right=0 top=-12 bottom=0 backgroundMaterial="chrome" opacity=0.7 mask-image="linear-gradient(to bottom, rgb(0 0 0 / 0) 0px, rgb(0 0 0 / 0.156) 7.5px, rgb(0 0 0 / 0.5) 15px, rgb(0 0 0 / 0.844) 22.5px, rgb(0 0 0) 30px)" pointer-events="none" aria-hidden=true
+      // smoothstep, and reaching 40 points below it, under the keyboard's
+      // rounded top corners (a docked bar's is off the screen)
+      box position="absolute" left=0 right=0 top=-12 bottom=-40 backgroundMaterial="chrome" opacity=0.7 mask-image="linear-gradient(to bottom, rgb(0 0 0 / 0) 0px, rgb(0 0 0 / 0.156) 7.5px, rgb(0 0 0 / 0.5) 15px, rgb(0 0 0 / 0.844) 22.5px, rgb(0 0 0) 30px)" pointer-events="none" aria-hidden=true
       if error != ""
         text error testId="send-error" position="relative" color="-exact-system-red" font="-exact-footnote" margin-left=52 margin-bottom=8
       if reply != ""
