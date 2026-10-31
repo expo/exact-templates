@@ -26,9 +26,9 @@ component ExactChat
   state elapsed = 0
   state bodySize = 17
   // A send's flight: a copy of the balloon starts under the field's glass, its
-  // text where the field had it, narrows to the balloon while it swells, and
-  // rises to the row on a spring. Phases: 1 laid out but not shown, 2 shown as
-  // the field, 3 narrowing, swelling and rising, all three at once.
+  // text where the field had it, and goes to its row. Phases: 1 laid out but
+  // not shown, 2 shown as the field, 3 narrowing, shrinking and sliding to the
+  // row's side, rising from 55 ms in, 4 growing back, from 185 ms in.
   state flightPhase = 0
   state flightId = ""
   state flightBody = ""
@@ -40,8 +40,10 @@ component ExactChat
   state flightRight = 0
   state flightBottom = 0
   state fieldX = 0
-  state flierWidth = 0
+  state fieldRight = 0
   state flierBottom = 0
+  state flightScale = 1
+  state flightSlide = 0
   state flightReach = 0
   state flightNarrow = 0
   state flightNarrowed = 0
@@ -67,13 +69,13 @@ component ExactChat
   derive receiptId = match conversation.messages.at(-1) { case some(last) => (last.mine ? (match conversation.messages.filter(m => m.mine and (m.receipt != "" or now - m.at >= 1130)).at(-1) { case some(m) => m.id, case none => "" }) : ""), case none => "" }
   derive awaitingReceipt = conversation.messages.filter(m => m.mine and m.receipt == "" and now - m.at < 2000).length > 0
   derive sendError = match changed { case some(c) => c.error, case none => "" }
-  // The platform's send: the copy narrows to its balloon over 400 ms, and
-  // comes from 0.6 to whole as it does; it swells by two springs whose scales
-  // multiply to 1 (3% at 120 ms, then back), and rises on an underdamped one
-  derive riseMotion = "translate -exact-spring(141.759, 17.3503, 1)"
-  derive narrowCurve = "400ms cubic-bezier(0.541951, 0, 0.58, 1)"
-  derive flightMotion = flightPhase >= 3 ? `${riseMotion}, scale -exact-spring(310, 38, 2), opacity 400ms ease-in` : riseMotion
-  derive swellMotion = flightPhase >= 3 ? "scale -exact-spring(320, 38, 2)" : "none"
+  // The platform's send: the copy narrows to its balloon in 200 ms and comes
+  // from 0.6 to whole as it does. It slides to the row's side and, 55 ms
+  // later, rises, both on one underdamped spring. It shrinks about its right
+  // side on one spring, and from 185 ms grows back by the inverse on another.
+  derive narrowCurve = "200ms cubic-bezier(0.541951, 0, 0.58, 1)"
+  derive flightMotion = flightPhase >= 3 ? "translate -exact-spring(141.759, 17.3503, 1), scale -exact-spring(310, 38, 2), opacity 200ms ease-in" : "none"
+  derive swellMotion = flightPhase >= 4 ? "scale -exact-spring(320, 38, 2)" : "none"
   derive narrowMotion = flightPhase >= 3 ? `translate ${narrowCurve}` : "none"
   derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, reply="", stamped=false, endsRun=true, last=true, receipt="", readAt=0)] : [])
 
@@ -103,6 +105,7 @@ component ExactChat
       flightId = id
       flightAt = performanceNow()
       flightRise = 0
+      flightSlide = 0
       flightNarrowed = 0
       let page = frame("conversation")
       let rows = frame("transcript")
@@ -111,6 +114,10 @@ component ExactChat
       flightRight = page.x + page.width - rows.x - rows.width
       flightBottom = page.y + page.height - pill.y - pill.height
       fieldX = pill.x
+      fieldRight = pill.x + pill.width
+      // It shrinks less from a taller field: to 0.7 from one line, to 0.9
+      // from seven
+      flightScale = 0.7 + 0.2 * max(0, min(1, (pill.height - 40.3333) / (6 * 40.3333)))
       let flies = not (viewport.prefersReducedMotion or page.unavailable or pill.unavailable)
       flightPhase = flies ? 1 : 0
       send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
@@ -147,13 +154,16 @@ component ExactChat
       let flier = frame("flying-balloon")
       if not flier.unavailable
         flierBottom = flier.y + flier.height
-        flierWidth = flier.width
-        flightReach = fieldX - frame("send-flight").x
-        flightNarrow = flier.x - fieldX
+        // It starts with its right side at the field's, as far left of the
+        // row's, and its surface's left side where the field's is
+        let slide = fieldRight - flier.x - flier.width
+        flightSlide = slide
+        flightReach = fieldX - frame("send-flight").x - slide
+        flightNarrow = flier.x - fieldX + slide
         // From where the copy's text is laid out (the middle of a narrow
         // balloon) to where the field's was
         let words = frame("flying-balloon-text")
-        flightShift = fieldX + 16 - (words.unavailable ? flier.x + 14 : words.x)
+        flightShift = fieldX + 16 - slide - (words.unavailable ? flier.x + 14 : words.x)
         flightPhase = 2
         flightAt = stamp
         handOff()
@@ -163,16 +173,19 @@ component ExactChat
     else if flightPhase == 2 and stamp - flightAt >= 16
       flightNarrowed = flightNarrow
       flightShift = 0
+      flightSlide = 0
       flightPhase = 3
       squashAt = stamp
-      rise()
     else if flightPhase >= 2 and stamp - flightAt > 2500
       flightPhase = 0
-    else if flightPhase == 3 and stamp - squashAt >= 880
-      // The rise settles in 880 ms and the swell in 810
+    else if flightPhase >= 3 and stamp - squashAt >= 995
+      // The rise settles 935 ms in, the growth back 995 ms in
       flightPhase = 0
-    else if flightPhase == 3
-      rise()
+    else if flightPhase >= 3
+      if flightPhase == 3 and stamp - squashAt >= 185
+        flightPhase = 4
+      if stamp - squashAt >= 55
+        rise()
   // The copy rises to where its row comes to rest. The transcript scrolls
   // the row up from below its end, so it rests no lower than a last row's
   // balloon: above the transcript's padding and the row's own (14 and 2
@@ -283,14 +296,13 @@ component ExactChat
               // composer's glass. While it is as wide as the field, a surface
               // reaching from the field's edge fills it out: it slides right
               // under the balloon, clipped inside the balloon's body, so its
-              // left edge comes to the balloon's. The swell takes both about
-              // the balloon's middle, as the product of the row's scale and
+              // left edge comes to the balloon's. Both shrink about the
+              // balloon's right side with the row's scale, and grow back with
               // the one inside it.
-              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + max(16px, var(--exact-layout-margins-inset-left)))` right=`calc(${flightRight}px + max(16px, var(--exact-layout-margins-inset-right)))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : (flightPhase == 2 ? 0.6 : 1)) translate=`0px ${flightRise}px` scale=(flightPhase >= 3 ? 0.713828 : 1) transform-origin=`calc(100% - ${flierWidth / 2}px) 50%` transition=flightMotion pointer-events="none"
-                row position="relative" flex=1 min-width=0 justify-content="flex-end" scale=(flightPhase >= 3 ? 1.4009 : 1) transform-origin=`calc(100% - ${flierWidth / 2}px) 50%` transition=swellMotion
-                  if flightPhase <= 3
-                    box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
-                      box position="absolute" inset=0 border-radius=((bodySize * 1.193359 + 20) / 2) class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
+              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + max(16px, var(--exact-layout-margins-inset-left)))` right=`calc(${flightRight}px + max(16px, var(--exact-layout-margins-inset-right)))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : (flightPhase == 2 ? 0.6 : 1)) translate=`${flightSlide}px ${flightRise}px` scale=(flightPhase >= 3 ? flightScale : 1) transform-origin="100% 50%" transition=flightMotion pointer-events="none"
+                row position="relative" flex=1 min-width=0 justify-content="flex-end" scale=(flightPhase >= 4 ? 1 / flightScale : 1) transform-origin="100% 50%" transition=swellMotion
+                  box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
+                    box position="absolute" inset=0 border-radius=((bodySize * 1.193359 + 20) / 2) class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
                   box max-width="min(85%, calc(100% - 89.333333px))"
                     Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion, tailMotion="none")
             Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
