@@ -59,7 +59,7 @@ component ExactChat
   mutation changed as shape Change queue refreshes inbox, matches then afterChange
   mutation drafted as shape Change queue refreshes inbox
   derive openId = top(nav).name == "thread" ? top(nav).params.id : ""
-  derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", draft="", reply="", serial=0, messages=[]) }
+  derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", phone="", email="", draft="", reply="", serial=0, messages=[]) }
   derive draft = editing == openId ? editedDraft : conversation.draft
   derive reply = editing == openId ? editedReply : conversation.reply
   derive now = wall.epochAtZero + elapsed
@@ -387,15 +387,26 @@ component ExactChat
           text "Reset Conversation"
           image "symbol:refresh"
       // A long press on the contact in the bar: their card, as wide as a
-      // row, with their avatar and name, over what can be done with them
+      // row, with their avatar and name, over the actions their details
+      // allow, in the platform's order. Call, Video and Mail are links, which
+      // the system opens.
       column id="contact-menu" popover="auto" role="menu"
         button contextPreview=true press=startMessage popovertarget="contact-menu" popovertargetaction="hide" aria-label=`Message ${conversation.name}` testId="contact-card" display="flex" align-items="center" gap=12 padding=16 width="calc(100cqw - 32px)" box-sizing="border-box" class=Canvas
           column width=60 height=60 border-radius=30 align-items="center" justify-content="center" class=Avatar
             text conversation.initials font-size=26.6667 class=Initials
           text conversation.name font="-exact-headline" testId="contact-card-name"
+        link href=`tel:${conversation.phone}` testId="contact-call"
+          text "Call"
+          image "symbol:icon.call"
         button press=startMessage popovertarget="contact-menu" popovertargetaction="hide" testId="contact-message"
           text "Message"
           image "symbol:messages"
+        link href=`facetime:${conversation.phone}` testId="contact-video"
+          text "Video"
+          image "symbol:icon.video"
+        link href=`mailto:${conversation.email}` testId="contact-mail"
+          text "Mail"
+          image "symbol:mail"
       column id="conversation-menu" popover="auto" role="menu"
         button press=history popovertarget="conversation-menu" popovertargetaction="hide" testId="load-history"
           text "Load earlier messages"

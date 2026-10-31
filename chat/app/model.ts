@@ -35,6 +35,9 @@ export interface Contact {
   name: string;
   short: string;
   initials: string;
+  /** Fictional: a number in 555-0100 to 555-0199, which North American numbering keeps for fiction, and an address at `.example` (RFC 2606). */
+  phone: string;
+  email: string;
 }
 
 /** A person in the list of conversations with their conversation, as the view reads it. */
@@ -53,9 +56,9 @@ export interface Store {
 }
 
 export const contacts: Contact[] = [
-  { id: 'alex', name: 'Alex Morgan', short: 'Alex', initials: 'AM' },
-  { id: 'priya', name: 'Priya Shah', short: 'Priya', initials: 'PS' },
-  { id: 'jordan', name: 'Jordan Lee', short: 'Jordan', initials: 'JL' },
+  { id: 'alex', name: 'Alex Morgan', short: 'Alex', initials: 'AM', phone: '+1-415-555-0101', email: 'alex.morgan@mail.example' },
+  { id: 'priya', name: 'Priya Shah', short: 'Priya', initials: 'PS', phone: '+1-415-555-0102', email: 'priya.shah@mail.example' },
+  { id: 'jordan', name: 'Jordan Lee', short: 'Jordan', initials: 'JL', phone: '+1-415-555-0103', email: 'jordan.lee@mail.example' },
 ];
 
 /** The seeded conversations: when each began, and how long after that its last sent message was read (0: not read). */

@@ -159,12 +159,17 @@ test "a long press on a conversation peeks at it, and its preview opens it"
   clock settle
   expect text "contact-name" == "Priya"
 
-test "a long press on the contact shows their card, and Message is pressable"
+test "a long press on the contact shows their card, with Call, Message, Video and Mail, and Message is pressable"
   tap "conversation-priya"
   clock settle
   tap "contact" contextmenu
   expect tree has "contact-card"
   expect text "contact-card-name" == "Priya Shah"
+  expect tree has "contact-call"
+  expect tree has "contact-video"
+  expect tree has "contact-mail"
+  expect state conversation.phone == "+1-415-555-0102"
+  expect state conversation.email == "priya.shah@mail.example"
   tap "contact-message"
   clock settle
 

@@ -19,7 +19,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 | 240 earlier messages put above the reader without moving what they read | `app.contract`, `action history` |
 | Balloons with tails, grouped in runs from one side a minute or less apart, a one-letter balloon's text centred; the time stamp over a conversation's first message and after an hour's gap; the read receipt; the typing indicator | `bubble.contract`, `Balloon`, `MessageRow`, `stampDay`, `Typing`; `model.ts`, `present` |
 | A message's long-press menu (copy, reply, delete) and swipe to reply | `bubble.contract`, `contextmenu` and `swiperight`; `app.contract`, `id="message-menu"` |
-| A long press on the contact in the bar: their card, as wide as a row, with their avatar and name, over Message | `app.contract`, the `contact` button's `contextPopover`, `id="contact-menu"`, `startMessage` |
+| A long press on the contact in the bar: their card, as wide as a row, with their avatar and name, over Call, Message, Video and Mail; Call, Video and Mail link to their fictional number and address | `app.contract`, the `contact` button's `contextPopover`, `id="contact-menu"`, `startMessage`; `model.ts`, `contacts`; `app.tamber`, the Call and Video icons off Apple |
 | The composer: a growing field in a glass pill, a glass + beside it in one glass group, a blur behind the bar, Send | `composer.contract`, `Composer` |
 | The composer on the keyboard, and the keys' interactive dismissal | `composer.contract`'s padding and comment; `keyboardDismissMode="interactive"` on the transcript |
 | A flick down on the bar, or on its field while its text fits, putting the keys away (iOS; Android's fling and the Mac's three-finger swipe make it there too) | `composer.contract`, `swipe=hideKeys swipe-direction="down"` on `composer-bar`, `hideKeys` |
@@ -47,4 +47,4 @@ Exact at `58b7467f14` (branch `chat/messages-1123` of github.com/ide/exact2, mad
 
 ## Limits
 
-`QUEUE.md` has what is left to do. In short, a wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height. Hardware and floating keyboards are untested. A popover opened from inside the + card by a control without glass, or a `popover="manual"` one, shows behind the card.
+`QUEUE.md` has what is left to do. In short, a wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height. Hardware and floating keyboards are untested. A popover opened from inside the + card by a control without glass, or a `popover="manual"` one, shows behind the card. Video is a FaceTime link, which only Apple devices open.

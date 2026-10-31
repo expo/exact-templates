@@ -19,6 +19,9 @@ shape Thread
   name: string
   short: string
   initials: string
+  // Fictional, as `model.ts` says
+  phone: string
+  email: string
   // The unsent draft and the message it replies to
   draft: string
   reply: string
