@@ -22,7 +22,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 | The composer on the keyboard, and the keys' interactive dismissal | `composer.contract`'s padding and comment; `keyboardDismissMode="interactive"` on the transcript |
 | A flick down on the bar, or on its field while its text fits, putting the keys away (iOS; Android's fling and the Mac's three-finger swipe make it there too) | `composer.contract`, `swipe=hideKeys swipe-direction="down"` on `composer-bar`, `hideKeys` |
 | The + card that opens over the keyboard | `app.contract`, `id="add-menu"`; `types.contract`, `CardRow`, `CardTile`, `CardGlyph` |
-| A send's flight from under the field's glass to its row on the platform's springs, the transcript scrolling to make room, the tail of the balloon before shrinking into it, and a received message popping in | `app.contract`, `action send`, `action animate`, `id="send-flight"`; `types.contract`, `keyframes arrive` |
+| A send's flight from under the field's glass to its row on the platform's springs, the message in the transcript from the send, before it is saved, the transcript scrolling to make room, the tail of the balloon before shrinking into it, and a received message popping in | `app.contract`, `action send`, `action animate`, `action rise`, `id="send-flight"`; `app.ts`, `overlay`; `types.contract`, `keyframes arrive` |
 | Saving every conversation and its draft in one file, one write at a time | `app.ts`, `answer`; `model.ts`, the people and seeded conversations |
 
 ## Files
@@ -31,8 +31,8 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Adapt
 
-- People and history: `contacts` and `seedConversation` in `model.ts`. A real service replaces `answer` in `app.ts`; the contract reads it through `loadInbox` and writes through `command`.
-- To drop a feature, delete its piece and the state only it uses: the peek (`conversation-peek`, `peek`, `resetPeeked`, the rows' `contextmenu`), the + card (`add-menu`, `receive`, `toggleTyping`, the `Card*` styles), the send's flight (the `flight*` states, `animate`, `send-flight`, `handOff`), earlier messages (`history`, the `conversation-menu` row).
+- People and history: `contacts` and `seedConversation` in `model.ts`. A real service replaces `answer` in `app.ts`; the contract reads it through `loadInbox` and writes through `command`. `overlay` shows a sent message until the answer has it, under the id `answer` gives it: `sent-` and one more than the conversation's `serial`, which `action send` names too.
+- To drop a feature, delete its piece and the state only it uses: the peek (`conversation-peek`, `peek`, `resetPeeked`, the rows' `contextmenu`), the + card (`add-menu`, `receive`, `toggleTyping`, the `Card*` styles), the send's flight (the `flight*` states, `animate`, `rise`, `send-flight`, `handOff`), earlier messages (`history`, the `conversation-menu` row).
 - `app.json`'s `verify.accept` explains the two findings `bun exact.mjs verify` reports: the sent balloons' contrast and the field's height.
 
 ## Verified

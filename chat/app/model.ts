@@ -41,6 +41,8 @@ export interface Contact {
 export interface Thread extends Contact {
   draft: string;
   reply: string;
+  /** How many messages were sent and received in it, deleted ones too: the next is numbered one more (`sent-<n>`) */
+  serial: number;
   messages: Message[];
 }
 
@@ -121,10 +123,20 @@ export function seedStore(): Store {
 
 /** The saved conversations as the view reads them: each contact's, the most recent first. */
 export function inbox(store: Store): Thread[] {
-  const threads = contacts.map((contact): Thread => {
+  return latestFirst(contacts.map((contact): Thread => {
     const conversation = store.conversations[contact.id];
-    return { ...contact, draft: conversation?.draft ?? '', reply: conversation?.reply ?? '', messages: present(conversation?.messages ?? []) };
-  });
+    return {
+      ...contact,
+      draft: conversation?.draft ?? '',
+      reply: conversation?.reply ?? '',
+      serial: conversation?.serial ?? 0,
+      messages: present(conversation?.messages ?? []),
+    };
+  }));
+}
+
+/** The threads, the one with the most recent message first. */
+export function latestFirst(threads: Thread[]): Thread[] {
   const latest = (thread: Thread): number => thread.messages.at(-1)?.at ?? 0;
   return threads.sort((a, b): number => latest(b) - latest(a));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { answer } from './app.ts';
+import { answer, overlay } from './app.ts';
 import { seedConversation, seedStore } from './model.ts';
 
 describe('conversation storage', () => {
@@ -89,6 +89,19 @@ describe('conversation storage', () => {
     const memory = storage(JSON.stringify(first));
     expect((await thread(memory, 'alex')).messages.at(-1).body).toBe('Kept');
     expect(await thread(memory, 'priya')).toBeDefined();
+  });
+
+  test('a send shows in its conversation before it is saved, under the id it is saved with', async () => {
+    const memory = storage();
+    const write = { id: 1, mutation: 'changed', source: 'command', args: ['send', 'priya', 'On my way', '', 1_792_700_000_000], answered: false, keep() {} };
+    const shown = overlay('loadInbox', [], await answer('loadInbox', [], {}, memory.api), [write]);
+    expect(shown[0].id).toBe('priya');
+    expect(shown[0].serial).toBe(1);
+    expect(shown[0].messages.at(-1)).toMatchObject({ id: 'sent-1', body: 'On my way', mine: true, last: true });
+    expect(shown[0].messages.at(-2).last).toBe(false);
+    expect(await answer('command', write.args, {}, memory.api)).toEqual({ id: 'sent-1', error: '' });
+    // Once an answer asked after the reply has it, the answer shows alone
+    expect(overlay('loadInbox', [], await answer('loadInbox', [], {}, memory.api), [{ ...write, answered: true }])).toBeUndefined();
   });
 
   test('a conversation not in the list is refused without a write', async () => {

@@ -8,6 +8,8 @@ test "sending clears the draft and saves the message across a relaunch"
   type "composer" "I’m on my way!"
   expect enabled "send"
   tap "send"
+  // The send names its row by the id the save gives it
+  expect state flightId == "sent-1"
   clock data
   // The flight takes the draft from the field in its first frame shown
   clock +50

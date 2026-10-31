@@ -1,5 +1,8 @@
-import type { Answer, Result, Sources, Storage } from './app.contract.d.ts';
-import { contacts, earlierMessages, inbox, message, seedConversation, seedStore, upgrade, type Store } from './model';
+import type { Answer, Overlay, Result, Sources, Storage } from './app.contract.d.ts';
+import {
+  contacts, earlierMessages, inbox, latestFirst, message, present, seedConversation, seedStore, upgrade,
+  type SavedMessage, type Store, type Thread,
+} from './model';
 
 export const appId = 'com.example.chat';
 export const grants = 'fs.read app:/data/conversation.json\nfs.write app:/data/conversation.json';
@@ -61,6 +64,43 @@ const sources: Sources = {
 
 export const answer: Answer = (source, args, store, storage, native): ReturnType<Answer> =>
   sources[source](args, store, storage, native);
+
+/**
+ * A sent message shows in its conversation from the send, before the file has it, under the id the send saves it
+ * with, so the transcript makes room for it at once and its balloon flies to its row. A send that failed is in no
+ * answer, so it goes when the answer asked after its reply comes.
+ */
+export const overlay: Overlay = (source, _args, answer, writes): ReturnType<Overlay> => {
+  if (source !== 'loadInbox') {
+    return undefined;
+  }
+  const threads = answer as Thread[];
+  const pending = new Map<string, { serial: number; messages: SavedMessage[] }>();
+  for (const write of writes) {
+    if (write.answered || write.source !== 'command') {
+      continue;
+    }
+    const [operation, contact, body, reply, at] = write.args;
+    const thread = threads.find((item): boolean => item.id === contact);
+    if ((operation !== 'send' && operation !== 'receive') || body.trim() === '' || thread === undefined) {
+      continue;
+    }
+    // A receive takes the next number too, though it shows only once saved
+    const shown = pending.get(contact) ?? { serial: thread.serial, messages: [...thread.messages] };
+    shown.serial += 1;
+    if (operation === 'send') {
+      shown.messages.push(message(`sent-${shown.serial}`, body, true, at, reply));
+    }
+    pending.set(contact, shown);
+  }
+  if (pending.size === 0) {
+    return undefined;
+  }
+  return latestFirst(threads.map((thread): Thread => {
+    const shown = pending.get(thread.id);
+    return shown === undefined ? thread : { ...thread, serial: shown.serial, messages: present(shown.messages) };
+  })) as never;
+};
 
 /** The commands' writes, one after another: each rewrites the whole file, so two at once would lose one's change. */
 let last: Promise<unknown> = Promise.resolve();

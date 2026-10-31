@@ -22,6 +22,9 @@ shape Thread
   // The unsent draft and the message it replies to
   draft: string
   reply: string
+  // How many messages were sent and received in it, deleted ones too: the
+  // next is numbered one more (`sent-<n>`)
+  serial: number
   messages: Message[]
 
 shape Change

@@ -28,14 +28,12 @@ component ExactChat
   // A send's flight: a copy of the balloon starts under the field's glass, its
   // text where the field had it, narrows to the balloon while it swells, and
   // rises to the row on a spring. Phases: 1 laid out but not shown, 2 shown as
-  // the field, 3 narrowing, swelling and rising; the rise starts 55 ms in,
-  // once the row is there.
+  // the field, 3 narrowing, swelling and rising, all three at once.
   state flightPhase = 0
   state flightId = ""
   state flightBody = ""
   state flightAt = 0
   state squashAt = 0
-  state riseAt = 0
   // Where the copy is laid out in the conversation: across the transcript's
   // rows, its bottom at the field's
   state flightLeft = 0
@@ -43,7 +41,7 @@ component ExactChat
   state flightBottom = 0
   state fieldX = 0
   state flierWidth = 0
-  state flierY = 0
+  state flierBottom = 0
   state flightReach = 0
   state flightNarrow = 0
   state flightNarrowed = 0
@@ -58,7 +56,7 @@ component ExactChat
   mutation changed as shape Change queue refreshes inbox then afterChange
   mutation drafted as shape Change queue refreshes inbox
   derive openId = top(nav).name == "thread" ? top(nav).params.id : ""
-  derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", draft="", reply="", messages=[]) }
+  derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", draft="", reply="", serial=0, messages=[]) }
   derive draft = editing == openId ? editedDraft : conversation.draft
   derive reply = editing == openId ? editedReply : conversation.reply
   derive now = wall.epochAtZero + elapsed
@@ -99,9 +97,11 @@ component ExactChat
       submittedReply = reply
       elapsed = performanceNow()
       flightBody = draft.trim()
-      flightId = ""
+      // The id the send saves it with: the data module's overlay shows its
+      // row from this commit, before the file has it
+      let id = `sent-${conversation.serial + 1}`
+      flightId = id
       flightAt = performanceNow()
-      riseAt = 0
       flightRise = 0
       flightNarrowed = 0
       let page = frame("conversation")
@@ -111,10 +111,14 @@ component ExactChat
       flightRight = page.x + page.width - rows.x - rows.width
       flightBottom = page.y + page.height - pill.y - pill.height
       fieldX = pill.x
-      // A taller field's balloon squashes less: 0.77 for one line, 0.2 more
-      // at seven
-      flightPhase = viewport.prefersReducedMotion or page.unavailable or pill.unavailable ? 0 : 1
+      let flies = not (viewport.prefersReducedMotion or page.unavailable or pill.unavailable)
+      flightPhase = flies ? 1 : 0
       send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
+      // The transcript makes room by scrolling, as the platform's does in 0.3 s
+      scrollIntoView("transcript", id, block="end", behavior="smooth")
+      // With no flight to take it, the draft leaves the field as the row shows
+      if not flies
+        write("", "")
     focus("composer")
   // The field keeps only what was typed after the send
   action handOff
@@ -125,9 +129,6 @@ component ExactChat
       // A flight not yet shown takes the draft from the field as it shows
       if flightPhase != 1
         handOff()
-      flightId = id
-      // The transcript makes room by scrolling, as the platform's does in 0.3 s
-      scrollIntoView("transcript", id, block="end", behavior="smooth")
     if sendError == "" and id.startsWith("received-")
       arrivedId = id
     if sendError != ""
@@ -146,7 +147,7 @@ component ExactChat
       // shown as the field, which it takes the draft from in the same frame
       let flier = frame("flying-balloon")
       if not flier.unavailable
-        flierY = flier.y
+        flierBottom = flier.y + flier.height
         flierWidth = flier.width
         flightReach = fieldX - frame("send-flight").x
         flightNarrow = flier.x - fieldX
@@ -165,19 +166,25 @@ component ExactChat
       flightShift = 0
       flightPhase = 3
       squashAt = stamp
+      rise()
     else if flightPhase >= 2 and stamp - flightAt > 2500
       flightPhase = 0
-    else if flightPhase >= 2 and flightId != "" and stamp - flightAt >= 55 and not frame(`bubble-${flightId}`).unavailable
-      // The rise follows the row, which a scroll or the receipt's room can move
-      let target = frame(`bubble-${flightId}`).y - flierY
-      if riseAt == 0
-        riseAt = stamp
-        flightRise = target
+    else if flightPhase == 3 and stamp - squashAt >= 880
       // The rise settles in 880 ms and the swell in 810
-      else if stamp - riseAt >= 880 and stamp - squashAt >= 810
-        flightPhase = 0
-      else if max(target - flightRise, flightRise - target) > 0.5
-        flightRise = target
+      flightPhase = 0
+    else if flightPhase == 3
+      rise()
+  // The copy rises to where its row comes to rest. The transcript scrolls
+  // the row up from below its end, so it rests no lower than a last row's
+  // balloon: above the transcript's padding and the row's own (14 and 2
+  // points). A conversation too short to scroll leaves the row in place.
+  action rise
+    let rows = frame("transcript")
+    let row = frame(`bubble-${flightId}`)
+    let end = rows.y + rows.height - 16
+    let bottom = row.unavailable ? end : min(row.y + row.height, end)
+    if not rows.unavailable and max(bottom - flierBottom - flightRise, flightRise - bottom + flierBottom) > 0.5
+      flightRise = bottom - flierBottom
   task sending when flightPhase > 0
     every(frame, animate)
   action menuOpened
