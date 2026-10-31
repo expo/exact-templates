@@ -46,7 +46,6 @@ component ExactChat
   state flightSlide = 0
   state flightReach = 0
   state flightNarrow = 0
-  state flightNarrowed = 0
   state flightShift = 0
   state flightRise = 0
   state arrivedId = ""
@@ -73,10 +72,10 @@ component ExactChat
   // from 0.6 to whole as it does. It slides to the row's side and, 55 ms
   // later, rises, both on one underdamped spring. It shrinks about its right
   // side on one spring, and from 185 ms grows back by the inverse on another.
-  derive narrowCurve = "200ms cubic-bezier(0.541951, 0, 0.58, 1)"
   derive flightMotion = flightPhase >= 3 ? "translate -exact-spring(141.759, 17.3503, 1), scale -exact-spring(310, 38, 2), opacity 200ms ease-in" : "none"
   derive swellMotion = flightPhase >= 4 ? "scale -exact-spring(320, 38, 2)" : "none"
-  derive narrowMotion = flightPhase >= 3 ? `translate ${narrowCurve}` : "none"
+  derive narrowMotion = flightPhase >= 3 ? "translate 200ms cubic-bezier(0.541951, 0, 0.58, 1)" : "none"
+  derive flightNarrowed = flightPhase >= 3 ? flightNarrow : 0
   derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, reply="", stamped=false, endsRun=true, last=true, receipt="", readAt=0)] : [])
 
   action edit(value: string)
@@ -106,7 +105,6 @@ component ExactChat
       flightAt = performanceNow()
       flightRise = 0
       flightSlide = 0
-      flightNarrowed = 0
       let page = frame("conversation")
       let rows = frame("transcript")
       let pill = frame("composer-pill")
@@ -171,7 +169,6 @@ component ExactChat
         flightPhase = 0
         handOff()
     else if flightPhase == 2 and stamp - flightAt >= 16
-      flightNarrowed = flightNarrow
       flightShift = 0
       flightSlide = 0
       flightPhase = 3
