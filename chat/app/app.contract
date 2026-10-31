@@ -307,13 +307,16 @@ component ExactChat
                     Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion, tailMotion="none")
             Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
         if entry.name == "inbox"
-          // Its ground is the platform's: beside the conversation, UIKit's sidebar
-          column navigationKey=`${entry.id}` position="absolute" inset=0
+          // Its ground is the platform's: beside the conversation, UIKit's
+          // sidebar. Its bottom safe area takes in the keys while the search
+          // is typed in: the list pads its end by it, so its last rows scroll
+          // above them, and the empty state ends above it.
+          column navigationKey=`${entry.id}` -exact-safe-area="bottom" position="absolute" inset=0
             header
               h2 "Chats"
               input type="search" value=query input=searchChats placeholder="Search" aria-label="Search conversations" testId="search"
             column flex=1 min-height=0 position="relative" display="flex" flex-direction="column"
-              list appearance="auto" listStyle="plain" flex=1 min-height=0
+              list appearance="auto" listStyle="plain" flex=1 min-height=0 padding-bottom="var(--exact-safe-area-inset-bottom)"
                 section
                   for person in shown key=person.id
                     // The avatar sits in the row's leading padding, where a
@@ -333,10 +336,11 @@ component ExactChat
                         text person.name font="-exact-headline" flex=1 min-width=0 line-clamp=1
                         text (match person.messages.at(-1) { case some(m) => formatDay(m.at, now, wall.utcOffset, "list"), case none => "" }) testId=`sent-${person.id}` font="-exact-subheadline" class=Secondary flex-shrink=0
                       text (match person.messages.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary
-              // No match: the platform's empty state over the empty list, which
-              // keeps the bar's search field
+              // No match: the platform's empty state, centred above the keys
+              // over the empty list. The list stays, because the bar's search
+              // field belongs to it.
               if needle != "" and shown.length == 0
-                column position="absolute" inset=0 display="flex" justify-content="center" testId="no-results"
+                column position="absolute" top=0 left=0 right=0 bottom="var(--exact-safe-area-inset-bottom)" display="flex" justify-content="center" testId="no-results"
                   EmptyState(symbol="symbol:search", title="No Results", message=`Nothing matches “${query.trim()}”.`)
       // The + card: opened from the + glass, it is UIKit's popover,
       // which grows out of the + and lies over the keys. Its rows are a
