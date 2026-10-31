@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { answer, overlay } from './app.ts';
-import { seedConversation, seedStore } from './model.ts';
+import { seedConversation, seedStore, snippet } from './model.ts';
 
 describe('conversation storage', () => {
   const thread = async (memory, id) => (await answer('loadInbox', [], {}, memory.api)).find((item) => item.id === id);
@@ -109,6 +109,37 @@ describe('conversation storage', () => {
     const reply = await answer('command', ['send', 'nobody', 'Hello', '', 1000], {}, memory.api);
     expect(reply.error).toContain('no longer in the list');
     expect(memory.contents).toBeUndefined();
+  });
+});
+
+describe('message search', () => {
+  test('a short message is whole, its match apart in its own case', () => {
+    expect(snippet('Great, I’ll bring snacks.', 'SNACKS')).toEqual({ before: 'Great, I’ll bring ', match: 'snacks', after: '.' });
+    expect(snippet('Great, I’ll bring snacks.', 'chips')).toBeNull();
+  });
+
+  test('a long message keeps the whole words within 100 characters of its match, an ellipsis where it was cut', () => {
+    const words = Array.from({ length: 80 }, (_, index) => `word${index}`);
+    words[40] = 'needle';
+    const part = snippet(words.join(' '), 'needle');
+    expect(part.match).toBe('needle');
+    expect(part.before.startsWith('…')).toBe(true);
+    expect(part.after.endsWith('…')).toBe(true);
+    // Whole words only, each side about half the 200-character window
+    expect(part.before.slice(1).split(' ').every((word) => word === '' || words.includes(word))).toBe(true);
+    expect(part.after.slice(0, -1).split(' ').every((word) => word === '' || words.includes(word))).toBe(true);
+    expect(Math.abs(part.before.length - 100)).toBeLessThan(10);
+    expect(Math.abs(part.after.length - 100)).toBeLessThan(10);
+  });
+
+  test('a search finds messages in every conversation, the newest first, and an empty one finds none', async () => {
+    const memory = storage();
+    const results = await answer('searchMessages', ['YOU'], {}, memory.api);
+    expect(results.length).toBeGreaterThan(1);
+    expect(results.every((result) => result.match.toLowerCase() === 'you')).toBe(true);
+    expect(results.map((result) => result.at)).toEqual(results.map((result) => result.at).toSorted((a, b) => b - a));
+    expect(new Set(results.map((result) => result.thread)).size).toBe(3);
+    expect(await answer('searchMessages', ['  '], {}, memory.api)).toEqual([]);
   });
 });
 

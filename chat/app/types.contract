@@ -27,6 +27,20 @@ shape Thread
   serial: number
   messages: Message[]
 
+// A message a search found: its conversation, and its text trimmed around
+// the match, with the match split out to be highlighted (`model.ts`, `found`)
+shape Found
+  key: string
+  thread: string
+  name: string
+  initials: string
+  message: string
+  at: number
+  mine: bool
+  before: string
+  match: string
+  after: string
+
 shape Change
   id: string
   error: string

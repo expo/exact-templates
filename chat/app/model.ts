@@ -141,6 +141,58 @@ export function latestFirst(threads: Thread[]): Thread[] {
   return threads.sort((a, b): number => latest(b) - latest(a));
 }
 
+/** A message a search found: its conversation, and its text trimmed around the match, with the match split out to be highlighted. */
+export interface Found {
+  key: string;
+  thread: string;
+  name: string;
+  initials: string;
+  message: string;
+  at: number;
+  mine: boolean;
+  before: string;
+  match: string;
+  after: string;
+}
+
+/** The messages whose text holds `query`, case-insensitively, the newest first. */
+export function found(threads: Thread[], query: string): Found[] {
+  const needle = query.trim();
+  if (needle === '') {
+    return [];
+  }
+  return threads
+    .flatMap((thread): Found[] => thread.messages.flatMap((item): Found[] => {
+      const part = snippet(item.body, needle);
+      return part === null ? [] : [{
+        key: `${thread.id}/${item.id}`, thread: thread.id, name: thread.name, initials: thread.initials,
+        message: item.id, at: item.at, mine: item.mine, ...part,
+      }];
+    }))
+    .sort((a, b): number => b.at - a.at);
+}
+
+/**
+ * A message's text around the first match of `needle`, as the platform trims a search result: a window of 200
+ * characters centred on the match, widened to the whole words it reaches into, with an ellipsis on each side cut.
+ * The match is split out, to be highlighted; null when there is none.
+ */
+export function snippet(body: string, needle: string): { before: string; match: string; after: string } | null {
+  const hit = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'iu').exec(body);
+  if (hit === null) {
+    return null;
+  }
+  const end = hit.index + hit[0].length;
+  const words = [...body.matchAll(/\S+/gu)].map((word): [number, number] => [word.index, word.index + word[0].length]);
+  const first = words.findIndex(([, wordEnd]): boolean => wordEnd >= hit.index - 100);
+  const last = words.findLastIndex(([wordStart]): boolean => wordStart <= end + 100);
+  return {
+    before: (first > 0 ? '…' : '') + body.slice(words[first]![0], hit.index),
+    match: hit[0],
+    after: body.slice(end, words[last]![1]) + (last < words.length - 1 ? '…' : ''),
+  };
+}
+
 /** A saved file in either version, as the current one: the first version held Alex's conversation alone. */
 export function upgrade(saved: unknown): Store | null {
   if (isConversation(saved)) {

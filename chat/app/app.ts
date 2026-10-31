@@ -1,6 +1,6 @@
 import type { Answer, Overlay, Result, Sources, Storage } from './app.contract.d.ts';
 import {
-  contacts, earlierMessages, inbox, latestFirst, message, present, seedConversation, seedStore, upgrade,
+  contacts, earlierMessages, found, inbox, latestFirst, message, present, seedConversation, seedStore, upgrade,
   type SavedMessage, type Store, type Thread,
 } from './model';
 
@@ -10,6 +10,7 @@ const file = 'app:/data/conversation.json';
 
 const sources: Sources = {
   loadInbox: async (_args, _store, storage): Promise<Result<'loadInbox'>> => inbox(await load(storage)),
+  searchMessages: async ([query], _store, storage): Promise<Result<'searchMessages'>> => found(inbox(await load(storage)), query),
   command: ([operation, contact, body, reply, at], _store, storage): Promise<Result<'command'>> => serially(async (): Promise<Result<'command'>> => {
     if (!contacts.some((known): boolean => known.id === contact)) {
       return { id: '', error: 'This conversation is no longer in the list. Go back to the list and choose another.' };

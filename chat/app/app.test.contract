@@ -168,17 +168,21 @@ test "a long press on the contact shows their card, and Message is pressable"
   tap "contact-message"
   clock settle
 
-test "the search finds conversations by name or by a message's text"
+test "the search finds conversations by name, and messages by their text with the match apart"
   type "search" "pri"
+  clock data
   expect tree has "conversation-priya"
   expect tree missing "conversation-alex"
-  type "search" "snacks"
-  expect tree has "conversation-jordan"
-  expect tree missing "conversation-priya"
-  type "search" "nothing like this"
-  expect tree missing "conversation-alex"
-  expect tree missing "conversation-priya"
+  type "search" "SNACKS"
+  clock data
   expect tree missing "conversation-jordan"
+  expect text "found-text-jordan-seed-3" == "Great, I’ll bring snacks."
+  expect text "found-match-jordan-seed-3" == "snacks"
+  type "search" "nothing like this"
+  clock data
+  expect tree missing "conversation-alex"
+  expect tree missing "found-text-jordan-seed-3"
   expect tree has "no-results"
   type "search" ""
+  clock data
   expect tree has "conversation-alex"

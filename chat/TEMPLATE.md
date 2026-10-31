@@ -12,7 +12,8 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 | Behaviour | Where |
 | --- | --- |
-| The conversation list: avatar, name, when the last message was sent and the message itself, lines from the text, a long press that peeks at the conversation; at the accessibility text sizes no avatar; the bar's search field, which filters by name or any message's text, with "No Results" over the empty list, above the keys while the search is typed in | `app.contract`, the `inbox` route, `searchChats`, `shown` and `id="conversation-peek"` |
+| The conversation list: avatar, name, when the last message was sent and the message itself, lines from the text, a long press that peeks at the conversation; at the accessibility text sizes no avatar | `app.contract`, the `inbox` route, `ConversationRow` and `id="conversation-peek"` |
+| The bar's search field: the conversations whose name matches, then the messages whose text does, each in a balloon trimmed around its match to whole words, the match in a stronger colour; "No Results" over the empty list, above the keys while the search is typed in | `app.contract`, `searchChats`, `shown`, `matches` and `noResults`; `model.ts`, `found` and `snippet`; `app.ts`, `searchMessages` |
 | List beside the conversation on an iPad, the iPhone Duo open, or a window 900 px wide; a pushed conversation on a phone | `app.contract`, `routes` and `follow`; the rows are links |
 | A transcript that opens at its newest message and follows it, built only where it shows | `app.contract`, `list id="transcript"` (`virtualized`, `scroll-start="end"`, `scrollFollowEnd`) |
 | 240 earlier messages put above the reader without moving what they read | `app.contract`, `action history` |
