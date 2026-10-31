@@ -72,8 +72,10 @@ style Avatar
 style Initials
   font-family="ui-rounded" font-weight=600 color="light-dark(#ffffff, #ffffff)"
 
+// The platform's page: white or black, and in dark mode gray where UIKit
+// raises it (a context menu's preview, a sheet)
 style Canvas
-  background-color="light-dark(#ffffff, #000000)"
+  background-color="-exact-background"
 
 style GlassButton
   width=40 height=40 border-radius=20 flex-shrink=0
