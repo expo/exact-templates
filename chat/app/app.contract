@@ -119,7 +119,6 @@ component ExactChat
       // With no flight to take it, the draft leaves the field as the row shows
       if not flies
         write("", "")
-    focus("composer")
   // The field keeps only what was typed after the send
   action handOff
     write(draft == submitted ? "" : draft, "")
