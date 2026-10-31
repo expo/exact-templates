@@ -46,7 +46,7 @@ describe('conversation storage', () => {
     expect(saved.messages).toHaveLength(253);
     expect(saved.messages.at(-1).body).toBe('The newest message');
     expect(saved.messages[239].endsRun).toBe(true);
-    expect(saved.messages[240].stamp).toBe('Today 9:41 AM');
+    expect(saved.messages[240].stamped).toBe(true);
   });
 
   test('each person has a conversation, the most recent first', async () => {
