@@ -18,6 +18,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 | 240 earlier messages put above the reader without moving what they read | `app.contract`, `action history` |
 | Balloons with tails, grouped in runs from one side a minute or less apart, a one-letter balloon's text centred; the time stamp over a conversation's first message and after an hour's gap; the read receipt; the typing indicator | `bubble.contract`, `Balloon`, `MessageRow`, `stampDay`, `Typing`; `model.ts`, `present` |
 | A message's long-press menu (copy, reply, delete) and swipe to reply | `bubble.contract`, `contextmenu` and `swiperight`; `app.contract`, `id="message-menu"` |
+| A long press on the contact in the bar: their card, as wide as a row, with their avatar and name, over Message | `app.contract`, the `contact` button's `contextPopover`, `id="contact-menu"`, `startMessage` |
 | The composer: a growing field in a glass pill, a glass + beside it in one glass group, a blur behind the bar, Send | `composer.contract`, `Composer` |
 | The composer on the keyboard, and the keys' interactive dismissal | `composer.contract`'s padding and comment; `keyboardDismissMode="interactive"` on the transcript |
 | A flick down on the bar, or on its field while its text fits, putting the keys away (iOS; Android's fling and the Mac's three-finger swipe make it there too) | `composer.contract`, `swipe=hideKeys swipe-direction="down"` on `composer-bar`, `hideKeys` |
@@ -32,7 +33,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 ## Adapt
 
 - People and history: `contacts` and `seedConversation` in `model.ts`. A real service replaces `answer` in `app.ts`; the contract reads it through `loadInbox` and writes through `command`. `overlay` shows a sent message until the answer has it, under the id `answer` gives it: `sent-` and one more than the conversation's `serial`, which `action send` names too.
-- To drop a feature, delete its piece and the state only it uses: the peek (`conversation-peek`, `peek`, `resetPeeked`, the rows' `contextmenu`), the + card (`add-menu`, `receive`, `toggleTyping`, the `Card*` styles), the send's flight (the `flight*` states, `animate`, `rise`, `send-flight`, `handOff`), earlier messages (`history`, the `conversation-menu` row).
+- To drop a feature, delete its piece and the state only it uses: the peek (`conversation-peek`, `peek`, `resetPeeked`, the rows' `contextmenu`), the contact's card (`contact-menu`, `startMessage`, the `contact` button's `contextPopover`), the + card (`add-menu`, `receive`, `toggleTyping`, the `Card*` styles), the send's flight (the `flight*` states, `animate`, `rise`, `send-flight`, `handOff`), earlier messages (`history`, the `conversation-menu` row).
 - `app.json`'s `verify.accept` explains the two findings `bun exact.mjs verify` reports: the sent balloons' contrast and the field's height.
 
 ## Verified

@@ -159,6 +159,15 @@ test "a long press on a conversation peeks at it, and its preview opens it"
   clock settle
   expect text "contact-name" == "Priya"
 
+test "a long press on the contact shows their card, and Message is pressable"
+  tap "conversation-priya"
+  clock settle
+  tap "contact" contextmenu
+  expect tree has "contact-card"
+  expect text "contact-card-name" == "Priya Shah"
+  tap "contact-message"
+  clock settle
+
 test "the search finds conversations by name or by a message's text"
   type "search" "pri"
   expect tree has "conversation-priya"
