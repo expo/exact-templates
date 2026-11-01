@@ -43,7 +43,7 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Needs
 
-Exact at `ad181418b3` (branch `chat/messages-1123` of github.com/ide/exact2, made from `08677d8584`). That branch is not on Exact's main yet. The template relies on what it adds:
+Exact at `ad181418b3`, which `exact.json` pins (branch `chat/messages-1123` of github.com/ide/exact2, made from `08677d8584`). That branch is not on Exact's main yet. The template relies on what it adds:
 
 - The composer: the + card over the keyboard, glass that answers a finger around a field, a field that scrolls only once its text overflows, and the keys counted once in the safe area of a route whose search is in the bar, taken down by a drag from the top of that bar or of the composer, or by a swipe down the search field.
 - The list: the sidebar's lines and its highlight, which stays in the tint while the app is in the background and moves to a conversation its peek opens; the selected row's text in the colours the platform's own selected cell takes; a held row's press, which leaves a sidebar row that peeks as it is; and the split's columns following a row's press after the Duo folds, goes Back and unfolds.
