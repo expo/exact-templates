@@ -159,19 +159,26 @@ test "a long press on a conversation peeks at it, and its preview opens it"
   clock settle
   expect text "contact-name" == "Priya"
 
-test "a long press on the contact shows their card, with Call, Message, Video and Mail, and Message is pressable"
+test "a long press on the contact offers Call, FaceTime and Mail"
   tap "conversation-priya"
   clock settle
   tap "contact" contextmenu
-  expect tree has "contact-card"
-  expect text "contact-card-name" == "Priya Shah"
   expect tree has "contact-call"
   expect tree has "contact-video"
   expect tree has "contact-mail"
   expect state conversation.phone == "+1-415-555-0102"
   expect state conversation.email == "priya.shah@mail.example"
-  tap "contact-message"
+
+test "a long press on an avatar in the list shows the person's card, with Message, Call, Video and Mail, and Message opens the conversation"
+  tap "avatar-priya" contextmenu
+  expect tree has "person-card"
+  expect text "person-card-name" == "Priya Shah"
+  expect tree has "person-call"
+  expect tree has "person-video"
+  expect tree has "person-mail"
+  tap "person-message"
   clock settle
+  expect text "contact-name" == "Priya"
 
 test "the search finds conversations by name, and messages by their text with the match apart"
   type "search" "pri"

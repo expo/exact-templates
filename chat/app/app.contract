@@ -51,6 +51,8 @@ component ExactChat
   state arrivedId = ""
   // The conversation the list's long-press menu was opened on
   state peeked = ""
+  // The person whose card a long press on their avatar in the list shows
+  state carded = ""
   resource viewport = exactViewport() as shape Viewport
   resource wall = exactTime() as shape Time
   resource inbox = loadInbox() as shape Thread[] else empty()
@@ -207,9 +209,6 @@ component ExactChat
   action contactPressed
     elapsed = performanceNow()
     showPopover("conversation-menu")
-  // A message to the contact begins in the composer
-  action startMessage
-    focus("composer")
   action landed
     arrivedId = ""
   task arrival when arrivedId != "" key=arrivedId
@@ -233,6 +232,8 @@ component ExactChat
     send changed = command("reset", openId, "", "", wall.epochAtZero + performanceNow())
   action peek(id: string)
     peeked = id
+  action card(id: string)
+    carded = id
   action resetPeeked
     if editing == peeked
       editedDraft = ""
@@ -326,7 +327,7 @@ component ExactChat
                 if needle == ""
                   section
                     for person in inbox key=person.id
-                      ConversationRow(person=person, now=now, utcOffset=wall.utcOffset, large=viewport.accessibilityTextSize, peek=peek)
+                      ConversationRow(person=person, now=now, utcOffset=wall.utcOffset, large=viewport.accessibilityTextSize, peek=peek, card=card)
                 // Searching: the conversations whose name matches, then the
                 // messages whose text does
                 if needle != "" and shown.length > 0
@@ -334,7 +335,7 @@ component ExactChat
                     header
                       text "Conversations"
                     for person in shown key=person.id
-                      ConversationRow(person=person, now=now, utcOffset=wall.utcOffset, large=viewport.accessibilityTextSize, peek=peek)
+                      ConversationRow(person=person, now=now, utcOffset=wall.utcOffset, large=viewport.accessibilityTextSize, peek=peek, card=card)
                 if needle != "" and matches.length > 0
                   section
                     header
@@ -386,27 +387,42 @@ component ExactChat
         button press=resetPeeked popovertarget="conversation-peek" popovertargetaction="hide" destructive=true testId="peek-reset"
           text "Reset Conversation"
           image "symbol:refresh"
-      // A long press on the contact in the bar: their card, as wide as a
-      // row, with their avatar and name, over the actions their details
-      // allow, in the platform's order. Call, Video and Mail are links, which
-      // the system opens.
+      // A long press on the contact in the bar: the bar lifts their avatar
+      // alone, and the menu offers what their details allow, as the
+      // platform's chat does in its title. Call, FaceTime and Mail are
+      // links, which the system opens.
       column id="contact-menu" popover="auto" role="menu"
-        button contextPreview=true press=startMessage popovertarget="contact-menu" popovertargetaction="hide" aria-label=`Message ${conversation.name}` testId="contact-card" display="flex" align-items="center" gap=12 padding=16 width="calc(100cqw - 32px)" box-sizing="border-box" class=Canvas
-          column width=60 height=60 border-radius=30 align-items="center" justify-content="center" class=Avatar
-            text conversation.initials font-size=26.6667 class=Initials
-          text conversation.name font="-exact-headline" testId="contact-card-name"
         link href=`tel:${conversation.phone}` testId="contact-call"
           text "Call"
           image "symbol:icon.call"
-        button press=startMessage popovertarget="contact-menu" popovertargetaction="hide" testId="contact-message"
-          text "Message"
-          image "symbol:messages"
         link href=`facetime:${conversation.phone}` testId="contact-video"
-          text "Video"
+          text "FaceTime"
           image "symbol:icon.video"
         link href=`mailto:${conversation.email}` testId="contact-mail"
           text "Mail"
           image "symbol:mail"
+      // A long press on a person's avatar in the list: their card, as wide
+      // as a row, with their avatar and name, over the actions their details
+      // allow, in the platform's order. The card and Message open the
+      // conversation.
+      column id="person-card" popover="auto" role="menu"
+        for person in inbox.filter(t => t.id == carded) key=person.id
+          button contextPreview=true press=follow(path("thread", person.id)) popovertarget="person-card" popovertargetaction="hide" aria-label=`Open ${person.name}` testId="person-card" display="flex" align-items="center" gap=10 padding=10 width="calc(100cqw - 32px)" box-sizing="border-box" class=Canvas
+            column width=60 height=60 border-radius=30 align-items="center" justify-content="center" class=Avatar
+              text person.initials font-size=26.6667 class=Initials
+            text person.name font="-exact-headline" line-clamp=2 testId="person-card-name"
+          button press=follow(path("thread", person.id)) popovertarget="person-card" popovertargetaction="hide" testId="person-message"
+            text "Message"
+            image "symbol:messages"
+          link href=`tel:${person.phone}` testId="person-call"
+            text "Call"
+            image "symbol:icon.call"
+          link href=`facetime:${person.phone}` testId="person-video"
+            text "Video"
+            image "symbol:icon.video"
+          link href=`mailto:${person.email}` testId="person-mail"
+            text "Mail"
+            image "symbol:mail"
       column id="conversation-menu" popover="auto" role="menu"
         button press=history popovertarget="conversation-menu" popovertargetaction="hide" testId="load-history"
           text "Load earlier messages"
@@ -414,13 +430,16 @@ component ExactChat
         button press=reset popovertarget="conversation-menu" popovertargetaction="hide" destructive=true testId="reset"
           text "Reset conversation"
           image "symbol:refresh"
+      // A long press on a balloon lifts it alone, tail included, over the
+      // platform's order: Reply apart, then the rest
       column id="message-menu" popover="auto" role="menu"
-        button press=copy popovertarget="message-menu" popovertargetaction="hide" testId="copy-message"
-          text "Copy"
-          image "symbol:copy"
         button press=replySelected popovertarget="message-menu" popovertargetaction="hide" testId="reply-message"
           text "Reply"
           image "symbol:reply"
+        hr
+        button press=copy popovertarget="message-menu" popovertargetaction="hide" testId="copy-message"
+          text "Copy"
+          image "symbol:copy"
         button press=remove popovertarget="message-menu" popovertargetaction="hide" destructive=true testId="delete-message"
           text "Delete"
           image "symbol:delete"
@@ -429,7 +448,7 @@ component ExactChat
 // where a list cell's image sits, so the platform's line under the row starts
 // at the name (45-point avatar, text 84 points in). At the accessibility text
 // sizes (`large`) the row drops it and its text takes the width. A long press
-// peeks at the conversation.
+// peeks at the conversation; on the avatar, it shows the person's card.
 component ConversationRow
   props
     person: Thread
@@ -437,11 +456,12 @@ component ConversationRow
     utcOffset: number
     large: bool
     peek: action
+    card: action
   view
     link href=path("thread", person.id) testId=`conversation-${person.id}` aria-label=person.name contextmenu=peek(person.id) contextPopover="conversation-peek" position="relative" display="flex" flex-direction="column" gap=2 padding-top=12 padding-bottom=12 padding-right=16 padding-left=(large ? 16 : 84) min-height=69 justify-content="center" box-sizing="border-box"
       if not large
         row aria-hidden=true position="absolute" left=26 top=0 bottom=0 align-items="center"
-          column width=45 height=45 border-radius=22.5 align-items="center" justify-content="center" class=Avatar
+          column width=45 height=45 border-radius=22.5 align-items="center" justify-content="center" contextmenu=card(person.id) contextPopover="person-card" testId=`avatar-${person.id}` class=Avatar
             text person.initials testId=`initials-${person.id}` font-size=20 class=Initials
       // The name, and when the latest message was sent: the time today,
       // Yesterday, the weekday this week, else the date
