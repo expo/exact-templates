@@ -65,3 +65,19 @@ component Composer
                   box width=2 height=16 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"
                   box width=2 height=8 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"
                   box width=2 height=4 border-radius=1 background-color="light-dark(#b4b8bf, #4a4b4d)"
+
+// The bar that stands for the composer while messages are chosen: Delete
+// leading, which asks first (`delete-messages`), and Share trailing, each in
+// its glass, both off until a message is chosen, in the tint, as the
+// platform's toolbar has them (its trash and its forward, which shares). It
+// sits where the composer's bar sits, docked.
+component ChoiceBar
+  props
+    count: number
+    share: action
+  view
+    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" padding-top=0.6667 padding-left="calc(max(16px, var(--exact-layout-margins-inset-left)) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))" padding-right="calc(max(16px, var(--exact-layout-margins-inset-right)) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+      button appearance="none" commandfor="delete-messages" command="show-modal" disabled=(count == 0) testId="delete-chosen" aria-label="Delete" class=GlassButton backgroundMaterial="glass" width=44 height=44 border-radius=22
+        image "symbol:delete" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")
+      button appearance="none" press=share disabled=(count == 0) testId="share-chosen" aria-label="Share" class=GlassButton backgroundMaterial="glass" width=44 height=44 border-radius=22
+        image "symbol:share" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")

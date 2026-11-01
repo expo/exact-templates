@@ -1,6 +1,6 @@
-use Message, Thread, Found, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials from "./types.contract"
+use Message, Thread, Found, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials, fade from "./types.contract"
 use MessageRow, Typing, Balloon, Sent, Received from "./bubble.contract"
-use Composer from "./composer.contract"
+use Composer, ChoiceBar from "./composer.contract"
 use EmptyState from "exact:content"
 
 // The conversation is pushed over the list of conversations, so it has the
@@ -53,6 +53,10 @@ component ExactChat
   state peeked = ""
   // The person whose card a long press on their avatar in the list shows
   state carded = ""
+  // Choosing messages, from a balloon's More…: the ones chosen to delete or
+  // share
+  state choosing = false
+  state chosen: string[] = []
   resource viewport = exactViewport() as shape Viewport
   resource wall = exactTime() as shape Time
   resource inbox = loadInbox() as shape Thread[] else empty()
@@ -252,9 +256,24 @@ component ExactChat
     focus("composer")
   action cancelReply
     write(draft, "")
-  action remove
-    send changed = command("delete", openId, selectedId, "", wall.epochAtZero + performanceNow())
+  // More… begins choosing, the balloon it came from chosen
+  action more
+    choosing = true
+    chosen = [selectedId]
+  action choose(id: string)
+    chosen = chosen.includes(id) ? chosen.filter(c => c != id) : chosen.concat([id])
+  action endChoosing
+    choosing = false
+    chosen = []
+  action deleteChosen
+    send changed = command("delete", openId, chosen.join("\n"), "", wall.epochAtZero + performanceNow())
+    choosing = false
+    chosen = []
+  action shareChosen
+    share(text=conversation.messages.filter(m => chosen.includes(m.id)).map(m => m.body).join("\n"))
   action follow(url: string)
+    choosing = false
+    chosen = []
     typing = false
     flightPhase = 0
     arrivedId = ""
@@ -284,18 +303,31 @@ component ExactChat
                 column width="2.235294rem" height="2.235294rem" border-radius="1.117647rem" align-items="center" justify-content="center" class=Avatar
                   text conversation.initials font-size="1rem" class=Initials
                 text conversation.short role="heading" aria-level=2 testId="contact-name"
-              button press=menuOpened popovertarget="conversation-menu" aria-label="Conversation options" testId="options"
-                image "symbol:more"
+              // Choosing, the bar trades Back and Options for Cancel: the
+              // route's Back control, disabled, takes UIKit's Back away
+              if choosing
+                button id="back" disabled=true display="none"
+                  text "Back"
+                button press=endChoosing testId="end-choosing"
+                  text "Cancel"
+              else
+                button press=menuOpened popovertarget="conversation-menu" aria-label="Conversation options" testId="options"
+                  image "symbol:more"
             // Each conversation its own transcript: another's rows, whose ids
             // repeat, would move from where these were
             for open in [entry.params.id] key=open
               list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=true scroll-behavior="smooth" keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+                // A row that leaves (a deleted message, the typing
+                // indicator) fades where it shows, as the rows the removal
+                // moves go to their places on the platform's spring for a
+                // batch update (a response of 0.3 s, no bounce; the fade's
+                // curve is within 2% of it)
                 for message in transcript key=message.id
-                  column
+                  column -exact-exit-animation="fade 350ms cubic-bezier(0.2, 0.1, 0.1, 1) both"
                     if message.id == "typing"
                       Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
                     else
-                      MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo)
+                      MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose)
             if failed(inbox)
               text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="max(16px, var(--exact-layout-margins-inset-left))" padding-right="max(16px, var(--exact-layout-margins-inset-right))"
             if flightPhase >= 1
@@ -312,7 +344,10 @@ component ExactChat
                     box position="absolute" inset=0 border-radius=balloonRadius class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
                   box max-width="min(85%, calc(100% - 89.333333px))"
                     Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion, tailMotion="none")
-            Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
+            if choosing
+              ChoiceBar(count=chosen.length, share=shareChosen)
+            else
+              Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
         if entry.name == "inbox"
           // Its ground is the platform's: beside the conversation, UIKit's
           // sidebar. Its bottom safe area takes in the keys while the search
@@ -431,7 +466,8 @@ component ExactChat
           text "Reset conversation"
           image "symbol:refresh"
       // A long press on a balloon lifts it alone, tail included, over the
-      // platform's order: Reply apart, then the rest
+      // platform's order: Reply apart, then the rest, More… last, which
+      // chooses messages to delete or share
       column id="message-menu" popover="auto" role="menu"
         button press=replySelected popovertarget="message-menu" popovertargetaction="hide" testId="reply-message"
           text "Reply"
@@ -440,9 +476,17 @@ component ExactChat
         button press=copy popovertarget="message-menu" popovertargetaction="hide" testId="copy-message"
           text "Copy"
           image "symbol:copy"
-        button press=remove popovertarget="message-menu" popovertargetaction="hide" destructive=true testId="delete-message"
-          text "Delete"
-          image "symbol:delete"
+        button press=more popovertarget="message-menu" popovertargetaction="hide" testId="more-message"
+          text "More…"
+          image "symbol:more"
+      // Deleting what was chosen asks first, in the platform's words: an
+      // action sheet with no title
+      dialog id="delete-messages" role="alertdialog" closedby="any"
+        text (chosen.length == 1 ? "Are you sure you want to delete this message?" : "Are you sure you want to delete these messages?")
+        button press=deleteChosen destructive=true commandfor="delete-messages" command="close" testId="confirm-delete"
+          text (chosen.length == 1 ? "Delete Message" : `Delete ${chosen.length} Messages`)
+        button commandfor="delete-messages" command="close" testId="cancel-delete"
+          text "Cancel"
 
 // A conversation in the list. The avatar sits in the row's leading padding,
 // where a list cell's image sits, so the platform's line under the row starts

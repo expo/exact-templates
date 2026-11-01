@@ -43,7 +43,9 @@ const sources: Sources = {
           break;
         }
         case 'delete': {
-          conversation.messages = conversation.messages.filter((item): boolean => item.id !== body);
+          // The chosen messages' ids, one a line
+          const chosen = new Set(body.split('\n'));
+          conversation.messages = conversation.messages.filter((item): boolean => !chosen.has(item.id));
           break;
         }
         case 'reset': {

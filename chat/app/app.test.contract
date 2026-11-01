@@ -79,19 +79,25 @@ test "a message sent into an emptied conversation is stamped with when it was se
   tap "conversation-priya"
   clock settle
   expect text "stamp-seed-1" == "Today 10:05 AM"
+  // More… chooses the balloon it came from, and the composer's place holds Delete and Share
   tap "bubble-seed-1" contextmenu
-  tap "delete-message"
+  tap "more-message"
+  expect tree has "choice-bar"
+  expect tree missing "composer"
+  tap "delete-chosen"
+  expect text "confirm-delete" == "Delete Message"
+  tap "confirm-delete"
   clock data
+  expect tree has "composer"
   // The first message left takes a stamp of its own time (10:05 AM in the tests' time zone)
   expect text "stamp-seed-2" == "Today 10:05 AM"
   tap "bubble-seed-2" contextmenu
-  tap "delete-message"
-  clock data
-  tap "bubble-seed-3" contextmenu
-  tap "delete-message"
-  clock data
-  tap "bubble-seed-4" contextmenu
-  tap "delete-message"
+  tap "more-message"
+  tap "choose-seed-3"
+  tap "choose-seed-4"
+  tap "delete-chosen"
+  expect text "confirm-delete" == "Delete 3 Messages"
+  tap "confirm-delete"
   clock data
   type "composer" "Starting over"
   tap "send"
@@ -198,3 +204,14 @@ test "the search finds conversations by name, and messages by their text with th
   type "search" ""
   clock data
   expect tree has "conversation-alex"
+
+test "choosing messages ends with Cancel, deleting nothing"
+  tap "conversation-priya"
+  clock settle
+  tap "bubble-seed-2" contextmenu
+  tap "more-message"
+  tap "choose-seed-2"
+  expect tree has "choice-bar"
+  tap "end-choosing"
+  expect tree has "composer"
+  expect text "outgoing-text-bubble-seed-2" == "It did, thank you so much!"
