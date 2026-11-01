@@ -1,0 +1,32 @@
+{
+  "name": "Landscapes",
+  "short_name": "Landscapes",
+  "id": "com.example.landscapes",
+  "start_url": "/landmarks",
+  "display": "standalone",
+  "app": {
+    "id": "com.example.landscapes",
+    "name": "Landscapes"
+  },
+  "host": {
+    "ios": {
+      "minimumOS": "26.0",
+      "deviceFamily": [
+        "iphone",
+        "ipad"
+      ],
+      "icon": "assets/apple/Landmarks.icon"
+    },
+    "macos": {
+      "minimumOS": "14.0",
+      "window": {
+        "width": 900,
+        "height": 700
+      }
+    },
+    "web": {}
+  },
+  "modules": [
+    "landmark-map"
+  ]
+}

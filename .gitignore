@@ -19,3 +19,7 @@
 */app/target/
 */app/web/
 .DS_Store
+
+# Apple's photos and icon, which landscapes/app/scripts/fetch-images.sh fetches: the sample's
+# license does not cover the photos
+landscapes/app/assets/apple/

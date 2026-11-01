@@ -1,0 +1,575 @@
+// Landmarks, ported from Apple's SwiftUI sample "Landmarks: Building an app
+// with Liquid Glass" to compare the two builds (LLP 1127 §5). The sample's
+// sidebar is a list whose rows open its three pages, so this is a stack whose
+// root route lists them; each page's cards push a landmark's detail.
+// data/landmarks.json holds the sample's landmarks and collections, and
+// scripts/fetch-images.sh fetches its photos and icon into assets/apple/
+// (Apple's notice, LICENSE-APPLE.txt, does not cover the photos). app.json's
+// `start_url` opens the Landmarks page with the list behind Back, as the
+// sample's `preferredCompactColumn: .detail` does at a compact width.
+
+routes nav
+  home "/"
+    landmarks "/landmarks"
+    map "/map"
+    collections "/collections"
+    landmark "/landmark/:id"
+    collection "/collection/:id"
+    info "/info/:id"
+    select "/select/:id"
+
+// What comes or goes in the sample's `withAnimation` fades (SwiftUI's default transition).
+keyframes appear
+  from opacity=0
+keyframes vanish
+  to opacity=0
+
+shape Landmark
+  id: string
+  name: string
+  continent: string
+  description: string
+  latitude: number
+  longitude: number
+  span: number
+  coordinates: string
+  area: string
+  elevation: string
+  location: string
+  placeID: string
+  badge: string
+  badgeColor: string
+  badgeSize: number
+  earnedSize: number
+  done: string[]
+
+shape Collection
+  id: string
+  name: string
+  description: string
+  landmarkIds: string[]
+
+shape Data
+  landmarks: Landmark[]
+
+shape Ack
+  ok: bool
+  id: string
+
+// The sample's order (ModelData.orderedContinents).
+fn continents(): string[] = ["Asia", "Africa", "Antarctica", "Australia/Oceania", "Europe", "North America", "South America"]
+
+// MapKit's places for `landmark-map`.
+fn places(ls: Landmark[]): string = ls.map((l) => `${l.placeID}|${l.latitude}|${l.longitude}|${l.name}`).join(";")
+
+// A collection's landmarks in its own order.
+fn members(c: Collection, ls: Landmark[]): Landmark[] = sortBy(ls.filter((l) => c.landmarkIds.includes(l.id)), (l) => c.landmarkIds.indexOf(l.id))
+
+// The favorites are the first collection (ModelData.favoritesCollection).
+fn isFavorite(cs: Collection[], id: string): bool = cs.filter((c) => c.id == "1001" and c.landmarkIds.includes(id)).length > 0
+// A landmark's name, by its id.
+fn nameOf(ls: Landmark[], id: string): string = ls.filter((l) => l.id == id).map((l) => l.name).join("")
+
+// The sample's "%lld items", whose zero is "Empty".
+fn itemCount(n: number): string = n == 0 ? "Empty" : n == 1 ? "1 item" : `${n} items`
+
+fn activities(): string[] = ["takePhoto", "readDescription", "findNature", "drawSketch"]
+
+fn activityText(a: string): string = a == "takePhoto" ? "Take a photo" : a == "readDescription" ? "Read the landmark description" : a == "findNature" ? "Find a cool piece of nature" : "Draw a sketch of this landmark"
+
+fn isDone(l: Landmark, a: string, checked: string[]): bool = l.done.includes(a) != checked.includes(`${l.id}:${a}`)
+
+fn earned(l: Landmark, checked: string[]): bool = l.badge != "" and not activities().map((a) => isDone(l, a, checked)).includes(false)
+
+// Badge.swift's colours, as the platform's.
+fn badgeColor(name: string): string = name == "orange" ? "-exact-system-orange" : name == "cyan" ? "-exact-system-cyan" : name == "green" ? "-exact-system-green" : name == "mint" ? "-exact-system-mint" : "-exact-system-blue"
+
+component Landmarks
+  resource data = loadData() as shape Data
+  resource cols = loadCollections() as shape Collection[]
+  mutation changed as shape Ack queue refreshes cols
+  mutation added as shape Ack refreshes cols then openAdded
+  // Activities changed this session, as `landmark:activity`.
+  state checked: string[] = []
+  state query = ""
+  // The inspector's Map or Activities, kept while the app runs: the sample's inspector keeps
+  // its choice across a close, another landmark, another page and a fold.
+  state segment = "map"
+  state editing = false
+  // Edit or Done was pressed on this page: its content fades between the two.
+  state toggled = false
+  state draftName = ""
+  state draftDescription = ""
+  // The card whose context menu is open.
+  state aimed = ""
+  state showingBadges = false
+  // How far each page's scroller is pulled past its top: its header image
+  // grows by as much, its top staying at the screen's (the sample's FlexibleHeader).
+  state featuredPull = 0
+  state heroPull = 0
+
+  // A page chosen in the list replaces the detail, as the sample's sidebar does: `open` lands
+  // in its declared chain, the list and the page; any other location goes as usual.
+  action follow(url: string)
+    editing = false
+    toggled = false
+    nav = ["/landmarks", "/map", "/collections"].includes(url) ? open(nav, url) : go(nav, url)
+  action back
+    editing = false
+    toggled = false
+    nav = back(nav)
+  action learn(id: string)
+    nav = push(nav, path("landmark", id))
+  action toggle(c: string, id: string)
+    send changed = toggleMember(c, id)
+  action check(id: string, a: string)
+    let k = `${id}:${a}`
+    checked = checked.includes(k) ? checked.filter((x) => x != k) : checked.concat([k])
+  // Info shows the inspector, or closes it, as the sample's toggle does.
+  action showInfo(id: string)
+    nav = top(nav).name == "info" ? back(nav) : push(nav, path("info", id))
+  action search(v: string)
+    query = v
+  action choose(s: string)
+    segment = s
+  action shareLandmark(name: string, picture: string)
+    share(title=name, files=[picture])
+  action aim(id: string)
+    aimed = id
+  action addCollection
+    send added = addCollection()
+  action openAdded
+    match added
+      case some(r)
+        nav = push(nav, path("collection", r.id))
+      case none
+        editing = false
+  action startEditing(c: Collection)
+    draftName = c.name
+    draftDescription = c.description
+    editing = true
+    toggled = true
+  action stopEditing
+    editing = false
+    toggled = true
+  action editName(id: string, v: string)
+    draftName = v
+    send changed = rename(id, v)
+  action editDescription(id: string, v: string)
+    draftDescription = v
+    send changed = describe(id, v)
+  action askDelete
+    showModal("delete-collection")
+  action deleteCollection(id: string)
+    editing = false
+    send changed = removeCollection(id)
+    nav = back(nav)
+  action openSelect(id: string)
+    nav = push(nav, path("select", id))
+  action pullFeatured(left: number, top: number)
+    featuredPull = max(0, 0 - top)
+  action pullHero(left: number, top: number)
+    heroPull = max(0, 0 - top)
+  action toggleBadges
+    showingBadges = not showingBadges
+
+  view
+    // `cover`, so `env()` is the window's safe area, which the sample sizes its header images by
+    main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow width="100%" height="100%" accent-color="-exact-system-indigo" viewport-fit="cover"
+      for e in stack(nav) key=e.id
+        if e.name == "home"
+          column navigationKey=`${e.id}` navigationScroll="pages" testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column"
+            // The sample's sidebar has no title; its search is the split's. Its rows are SwiftUI's 52
+            // points high in the sidebar as in the list, where a UIKit sidebar's are 44.
+            header
+              text "" role="heading" aria-level=2
+              input type="search" value=query input=search placeholder="Search" aria-label="Search" testId="search"
+            list id="pages" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="pages"
+              section
+                link href="/landmarks" testId="page-landmarks" display="flex" align-items="center" gap=12 min-height=52
+                  image "symbol:sf/building.columns"
+                  text "Landmarks"
+                link href="/map" testId="page-map" display="flex" align-items="center" gap=12 min-height=52
+                  image "symbol:sf/map"
+                  text "Map"
+                link href="/collections" testId="page-collections" display="flex" align-items="center" gap=12 min-height=52
+                  image "symbol:sf/book.closed"
+                  text "Collections"
+
+        if e.name == "landmarks"
+          // Under the side strip as under the bar: the pictures reach there, as the
+          // sample's background extension draws them; the rest is padded clear.
+          column navigationKey=`${e.id}` navigationScroll="landmarks-scroll" navigationBar="transparent" -exact-safe-area="left right" testId="route-landmarks" position="absolute" inset=0 display="flex" flex-direction="column"
+            scroll id="landmarks-scroll" flex=1 min-height=0 scrollbar-width="none" scroll=pullFeatured testId="landmarks-scroll"
+              column gap=14
+                for f in data.landmarks.filter((l) => l.id == "1016") key=f.id
+                  Featured(l=f, learn=learn, open=follow, pull=featuredPull)
+                for c in continents() key=c
+                  column
+                    text c role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-top=8 padding-bottom=10
+                    Strip(ls=data.landmarks.filter((l) => l.continent == c), tid=`strip-${c}`, menu=`card-menu-${e.id}`, aim=aim, open=follow)
+            CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
+            Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
+
+        if e.name == "map"
+          column navigationKey=`${e.id}` navigationBar="transparent" -exact-safe-area="none" testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
+            landmark-map flex=1 min-height=0 width="100%" items=places(data.landmarks) userLocation="true" aria-label="A map of every landmark" testId="map"
+            Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
+
+        if e.name == "collections"
+          column navigationKey=`${e.id}` navigationScroll="collections-scroll" -exact-safe-area="left right" testId="route-collections" position="absolute" inset=0 display="flex" flex-direction="column"
+            header
+              text "Collections" role="heading" aria-level=1
+              button press=addCollection aria-label="Add" testId="add-collection"
+                image "symbol:add"
+            scroll id="collections-scroll" flex=1 min-height=0
+              column gap=14 padding-bottom=14
+                for fav in cols.filter((c) => c.id == "1001") key=fav.id
+                  text "Favorites" role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-top=8
+                  Strip(ls=members(fav, data.landmarks), tid="strip-favorites", menu=`card-menu-${e.id}`, aim=aim, open=follow)
+                // The sample's stack puts this title 6 points nearer the carousel above it than its continent titles
+                text "My Collections" role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-top=2
+                view display="grid" grid-template-columns="repeat(auto-fill, minmax(160px, 1fr))" gap=14 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-right="calc(14px + var(--exact-safe-area-inset-right))" testId="collections-grid"
+                  for c in cols.filter((x) => x.id != "1001") key=c.id
+                    CollectionTile(c=c, ls=members(c, data.landmarks), open=follow)
+            CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
+            Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
+
+        if e.name == "landmark"
+          for l in data.landmarks.filter((x) => x.id == e.params.id) key=l.id
+            column navigationKey=`${e.id}` navigationScroll="detail-scroll" navigationBar="transparent" -exact-safe-area="left right" testId="route-landmark" position="absolute" inset=0 display="flex" flex-direction="column"
+              header
+                text "" role="heading" aria-level=2
+                row role="group"
+                  button press=shareLandmark(l.name, "#hero") aria-label="Share…" testId="share"
+                    image "symbol:share"
+                row role="group"
+                  button press=toggle("1001", l.id) aria-label=(isFavorite(cols, l.id) ? "Unfavorite" : "Favorite") testId="favorite"
+                    image (isFavorite(cols, l.id) ? "symbol:heart-fill" : "symbol:heart")
+                  button popovertarget="collections-menu" aria-label="Collections" testId="collections-menu-button"
+                    image "symbol:sf/book.closed"
+                row role="group"
+                  button press=showInfo(l.id) aria-label="Info" testId="info"
+                    image "symbol:sf/info"
+              // `Menu`'s title is its button's, not shown above its items.
+              column id="collections-menu" popover="auto" role="menu"
+                for c in cols.filter((x) => x.id != "1001") key=c.id
+                  button role="menuitemcheckbox" aria-checked=c.landmarkIds.includes(l.id) press=toggle(c.id, l.id) popovertarget="collections-menu" popovertargetaction="hide" testId=`menu-${c.id}`
+                    text c.name
+              scroll id="detail-scroll" flex=1 min-height=0 scroll=pullHero testId="detail-scroll"
+                column gap=14
+                  image `assets/apple/${l.id}.jpg` id="hero" margin-left="var(--exact-safe-area-inset-left)" width="calc(100% - var(--exact-safe-area-inset-left) - var(--exact-safe-area-inset-right))"
+                    margin-top=(0 - heroPull) height=`calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2 + ${heroPull}px)`
+                    object-fit="cover" -exact-background-extension="auto" aria-hidden=true
+                  // The sample's `VStack` has SwiftUI's default spacing, 2 points between these two texts
+                  column gap=2 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-right="calc(52px + var(--exact-safe-area-inset-right))"
+                    text l.name role="heading" aria-level=1 font="-exact-title1" font-weight=700 testId="detail-name"
+                    // SwiftUI's `Text` takes the body style's 22-point leading; a UIKit label, the font's 20.3
+                    text l.description white-space="pre-line" user-select="text" line-height=1.294 testId="detail-description"
+
+        if e.name == "collection"
+          for c in cols.filter((x) => x.id == e.params.id) key=c.id
+            column navigationKey=`${e.id}` navigationScroll="collection-scroll" testId="route-collection" position="absolute" inset=0 display="flex" flex-direction="column"
+              background-color=(editing ? "light-dark(#e5e5ea, #000000)" : "-exact-background") transition="background-color 350ms ease"
+              header
+                // Disabled while editing: no Back leaves the editor, as the sample hides it.
+                button id="back" press=back disabled=editing aria-label="Collections" testId="collection-back"
+                  image "symbol:back"
+                if editing and c.id != "1001"
+                  button press=askDelete destructive=true aria-label="Delete" testId="delete-collection"
+                    image "symbol:delete" color="-exact-system-red"
+                text "" role="heading" aria-level=2
+                if editing
+                  button press=stopEditing aria-label="Done" testId="done-editing"
+                    image "symbol:checkmark"
+                else
+                  button press=startEditing(c) testId="edit-collection"
+                    text "Edit"
+              scroll id="collection-scroll" flex=1 min-height=0 testId="collection-scroll"
+                // Edit and Done fade one content into the other; a push shows it at once.
+                if editing
+                  column animation=(toggled ? "appear 350ms ease both" : "none") -exact-exit-animation="vanish 350ms ease both"
+                    CollectionEditor(c=c, ls=members(c, data.landmarks), name=draftName, description=draftDescription,
+                      editName=editName, editDescription=editDescription, select=openSelect)
+                else
+                  column padding-left=26 padding-right=26 padding-bottom=26 gap=8 animation=(toggled ? "appear 350ms ease both" : "none") -exact-exit-animation="vanish 350ms ease both"
+                    text c.name role="heading" aria-level=1 font="-exact-large-title" font-weight=500 padding-top=16 testId="collection-name"
+                    // SwiftUI's spacing under the large title is 13 more than the stack's 8 (measured).
+                    text c.description font="-exact-title2" padding-top=29 padding-bottom=16
+                    LandmarkGrid(ls=members(c, data.landmarks), min=160, links=true, open=follow)
+              dialog id="delete-collection" role="alertdialog" aria-label=`Delete “${c.name}”?`
+                text "This can’t be undone."
+                button press=deleteCollection(c.id) destructive=true commandfor="delete-collection" command="close" testId="delete-confirm"
+                  text "Delete"
+                button commandfor="delete-collection" command="close" testId="delete-keep"
+                  text "Keep"
+
+        if e.name == "select"
+          for c in cols.filter((x) => x.id == e.params.id) key=c.id
+            column navigationKey=`${e.id}` navigationPresentation="modal" navigationScroll="select-list" testId="route-select" position="absolute" inset=0 display="flex" flex-direction="column"
+              header
+                text "Select landmarks" role="heading" aria-level=2
+                button id="back" press=back aria-label="Done" testId="select-done"
+                  image "symbol:checkmark"
+              list id="select-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                for continent in continents() key=continent
+                  section
+                    header
+                      text continent
+                    for l in data.landmarks.filter((x) => x.continent == continent) key=l.id
+                      button press=toggle(c.id, l.id) display="flex" align-items="center" testId=`select-${l.id}`
+                        image `assets/apple/${l.id}-thumb.jpg` width=48 height=48 object-fit="cover" border-radius=8 margin-right=14 aria-hidden=true
+                        text l.name font="-exact-title3" flex=1
+                        image (c.landmarkIds.includes(l.id) ? "symbol:select-fill" : "symbol:circle") font="-exact-title1" margin-right=14
+                          color=(c.landmarkIds.includes(l.id) ? "AccentColor" : "-exact-system-gray")
+
+        if e.name == "info"
+          for l in data.landmarks.filter((x) => x.id == e.params.id) key=l.id
+            // The sample's inspector: beside the detail in an expanded split, a sheet at a
+            // compact width; its content has no bar.
+            column navigationKey=`${e.id}` navigationPresentation="modal" navigationInspector=true navigationScroll="info-list" -exact-safe-area="left right" testId="route-info" position="absolute" inset=0 display="flex" flex-direction="column"
+              // The form's grey, except where there is no form, as the sample's sentence alone shows.
+              background-color=(segment == "activities" and l.badge == "" ? "-exact-background" : "-exact-grouped-background")
+              // The sample's picker on the sheet's own ground, a band above the form's grey: its
+              // padding, then the 5 more points of its stack's spacing before the form.
+              view padding="16px calc(16px + var(--exact-safe-area-inset-right)) 21px calc(16px + var(--exact-safe-area-inset-left))" background-color="-exact-background"
+                row role="tablist" aria-label="View Mode" testId="segments"
+                  button role="tab" aria-selected=(segment == "map") press=choose("map") flex=1 testId="segment-map"
+                    text "Map"
+                  button role="tab" aria-selected=(segment == "activities") press=choose("activities") flex=1 testId="segment-activities"
+                    text "Activities"
+              if segment == "map"
+                list id="info-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="info-map"
+                  section
+                    header
+                      text "Map"
+                    // SwiftUI's list row insets: 15 above and below, 20 beside
+                    column padding="15px 20px"
+                      landmark-map width="100%" aspect-ratio=1.2 border-radius=15 overflow="hidden" items=places([l])
+                        region=`${l.latitude}|${l.longitude}|${l.span}` interactive="false" aria-label=`A map of ${l.name}` testId="info-mapview"
+                  section
+                    header
+                      text "Metadata"
+                    Value(label="Coordinates", value=l.coordinates)
+                    Value(label="Total Area", value=l.area)
+                    Value(label="Elevation", value=l.elevation)
+                    Value(label="Location", value=l.location)
+              else if l.badge == ""
+                // The sample's sentence alone, centred on the sheet's ground: no form.
+                column flex=1 justify-content="center" align-items="center" testId="info-activities"
+                  padding="16px calc(16px + var(--exact-safe-area-inset-right)) 16px calc(16px + var(--exact-safe-area-inset-left))"
+                  text "There isn’t a badge for this landmark." text-align="center" testId="no-badge"
+              else
+                list id="info-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="info-activities"
+                  section
+                    column gap=14 padding=16
+                      for a in activities() key=a
+                        button press=check(l.id, a) display="flex" align-items="center" text-align="start" testId=`activity-${a}`
+                          text activityText(a) flex=1
+                          // Done, the sample's palette: a white checkmark on an indigo circle
+                          image (isDone(l, a, checked) ? "symbol:select-fill" : "symbol:circle") font="-exact-title1" color="-exact-system-gray"
+                            -exact-symbol-rendering=(isDone(l, a, checked) ? "palette" : "monochrome") -exact-symbol-palette="#ffffff -exact-system-indigo"
+                  if earned(l, checked)
+                    section
+                      column align-items="center" gap=8 padding=16
+                        view padding=12
+                          BadgeMark(l=l, size=60, hexagon=56, symbol=l.earnedSize)
+                        text `You earned the ${l.name} badge!` text-align="center"
+
+// The featured landmark: half the window high, its name over the picture, a link to it.
+component Featured
+  props
+    l: Landmark
+    learn: action
+    open: action
+    pull: number
+  view
+    // A press of its own, so the platform dims it while held, as the sample's plain-styled link.
+    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=`Featured Landmark, ${l.name}` margin-top=(0 - pull) height=`calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2 + ${pull}px)` box-sizing="border-box" position="relative" overflow="hidden"
+      display="flex" flex-direction="column" justify-content="flex-end" align-items="center" padding-bottom=40
+      padding-left="var(--exact-safe-area-inset-left)" padding-right="var(--exact-safe-area-inset-right)" testId="featured"
+      // Inside the safe area, its edges mirrored and blurred beyond it (the sample's backgroundExtensionEffect).
+      image `assets/apple/${l.id}.jpg` position="absolute" top=0 left="var(--exact-safe-area-inset-left)" height="100%"
+        width="calc(100% - var(--exact-safe-area-inset-left) - var(--exact-safe-area-inset-right))" object-fit="cover" -exact-background-extension="auto" aria-hidden=true testId="featured-image"
+      text "Featured Landmark" font="-exact-subheadline" font-weight=700 color="#ffffff" opacity=0.8 position="relative"
+      text l.name font="-exact-large-title" font-weight=700 color="#ffffff" position="relative"
+      button press=learn(l.id) buttonStyle="bordered-prominent" margin-bottom=6 margin-top=21 position="relative" testId="learn-more"
+        text "Learn More"
+
+// A row of cards that scrolls sideways: a fifth of the page's height, at least 140.
+component Strip
+  props
+    ls: Landmark[]
+    tid: string
+    menu: string
+    aim: action
+    open: action
+  view
+    list display="flex" width="100%" height="max(140px, 20cqh)" overflow-x="scroll" overflow-y="hidden" gap=14 padding-left="calc(28px + var(--exact-safe-area-inset-left))"
+      padding-right="calc(14px + var(--exact-safe-area-inset-right))" box-sizing="border-box" scrollbar-width="none" testId=tid
+      for l in ls key=l.id
+        Card(l=l, menu=menu, aim=aim, open=open)
+
+component Card
+  props
+    l: Landmark
+    menu: string
+    aim: action
+    open: action
+  view
+    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name contextmenu=aim(l.id) contextPopover=menu height="100%" aspect-ratio=1.4 flex-shrink=0 position="relative" border-radius=15 overflow="hidden"
+      display="flex" flex-direction="column" justify-content="flex-end" align-items="center" testId=`card-${l.id}`
+      image `assets/apple/${l.id}-thumb.jpg` id=`thumb-${l.id}` position="absolute" inset=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
+      view position="absolute" inset=0 background-image="linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 50%)"
+      text l.name font="-exact-title3" font-weight=600 color="#ffffff" text-align="center" padding-bottom=16 position="relative"
+
+// A card's long-press menu (LandmarkListItemView's `contextMenu`).
+component CardMenu
+  props
+    id: string
+    l: string
+    name: string
+    cols: Collection[]
+    toggle: action
+    share: action
+  view
+    column id=id popover="auto" role="menu"
+      button press=share(name, `#thumb-${l}`) popovertarget=id popovertargetaction="hide"
+        image "symbol:share"
+        text "Share…"
+      button press=toggle("1001", l) popovertarget=id popovertargetaction="hide"
+        image (isFavorite(cols, l) ? "symbol:heart-fill" : "symbol:heart")
+        text (isFavorite(cols, l) ? "Unfavorite" : "Favorite")
+      button popovertarget=`${id}-collections`
+        image "symbol:sf/book.closed"
+        text "Collections"
+      column id=`${id}-collections` popover="auto" role="menu" aria-label="Collections"
+        for c in cols.filter((x) => x.id != "1001") key=c.id
+          button role="menuitemcheckbox" aria-checked=c.landmarkIds.includes(l) press=toggle(c.id, l) popovertarget=`${id}-collections` popovertargetaction="hide"
+            text c.name
+
+// Landmarks in a grid of squares, `min` to 320 wide, each centred in its column (LandmarksGrid).
+component LandmarkGrid
+  props
+    ls: Landmark[]
+    min: number
+    links: bool
+    open: action
+  view
+    view display="grid" grid-template-columns=`repeat(auto-fill, minmax(${min}px, 1fr))` gap=14 justify-items="center"
+      for l in ls key=l.id
+        if links
+          link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name width="100%" max-width=320 aspect-ratio=1 position="relative" border-radius=15 overflow="hidden"
+            display="flex" flex-direction="column" justify-content="flex-end" align-items="center" testId=`tile-${l.id}`
+            Tile(l=l)
+        else
+          column width="100%" max-width=320 aspect-ratio=1 position="relative" border-radius=15 overflow="hidden"
+            justify-content="flex-end" align-items="center"
+            Tile(l=l)
+
+component Tile
+  props
+    l: Landmark
+  view
+    image `assets/apple/${l.id}-thumb.jpg` position="absolute" inset=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
+    view position="absolute" inset=0 background-image="linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 50%)"
+    text l.name font="-exact-title3" color="#ffffff" text-align="center" padding-bottom=16 padding-left=8 padding-right=8 position="relative"
+
+// A collection in the grid: its first landmark, four of them in a square once
+// it has four, else a book on a grey square; its name and count under it.
+component CollectionTile
+  props
+    c: Collection
+    ls: Landmark[]
+    open: action
+  view
+    link href=path("collection", c.id) press=open(path("collection", c.id)) aria-label=c.name max-width="18.125rem" display="flex" flex-direction="column" align-items="center" gap=4 testId=`collection-${c.id}`
+      if ls.length >= 4
+        row flex-wrap="wrap" width="100%" aspect-ratio=1 border-radius=8 overflow="hidden"
+          for l in ls.slice(0, 4) key=l.id
+            image `assets/apple/${l.id}-thumb.jpg` width="50%" height="50%" object-fit="cover" aria-hidden=true
+      else
+        if ls.length >= 1
+          for l in ls.slice(0, 1) key=l.id
+            image `assets/apple/${l.id}-thumb.jpg` width="100%" aspect-ratio=1 object-fit="cover" border-radius=15 aria-hidden=true
+        else
+          column width="100%" aspect-ratio=1 border-radius=8 background-color="-exact-secondary-fill" align-items="center" justify-content="center"
+            image "symbol:sf/book.closed" width="50%" height="50%" color="-exact-tertiary-label"
+      text c.name
+      text itemCount(ls.length) font="-exact-callout" color="-exact-secondary-label"
+
+// A collection being edited (CollectionDetailEditingView): its title, its
+// description and its landmarks, each under a heading, on cards.
+component CollectionEditor
+  props
+    c: Collection
+    ls: Landmark[]
+    name: string
+    description: string
+    editName: action
+    editDescription: action
+    select: action
+  view
+    // The cards are the sample's ultra-thick material (UIKit's chrome) on the editing ground.
+    column padding-left=26 padding-right=26 padding-bottom=26 gap=8
+      text "Title" font="-exact-title2" font-weight=600 color="-exact-secondary-label" padding-top=16
+      if c.id == "1001"
+        text c.name font="-exact-large-title" padding=16 backgroundMaterial="chrome" border-radius=15
+      else
+        input value=name input=editName(c.id) aria-label="Name" placeholder="Name" border="none" padding=16 backgroundMaterial="chrome" border-radius=15 testId="edit-name"
+      text "Description" font="-exact-title2" font-weight=600 color="-exact-secondary-label" padding-top=16
+      if c.id != "1001"
+        // The sample's editor is 88 high with UIKit's text insets inside it (8 above and below, 5 beside).
+        textarea value=description input=editDescription(c.id) aria-label="Description" border="none" height=72 padding="24px 21px" backgroundMaterial="chrome" border-radius=15 testId="edit-description"
+      text "Landmarks" font="-exact-title2" font-weight=600 color="-exact-secondary-label" padding-top=16
+      column backgroundMaterial="chrome" border-radius=15 padding="20px 16px 16px" gap=10
+        row justify-content="flex-end"
+          // A text button with no insets of its own, as SwiftUI's `Button` lays out
+          button press=select(c.id) padding=0 testId="select-landmarks"
+            text "Select"
+        LandmarkGrid(ls=ls, min=140, links=false, open=select)
+
+// The badges a person earned (BadgesView): a glass button that opens them
+// above it, each on glass, at the bottom trailing corner of the page.
+component Badges
+  props
+    ls: Landmark[]
+    checked: string[]
+    open: bool
+    toggle: action
+  view
+    column position="absolute" right="calc(16px + var(--exact-safe-area-inset-right))" bottom="calc(16px + var(--exact-safe-area-inset-bottom))" width=74 align-items="center" gap=20 glassGroup=16 testId="badges"
+      if open
+        column gap=14
+          for l in ls.filter((x) => earned(x, checked)) key=l.id
+            column backgroundMaterial="glass" border-radius=24 padding=12 aria-label=l.name
+              BadgeMark(l=l, size=52, hexagon=48, symbol=l.badgeSize)
+      // The sample's label is 24 by 32 points, which the glass button's insets make 48 by 46.
+      button press=toggle buttonStyle="glass" width=48 height=46 aria-label=(open ? "Hide Badges" : "Show Badges") testId="toggle-badges"
+        image (open ? "symbol:close" : "symbol:sf/hexagon.fill") font-size=17 font-weight=500
+
+// A badge: its symbol, white, on a hexagon of its colour.
+component BadgeMark
+  props
+    l: Landmark
+    size: number
+    hexagon: number
+    symbol: number
+  view
+    view width=size height=size position="relative" display="flex" align-items="center" justify-content="center"
+      image "symbol:sf/hexagon.fill" position="absolute" font-size=hexagon color=badgeColor(l.badgeColor) aria-hidden=true
+      image `symbol:sf/${l.badge}` position="relative" font-size=symbol font-weight=500 color="#ffffff" aria-hidden=true
+
+// A labelled value (LabeledContent), its value trailing, on as many lines as it has;
+// a value too long to stand beside its label goes under it.
+component Value
+  props
+    label: string
+    value: string
+  view
+    // SwiftUI's `LabeledContent` row is UIKit's value cell: 16 points above and below (52 for one
+    // line, 72 for two side by side), and 3 between the label and a value wrapped under it
+    row align-items="center" flex-wrap="wrap" column-gap=16 row-gap=3 padding-top=16 padding-bottom=16
+      text label
+      column flex-grow=1 align-items="flex-end"
+        text value text-align="end" white-space="pre-line" color="-exact-secondary-label"

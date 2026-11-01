@@ -1,0 +1,13 @@
+# Landscapes: queue
+
+What to do next for this template, most pressing first. Add a line when you find something worth doing; delete it when it lands.
+
+- **Its Exact cannot be fetched yet** (2026-11-01). `exact.json` pins `dde25b2dff` on `duo/series-rebase` of github.com/ide/exact2, which is not pushed there, so `new.mjs` stops at the fetch. Until it is, make apps with `--exact2 <a checkout of the series>`.
+- **The build should fetch the photos itself** (2026-11-01). `scripts/fetch-images.sh` must be run by hand before the first build. Exact has no step that runs an app's own script before a build: the bake runs in the build scripts `exact new` generates. Proposed: an `app.json` key in Exact, such as `"before_build": ["sh", "scripts/fetch-images.sh"]`, run in the app's folder before every build, test and agent run.
+- **Three of the four tests stop at the bar's grouped buttons** (2026-11-01, in Exact). `bun exact.mjs test ios` on the open Duo refuses to tap Favorite and Info, which are in a `row role="group"` in the landmark's header: "tap #161: `_UIButtonBarButton`, in node #1, covers its middle". The driver finds a header button's bar item through the navigation's `barItem`; a grouped item is apparently not found that way, so the tap falls back to the node's own point, under UIKit's button.
+- **The web build opens on the sidebar's list** (2026-11-01). `bun exact.mjs test web` fails "a compact width opens on the Landmarks page", and the other tests then find no cards. iOS opens on `start_url`'s Landmarks page.
+- **The mirror's seam and its motion.** At a 130° fold UIKit's own `UIBackgroundExtensionView` draws a light column one pixel wide at the fold band's edge (Apple's sample shows it too). While the Duo folds, a white band several pixels wide opens between the mirror and the photo for a few frames.
+- **The hero's press depth and release.** Measured at one hero pixel (about 70 red at rest): pressed, the sample shows 117 and Exact 134; released, the sample brightens to about 160 for about 40 ms before it pushes, and Exact pushes at once.
+- **Focusing a new collection's title scrolls the page further than needed.** Compare with a hand-built UIKit screen with a field at the same place, then Exact's keyboard reveal.
+- **The delete button should anchor its confirmation** (in Exact). A header button with `commandfor` and `command="show-modal"` and no `press` is left out of the bar, so the confirmation is a centred alert where the sample's is an action sheet at the trash button.
+- **Move to Exact's new safe-area API when it lands.** The paddings by `var(--exact-safe-area-inset-left)` and `-right` and the `-exact-safe-area` opt-outs then go.

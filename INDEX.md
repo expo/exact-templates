@@ -9,3 +9,11 @@ A chat app: a list of conversations, a transcript that follows its newest messag
 Keywords: chat, messaging, messenger, conversation, inbox, transcript, bubbles, composer, keyboard, typing indicator, read receipt, reply, context menu, peek, popover, Liquid Glass, split view, sidebar, drafts, local persistence.
 
 Hosts verified: web; iOS 27 on iPhone, iPad and iPhone Duo. Built on Exact `ad181418b3` (`chat/exact.json`).
+
+## landscapes
+
+A gallery of the world's landmarks, ported from Apple's sample "Landmarks: Building an app with Liquid Glass": a sidebar of Landmarks, Map and Collections, a landmark's page with an Info inspector, and collections to make and edit. Its photos come from Apple: `sh scripts/fetch-images.sh` fetches them before the first build.
+
+Keywords: landmarks, places, travel, gallery, photos, featured hero, background extension, map, MapKit, collections, favorites, sidebar, split view, inspector, segmented control, cards in a row that scrolls sideways, grid, long-press menu, share, badges, edit mode, Liquid Glass, foldable, iPhone Duo, port of an Apple sample.
+
+Hosts verified: iOS 27.1 on the iPhone Duo, open and closed (1 of 4 tests passes; see `TEMPLATE.md`). Built on Exact `dde25b2dff` (`landscapes/exact.json`).

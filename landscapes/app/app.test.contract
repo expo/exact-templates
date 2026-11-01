@@ -1,0 +1,40 @@
+test "a compact width opens on the Landmarks page"
+  clock settle
+  expect tree has "route-landmarks"
+  expect tree has "featured"
+
+test "a card opens its landmark, and Favorite adds it to Favorites"
+  clock settle
+  tap "card-1002"
+  clock settle
+  expect text "detail-name" == "Serengeti"
+  tap "favorite"
+  clock data
+  expect state cols.0 .landmarkIds.4 == "1002"
+
+test "Favorite on a favorite takes it out of Favorites"
+  clock settle
+  tap "card-1001"
+  clock settle
+  tap "favorite"
+  clock data
+  expect state cols.0 .landmarkIds.0 == "1021"
+
+test "Info keeps Map or Activities across a close and another landmark, as the sample's inspector does"
+  clock settle
+  tap "card-1016"
+  clock settle
+  tap "info"
+  clock settle
+  tap "segment-activities"
+  clock settle
+  back
+  clock settle
+  back
+  clock settle
+  tap "card-1017"
+  clock settle
+  tap "info"
+  clock settle
+  expect state segment == "activities"
+  expect tree has "info-activities"
