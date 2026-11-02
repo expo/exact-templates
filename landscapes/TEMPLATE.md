@@ -8,7 +8,7 @@ There are no screenshots: every screen shows Apple's photographs, which the samp
 
 ## Apple's sample, its license and the photos
 
-`app/LICENSE-APPLE.txt` is Apple's notice for the sample (Copyright 2026 Apple Inc.). It lets anyone use, modify and redistribute the sample's code and text, which `data/landmarks.json` holds, but it "does not include any accompanying photographs". So this template holds no photos: `app/scripts/fetch-images.sh` downloads the photos and the app icon from Apple into `assets/apple/`, which Git ignores (this repository's `.gitignore`, and the `.gitignore` the script writes in that folder for apps made from the template). Run it once before the first build:
+`app/LICENSE-APPLE.txt` is Apple's notice for the sample (Copyright 2026 Apple Inc.). It lets anyone use, modify and redistribute the sample's code and text, which `data/landmarks.json` holds, but it "does not include any accompanying photographs". So this template holds no photos: `app/scripts/fetch-images.sh` downloads the photos and the app icon from Apple into `assets/apple/`, which Git ignores (this repository's `.gitignore`, and the `.gitignore` the script writes in that folder for apps made from the template). `app.json`'s `before_build` runs it before every build, so the photos are there without a step of your own. To fetch them ahead, run it alone:
 
 ```sh
 sh scripts/fetch-images.sh
@@ -37,18 +37,18 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 
 ## Adapt
 
-- Your own places: replace `data/landmarks.json`, put your photos in a folder Git keeps, such as `assets/places/`, as `<id>.jpg` and `<id>-thumb.jpg`, and change the contract's `assets/apple/` paths to it. Then delete `scripts/fetch-images.sh` and `assets/apple/`, and name your own icon in `app.json`'s `host.ios.icon`.
+- Your own places: replace `data/landmarks.json`, put your photos in a folder Git keeps, such as `assets/places/`, as `<id>.jpg` and `<id>-thumb.jpg`, and change the contract's `assets/apple/` paths to it. Then delete `scripts/fetch-images.sh`, `assets/apple/` and `app.json`'s `before_build`, and name your own icon in `app.json`'s `host.ios.icon`.
 - The continents' order is `continents()`; the favorites are the collection with id `1001` (`isFavorite`).
 - Collections last until the app quits: `sources` in `app.ts` is where to save them.
 
 ## Verified
 
-On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, with the photos `fetch-images.sh` fetched, shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` on the open Duo passes 1 of its 4 tests: the other 3 stop where the test driver taps a bar button in a `row role="group"` ("`_UIButtonBarButton` … covers its middle"). `bun exact.mjs test web` fails all 4: the web build opens on the sidebar's list, not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
+On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` on the open Duo passes 1 of its 4 tests: the other 3 stop where the test driver taps a bar button in a `row role="group"` ("`_UIButtonBarButton` … covers its middle"). `bun exact.mjs test web` fails all 4: the web build opens on the sidebar's list, not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
 
 ## Needs
 
-Exact's iPhone Duo series at `a0e096c45c`, which `exact.json` pins: branch `duo/series-rebase` of github.com/ide/exact2, 18 commits on Exact's main at `ff53dbbcb9`. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` and the `--exact-safe-area-inset-*` values, `-exact-background-extension`, the inspector (`navigationInspector`) and its closing with the pop, and the split on the Duo.
+Exact's iPhone Duo series at `f9744dd955`, which `exact.json` pins: branch `duo/series-rebase` of github.com/ide/exact2, 19 commits on Exact's main at `ff53dbbcb9`. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` and the `--exact-safe-area-inset-*` values, `-exact-background-extension`, the inspector (`navigationInspector`) and its closing with the pop, the split on the Duo, and `app.json`'s `before_build`.
 
 ## Limits
 
-`QUEUE.md` has what is left to do. In short, the photos must be fetched before the first build: no build step runs the script yet. The web build opens on the wrong page, and three of the four tests stop at the bar's grouped buttons. Fetching the photos needs a Mac.
+`QUEUE.md` has what is left to do. In short, the web build opens on the wrong page, and three of the four tests stop at the bar's grouped buttons. Fetching the photos needs a Mac (`sips` scales them), so on another machine every build stops at `before_build` until `assets/apple/` is copied from a Mac; the script then finds it complete.

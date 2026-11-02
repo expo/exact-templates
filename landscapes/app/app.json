@@ -28,5 +28,9 @@
   },
   "modules": [
     "landmark-map"
+  ],
+  "before_build": [
+    "sh",
+    "scripts/fetch-images.sh"
   ]
 }

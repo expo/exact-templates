@@ -12,8 +12,8 @@ Hosts verified: web; iOS 27 on iPhone, iPad and iPhone Duo. Built on Exact `ad18
 
 ## landscapes
 
-A gallery of the world's landmarks, ported from Apple's sample "Landmarks: Building an app with Liquid Glass": a sidebar of Landmarks, Map and Collections, a landmark's page with an Info inspector, and collections to make and edit. Its photos come from Apple: `sh scripts/fetch-images.sh` fetches them before the first build.
+A gallery of the world's landmarks, ported from Apple's sample "Landmarks: Building an app with Liquid Glass": a sidebar of Landmarks, Map and Collections, a landmark's page with an Info inspector, and collections to make and edit. Its photos come from Apple: `scripts/fetch-images.sh` fetches them, and every build runs it first (`before_build`).
 
 Keywords: landmarks, places, travel, gallery, photos, featured hero, background extension, map, MapKit, collections, favorites, sidebar, split view, inspector, segmented control, cards in a row that scrolls sideways, grid, long-press menu, share, badges, edit mode, Liquid Glass, foldable, iPhone Duo, port of an Apple sample.
 
-Hosts verified: iOS 27.1 on the iPhone Duo, open and closed (1 of 4 tests passes; see `TEMPLATE.md`). Built on Exact `a0e096c45c` (`landscapes/exact.json`).
+Hosts verified: iOS 27.1 on the iPhone Duo, open and closed (1 of 4 tests passes; see `TEMPLATE.md`). Built on Exact `f9744dd955` (`landscapes/exact.json`).
