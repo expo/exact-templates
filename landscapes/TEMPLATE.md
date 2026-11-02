@@ -47,7 +47,7 @@ On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.
 
 ## Needs
 
-Exact's iPhone Duo series at `dde25b2dff`, which `exact.json` pins: branch `duo/series-rebase` of github.com/ide/exact2, 18 commits on Exact's main at `ff53dbbcb9`. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` and the `--exact-safe-area-inset-*` values, `-exact-background-extension`, the inspector (`navigationInspector`) and its closing with the pop, and the split on the Duo.
+Exact's iPhone Duo series at `a0e096c45c`, which `exact.json` pins: branch `duo/series-rebase` of github.com/ide/exact2, 18 commits on Exact's main at `ff53dbbcb9`. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` and the `--exact-safe-area-inset-*` values, `-exact-background-extension`, the inspector (`navigationInspector`) and its closing with the pop, and the split on the Duo.
 
 ## Limits
 
