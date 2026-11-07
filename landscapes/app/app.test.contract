@@ -28,13 +28,27 @@ test "Info keeps Map or Activities across a close and another landmark, as the s
   clock settle
   tap "segment-activities"
   clock settle
+  // Closed, a sheet that Back dismisses; open, a column that goes with the page Back pops
   back
   clock settle
-  back
-  clock settle
-  tap "card-1017"
+  type "app" "/landmark/1017"
   clock settle
   tap "info"
   clock settle
   expect state segment == "activities"
   expect tree has "info-activities"
+
+test "Done in the landmark picker returns to the collection still being edited"
+  at "/collection/1002"
+  clock settle
+  tap "edit-collection"
+  clock settle
+  tap "select-landmarks"
+  clock settle
+  tap "select-1003"
+  clock data
+  tap "select-done"
+  clock settle
+  expect tree has "done-editing"
+  expect tree has "edit-name"
+  expect state cols.1 .landmarkIds.4 == "1003"

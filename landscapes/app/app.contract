@@ -95,11 +95,6 @@ component Landmarks
   // The inspector's Map or Activities, kept while the app runs: the sample's inspector keeps
   // its choice across a close, another landmark, another page and a fold.
   state segment = "map"
-  state editing = false
-  // Edit or Done was pressed on this page: its content fades between the two.
-  state toggled = false
-  state draftName = ""
-  state draftDescription = ""
   // The card whose context menu is open.
   state aimed = ""
   state showingBadges = false
@@ -107,16 +102,13 @@ component Landmarks
   // grows by as much, its top staying at the screen's (the sample's FlexibleHeader).
   state featuredPull = 0
   state heroPull = 0
+  derive addedId = match added { case some(r) => r.id, case none => "" }
 
   // A page chosen in the list replaces the detail, as the sample's sidebar does: `open` lands
   // in its declared chain, the list and the page; any other location goes as usual.
   action follow(url: string)
-    editing = false
-    toggled = false
     nav = ["/landmarks", "/map", "/collections"].includes(url) ? open(nav, url) : go(nav, url)
   action back
-    editing = false
-    toggled = false
     nav = back(nav)
   action learn(id: string)
     nav = push(nav, path("landmark", id))
@@ -139,29 +131,13 @@ component Landmarks
   action addCollection
     send added = addCollection()
   action openAdded
-    match added
-      case some(r)
-        nav = push(nav, path("collection", r.id))
-      case none
-        editing = false
-  action startEditing(c: Collection)
-    draftName = c.name
-    draftDescription = c.description
-    editing = true
-    toggled = true
-  action stopEditing
-    editing = false
-    toggled = true
-  action editName(id: string, v: string)
-    draftName = v
+    if addedId != ""
+      nav = push(nav, path("collection", addedId))
+  action saveName(id: string, v: string)
     send changed = rename(id, v)
-  action editDescription(id: string, v: string)
-    draftDescription = v
+  action saveDescription(id: string, v: string)
     send changed = describe(id, v)
-  action askDelete
-    showModal("delete-collection")
   action deleteCollection(id: string)
-    editing = false
     send changed = removeCollection(id)
     nav = back(nav)
   action openSelect(id: string)
@@ -269,40 +245,8 @@ component Landmarks
 
         if e.name == "collection"
           for c in cols.filter((x) => x.id == e.params.id) key=c.id
-            column navigationKey=`${e.id}` navigationScroll="collection-scroll" testId="route-collection" position="absolute" inset=0 display="flex" flex-direction="column"
-              background-color=(editing ? "light-dark(#e5e5ea, #000000)" : "-exact-background") transition="background-color 350ms ease"
-              header
-                // Disabled while editing: no Back leaves the editor, as the sample hides it.
-                button id="back" press=back disabled=editing aria-label="Collections" testId="collection-back"
-                  image "symbol:back"
-                if editing and c.id != "1001"
-                  button press=askDelete destructive=true aria-label="Delete" testId="delete-collection"
-                    image "symbol:delete" color="-exact-system-red"
-                text "" role="heading" aria-level=2
-                if editing
-                  button press=stopEditing aria-label="Done" testId="done-editing"
-                    image "symbol:checkmark"
-                else
-                  button press=startEditing(c) testId="edit-collection"
-                    text "Edit"
-              scroll id="collection-scroll" flex=1 min-height=0 testId="collection-scroll"
-                // Edit and Done fade one content into the other; a push shows it at once.
-                if editing
-                  column animation=(toggled ? "appear 350ms ease both" : "none") -exact-exit-animation="vanish 350ms ease both"
-                    CollectionEditor(c=c, ls=members(c, data.landmarks), name=draftName, description=draftDescription,
-                      editName=editName, editDescription=editDescription, select=openSelect)
-                else
-                  column padding-left=26 padding-right=26 padding-bottom=26 gap=8 animation=(toggled ? "appear 350ms ease both" : "none") -exact-exit-animation="vanish 350ms ease both"
-                    text c.name role="heading" aria-level=1 font="-exact-large-title" font-weight=500 padding-top=16 testId="collection-name"
-                    // SwiftUI's spacing under the large title is 13 more than the stack's 8 (measured).
-                    text c.description font="-exact-title2" padding-top=29 padding-bottom=16
-                    LandmarkGrid(ls=members(c, data.landmarks), min=160, links=true, open=follow)
-              dialog id="delete-collection" role="alertdialog" aria-label=`Delete “${c.name}”?`
-                text "This can’t be undone."
-                button press=deleteCollection(c.id) destructive=true commandfor="delete-collection" command="close" testId="delete-confirm"
-                  text "Delete"
-                button commandfor="delete-collection" command="close" testId="delete-keep"
-                  text "Keep"
+            CollectionPage(entry=e.id, c=c, ls=members(c, data.landmarks), back=back, open=follow, select=openSelect,
+              saveName=saveName, saveDescription=saveDescription, remove=deleteCollection)
 
         if e.name == "select"
           for c in cols.filter((x) => x.id == e.params.id) key=c.id
@@ -316,7 +260,8 @@ component Landmarks
                   section
                     header
                       text continent
-                    for l in data.landmarks.filter((x) => x.continent == continent) key=l.id
+                    // By name, as the sample's picker (ModelData.landmarks(in:)); the page's strips keep its order
+                    for l in sortBy(data.landmarks.filter((x) => x.continent == continent), (x) => x.name) key=l.id
                       button press=toggle(c.id, l.id) display="flex" align-items="center" testId=`select-${l.id}`
                         image `assets/apple/${l.id}-thumb.jpg` width=48 height=48 object-fit="cover" border-radius=8 margin-right=14 aria-hidden=true
                         text l.name font="-exact-title3" flex=1
@@ -497,6 +442,77 @@ component CollectionTile
       text c.name
       text itemCount(ls.length) font="-exact-callout" color="-exact-secondary-label"
 
+// A collection's page (CollectionDetailView), shown or being edited. Its editing is its own,
+// made when the page is pushed and gone when it is popped, as the sample's `@State` is: the
+// landmarks picker over it leaves it editing, and another collection opens shown.
+component CollectionPage
+  props
+    entry: number
+    c: Collection
+    ls: Landmark[]
+    back: action
+    open: action
+    select: action
+    saveName: action
+    saveDescription: action
+    remove: action
+  state editing = false
+  // Edit or Done was pressed on this page: its content fades between the two.
+  state toggled = false
+  state draftName = ""
+  state draftDescription = ""
+  action startEditing
+    draftName = c.name
+    draftDescription = c.description
+    editing = true
+    toggled = true
+  action stopEditing
+    editing = false
+    toggled = true
+  action editName(v: string)
+    draftName = v
+    saveName(c.id, v)
+  action editDescription(v: string)
+    draftDescription = v
+    saveDescription(c.id, v)
+  action askDelete
+    showModal("delete-collection")
+  view
+    column navigationKey=`${entry}` navigationScroll="collection-scroll" testId="route-collection" position="absolute" inset=0 display="flex" flex-direction="column"
+      background-color=(editing ? "light-dark(#e5e5ea, #000000)" : "-exact-background") transition="background-color 350ms ease"
+      header
+        // Disabled while editing: no Back leaves the editor, as the sample hides it.
+        button id="back" press=back disabled=editing aria-label="Collections" testId="collection-back"
+          image "symbol:back"
+        if editing and c.id != "1001"
+          button press=askDelete destructive=true aria-label="Delete" testId="delete-collection"
+            image "symbol:delete" color="-exact-system-red"
+        text "" role="heading" aria-level=2
+        if editing
+          button press=stopEditing aria-label="Done" testId="done-editing"
+            image "symbol:checkmark"
+        else
+          button press=startEditing testId="edit-collection"
+            text "Edit"
+      scroll id="collection-scroll" flex=1 min-height=0 testId="collection-scroll"
+        // Edit and Done fade one content into the other; a push shows it at once.
+        if editing
+          column animation=(toggled ? "appear 350ms ease both" : "none") -exact-exit-animation="vanish 350ms ease both"
+            CollectionEditor(c=c, ls=ls, name=draftName, description=draftDescription,
+              editName=editName, editDescription=editDescription, select=select)
+        else
+          column padding-left=26 padding-right=26 padding-bottom=26 gap=8 animation=(toggled ? "appear 350ms ease both" : "none") -exact-exit-animation="vanish 350ms ease both"
+            text c.name role="heading" aria-level=1 font="-exact-large-title" font-weight=500 padding-top=16 testId="collection-name"
+            // SwiftUI's spacing under the large title is 13 more than the stack's 8 (measured).
+            text c.description font="-exact-title2" padding-top=29 padding-bottom=16
+            LandmarkGrid(ls=ls, min=160, links=true, open=open)
+      dialog id="delete-collection" role="alertdialog" aria-label=`Delete “${c.name}”?`
+        text "This can’t be undone."
+        button press=remove(c.id) destructive=true commandfor="delete-collection" command="close" testId="delete-confirm"
+          text "Delete"
+        button commandfor="delete-collection" command="close" testId="delete-keep"
+          text "Keep"
+
 // A collection being edited (CollectionDetailEditingView): its title, its
 // description and its landmarks, each under a heading, on cards.
 component CollectionEditor
@@ -515,11 +531,11 @@ component CollectionEditor
       if c.id == "1001"
         text c.name font="-exact-large-title" padding=16 backgroundMaterial="chrome" border-radius=15
       else
-        input value=name input=editName(c.id) aria-label="Name" placeholder="Name" border="none" padding=16 backgroundMaterial="chrome" border-radius=15 testId="edit-name"
+        input value=name input=editName aria-label="Name" placeholder="Name" border="none" padding=16 backgroundMaterial="chrome" border-radius=15 testId="edit-name"
       text "Description" font="-exact-title2" font-weight=600 color="-exact-secondary-label" padding-top=16
       if c.id != "1001"
         // The sample's editor is 88 high with UIKit's text insets inside it (8 above and below, 5 beside).
-        textarea value=description input=editDescription(c.id) aria-label="Description" border="none" height=72 padding="24px 21px" backgroundMaterial="chrome" border-radius=15 testId="edit-description"
+        textarea value=description input=editDescription aria-label="Description" border="none" height=72 padding="24px 21px" backgroundMaterial="chrome" border-radius=15 testId="edit-description"
       text "Landmarks" font="-exact-title2" font-weight=600 color="-exact-secondary-label" padding-top=16
       column backgroundMaterial="chrome" border-radius=15 padding="20px 16px 16px" gap=10
         row justify-content="flex-end"
