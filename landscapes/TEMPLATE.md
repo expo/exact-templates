@@ -28,7 +28,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 | A landmark's page: its photo with the mirror, growing when pulled; Share, Favorite, its collections and Info in the bar | the `landmark` route, `pullHero`, `id="collections-menu"` |
 | The Info inspector: beside the page on an open Duo, a sheet when closed; Map or Activities, kept across a close and another landmark; the metadata; the activities and the badge they earn | the `info` route (`navigationInspector=true`), `segment`, `Value`, `activities`, `BadgeMark` |
 | Collections: Favorites as a row of cards, My Collections as a grid; + adds one and opens it | the `collections` route, `CollectionTile`, `addCollection`, `openAdded` |
-| A collection: Edit to rename it, describe it and choose its landmarks in a sheet; Delete behind the platform's alert. Editing is the page's own state, made with it and gone with it, so the sheet over it leaves it editing | the `collection` route, `CollectionPage` (its `editing`), `CollectionEditor`, the `select` route, `id="delete-collection"` |
+| A collection: Edit to rename it, describe it and choose its landmarks in a sheet; Delete behind the platform's alert. Editing is the page's own state, made with it and gone with it, so the sheet over it leaves it editing | the `collection` route, `CollectionPage` (its `editing`), `CollectionEditor`, the `select` route, the `delete-collection-…` dialog, its id the page's entry |
 | The earned badges, behind a glass button in the corner | `Badges`, `toggleBadges` |
 
 ## Files
@@ -43,7 +43,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 
 ## Verified
 
-On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` passes all 5 of its tests on the open Duo and on the closed one. `bun exact.mjs test web` has not been run on this Exact; on the last one it failed all 4, the web build opening on the sidebar's list and not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
+On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` passes all 6 of its tests on the open Duo and on the closed one. `bun exact.mjs test web` has not been run on this Exact; on the last one it failed all 4, the web build opening on the sidebar's list and not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
 
 ## Needs
 

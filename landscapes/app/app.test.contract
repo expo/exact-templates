@@ -52,3 +52,16 @@ test "Done in the landmark picker returns to the collection still being edited"
   expect tree has "done-editing"
   expect tree has "edit-name"
   expect state cols.1 .landmarkIds.4 == "1003"
+
+test "Delete asks first, then removes the collection and leaves its page"
+  at "/collection/1003"
+  clock settle
+  tap "edit-collection"
+  clock settle
+  tap "delete-collection"
+  clock settle
+  tap "delete-confirm"
+  clock data
+  clock settle
+  expect state cols.2 .id == "1004"
+  expect tree missing "route-collection"

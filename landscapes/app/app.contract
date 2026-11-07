@@ -476,7 +476,7 @@ component CollectionPage
     draftDescription = v
     saveDescription(c.id, v)
   action askDelete
-    showModal("delete-collection")
+    showModal(`delete-collection-${entry}`)
   view
     column navigationKey=`${entry}` navigationScroll="collection-scroll" testId="route-collection" position="absolute" inset=0 display="flex" flex-direction="column"
       background-color=(editing ? "light-dark(#e5e5ea, #000000)" : "-exact-background") transition="background-color 350ms ease"
@@ -506,11 +506,12 @@ component CollectionPage
             // SwiftUI's spacing under the large title is 13 more than the stack's 8 (measured).
             text c.description font="-exact-title2" padding-top=29 padding-bottom=16
             LandmarkGrid(ls=ls, min=160, links=true, open=open)
-      dialog id="delete-collection" role="alertdialog" aria-label=`Delete “${c.name}”?`
+      // Its id is the entry's: ids resolve across the whole app, the pages beneath included
+      dialog id=`delete-collection-${entry}` role="alertdialog" aria-label=`Delete “${c.name}”?`
         text "This can’t be undone."
-        button press=remove(c.id) destructive=true commandfor="delete-collection" command="close" testId="delete-confirm"
+        button press=remove(c.id) destructive=true commandfor=`delete-collection-${entry}` command="close" testId="delete-confirm"
           text "Delete"
-        button commandfor="delete-collection" command="close" testId="delete-keep"
+        button commandfor=`delete-collection-${entry}` command="close" testId="delete-keep"
           text "Keep"
 
 // A collection being edited (CollectionDetailEditingView): its title, its
