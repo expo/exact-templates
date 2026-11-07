@@ -39,18 +39,32 @@ Keywords: chat, messaging, messenger, conversation, inbox, thread, transcript, m
 
 ## Verified
 
-`bun test`, `bun exact.mjs test web`, and `bun exact.mjs test ios` on an iPhone 18 Pro (iOS 27.0), an iPad Pro 11-inch (iOS 27.0) and an iPhone Duo (iOS 27.1, closed) simulator pass. An app made from this template with `new.mjs` passes `bun test`, `bun exact.mjs test web` and `bun exact.mjs test ios` on the iPhone and the iPad. The macOS, Linux and Android builds have not been run.
+At Exact `ad181418b3`, `bun test`, `bun exact.mjs test web`, and `bun exact.mjs test ios` on an iPhone 18 Pro (iOS 27.0), an iPad Pro 11-inch (iOS 27.0) and an iPhone Duo (iOS 27.1, closed) simulator passed, as did an app made from this template with `new.mjs` on the iPhone and the iPad.
+
+At `4b7d8dfa08`, an app made from this template with `new.mjs` passes `bun test`, `bun exact.mjs test web` and `bun exact.mjs test ios` on an iPhone 18 Pro (iOS 27.0) simulator; the iPad and the Duo were not run again. `bun exact.mjs verify` and `bun exact.mjs verify ios` both exit 0, but that exit covers the tests, not every finding: the web report lists 41 problems and the iOS report 13, which Limits describes. On the same simulator, opened at `/conversations/alex` with the platform's timing and touches and filmed in real time, a draft typed before the + card opened and a message received from it are both in the saved conversation, and the settled frame shows the draft, its caret and the software keyboard back. (That drive's own final check read the first row of the inbox, which by then was another conversation, so the drive itself is not counted as a pass.)
+
+The macOS, Linux and Android builds have not been run.
 
 ## Needs
 
-Exact at `ad181418b3`, which `exact.json` pins (branch `chat/messages-1123` of github.com/ide/exact2, made from `08677d8584`). That branch is not on Exact's main yet. The template relies on what it adds:
+Exact at `4b7d8dfa08`, which `exact.json` pins (branch `chat/delivery-wave1-20261107` of github.com/ide/exact2, made from `ad181418b3`). That branch is not on Exact's main yet. The template relies on what it adds:
 
-- The composer: the + card over the keyboard, glass that answers a finger around a field, a field that scrolls only once its text overflows, and the keys counted once in the safe area of a route whose search is in the bar, taken down by a drag from the top of that bar or of the composer, or by a swipe down the search field.
-- The list: the sidebar's lines and its highlight, which stays in the tint while the app is in the background and moves to a conversation its peek opens; the selected row's text in the colours the platform's own selected cell takes; a held row's press, which leaves a sidebar row that peeks as it is; and the split's columns following a row's press after the Duo folds, goes Back and unfolds.
+- The composer: the + card over the keyboard, which keeps the field's editing and selection while it stands the keys down and returns them when it closes; cards queued behind a closing card or returning keys, which wait for those to finish; plain, manual and nested popovers opened inside the card, shown in it; glass that answers a finger around a field and lets go when the field stops taking part; a material's gradient mask whose stops move with its frame; a field that scrolls only once its text overflows; and the keys counted once in the safe area of a route whose search is in the bar, taken down by a drag from the top of that bar or of the composer, or by a swipe down the search field, which keeps the search and its text.
+- The list: the sidebar's lines and its highlight, which stays in the tint while the app is in the background and moves to a conversation its peek opens; the selected row's text in the colours the platform's own selected cell takes; a held row's press, which leaves a sidebar row that peeks as it is and ends when its window goes; and the split's columns following a row's press after the Duo folds, goes Back and unfolds.
 - Long presses: a row's peek, which lifts the row with its cell, in a sidebar's rounded shape on the sidebar's ground or across a phone's width past its side safe area, and grows into the conversation it opens in place of the open one; the contact's in the bar's title, which lifts its avatar alone; a balloon lifted in its own outline, tail included; and links among a context menu's rows.
-- The transcript: its keyboard, inset and rubber band handling; its glide to an end that moved up (a typing indicator hiding, a message deleted); rows that move from where they showed as a deleted message fades; a balloon's opacity set in the resize round that measures it; and a header avatar drawn with its gradient and rounded initials.
+- The transcript: its keyboard, inset and rubber band handling; its glide to an end that moved up (a typing indicator hiding, a message deleted); rows that move from where they showed as a deleted message fades; a balloon's opacity set in the resize round that measures it; a header avatar drawn with its gradient and rounded initials; and the first screen's lists built for the window's size, not a default.
 - `verify`'s acceptance of a list row's finding by its templated testId.
 
 ## Limits
 
-`QUEUE.md` has what is left to do. In short, a wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height. Hardware and floating keyboards are untested. A popover opened from inside the + card by a control without glass, or a `popover="manual"` one, shows behind the card. Video is a FaceTime link, which only Apple devices open.
+`QUEUE.md` has what is left to do.
+
+- The + is a 40-point target; `verify ios` reports it under the 44-point minimum.
+- Five type sizes are fixed and do not grow with Dynamic Type (`app.contract:387` and `:447`, `bubble.contract:160`, `composer.contract:81` and `:83`). Both `verify` runs report them.
+- At the largest text size on the web, the list's names are clipped, the page runs past the viewport's side, and the bar's contact, the Cancel of choosing and the send's flight overlap or overflow what is next to them.
+- With the contact's menu open, both `verify` runs find its rows over the transcript and the list beneath: at the largest text size on iOS, and at the default size on the web. The web run also finds the bar avatar's initials under the 4.5:1 contrast minimum. The iOS menu's largest-text layout remains unqualified: the report alone cannot distinguish intended occlusion from a misplaced menu.
+- A wrapped balloon is as wide as its maximum, not its longest line. The field grows only to its maximum height.
+- Hardware and floating keyboards are untested. Cancelling an interactive dismissal of a custom card at zero progress is unqualified: a plain UIKit controller stalls there too.
+- The open iPhone Duo, a card on an external screen and the first frame the compositor shows are unchecked.
+- The runner's and the native host's first-batch tests pass, but the probe that counts the first screen's boot work cannot attribute its count to the boot alone.
+- Video is a FaceTime link, which only Apple devices open.
