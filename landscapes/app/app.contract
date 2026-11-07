@@ -199,25 +199,25 @@ component Landmarks
         if e.name == "landmarks"
           // Under the side strip as under the bar: the pictures reach there, as the
           // sample's background extension draws them; the rest is padded clear.
-          column navigationKey=`${e.id}` navigationScroll="landmarks-scroll" navigationBar="transparent" -exact-safe-area="left right" testId="route-landmarks" position="absolute" inset=0 display="flex" flex-direction="column"
+          column navigationKey=`${e.id}` navigationScroll="landmarks-scroll" navigationBar="transparent" testId="route-landmarks" position="absolute" inset=0 display="flex" flex-direction="column"
             scroll id="landmarks-scroll" flex=1 min-height=0 scrollbar-width="none" scroll=pullFeatured testId="landmarks-scroll"
               column gap=14
                 for f in data.landmarks.filter((l) => l.id == "1016") key=f.id
                   Featured(l=f, learn=learn, open=follow, pull=featuredPull)
                 for c in continents() key=c
                   column
-                    text c role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-top=8 padding-bottom=10
+                    text c role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left=26 padding-top=8 padding-bottom=10
                     Strip(ls=data.landmarks.filter((l) => l.continent == c), tid=`strip-${c}`, menu=`card-menu-${e.id}`, aim=aim, open=follow)
             CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
 
         if e.name == "map"
-          column navigationKey=`${e.id}` navigationBar="transparent" -exact-safe-area="none" testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
-            landmark-map flex=1 min-height=0 width="100%" items=places(data.landmarks) userLocation="true" aria-label="A map of every landmark" testId="map"
+          column navigationKey=`${e.id}` navigationBar="transparent" testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
+            landmark-map flex=1 min-height=0 width="100%" -exact-safe-area="ignore" items=places(data.landmarks) userLocation="true" aria-label="A map of every landmark" testId="map"
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
 
         if e.name == "collections"
-          column navigationKey=`${e.id}` navigationScroll="collections-scroll" -exact-safe-area="left right" testId="route-collections" position="absolute" inset=0 display="flex" flex-direction="column"
+          column navigationKey=`${e.id}` navigationScroll="collections-scroll" testId="route-collections" position="absolute" inset=0 display="flex" flex-direction="column"
             header
               text "Collections" role="heading" aria-level=1
               button press=addCollection aria-label="Add" testId="add-collection"
@@ -225,11 +225,11 @@ component Landmarks
             scroll id="collections-scroll" flex=1 min-height=0
               column gap=14 padding-bottom=14
                 for fav in cols.filter((c) => c.id == "1001") key=fav.id
-                  text "Favorites" role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-top=8
+                  text "Favorites" role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left=26 padding-top=8
                   Strip(ls=members(fav, data.landmarks), tid="strip-favorites", menu=`card-menu-${e.id}`, aim=aim, open=follow)
                 // The sample's stack puts this title 6 points nearer the carousel above it than its continent titles
-                text "My Collections" role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-top=2
-                view display="grid" grid-template-columns="repeat(auto-fill, minmax(160px, 1fr))" gap=14 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-right="calc(14px + var(--exact-safe-area-inset-right))" testId="collections-grid"
+                text "My Collections" role="heading" aria-level=2 font="-exact-title2" font-weight=700 padding-left=26 padding-top=2
+                view display="grid" grid-template-columns="repeat(auto-fill, minmax(160px, 1fr))" gap=14 padding-left=26 padding-right=14 testId="collections-grid"
                   for c in cols.filter((x) => x.id != "1001") key=c.id
                     CollectionTile(c=c, ls=members(c, data.landmarks), open=follow)
             CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
@@ -237,7 +237,7 @@ component Landmarks
 
         if e.name == "landmark"
           for l in data.landmarks.filter((x) => x.id == e.params.id) key=l.id
-            column navigationKey=`${e.id}` navigationScroll="detail-scroll" navigationBar="transparent" -exact-safe-area="left right" testId="route-landmark" position="absolute" inset=0 display="flex" flex-direction="column"
+            column navigationKey=`${e.id}` navigationScroll="detail-scroll" navigationBar="transparent" testId="route-landmark" position="absolute" inset=0 display="flex" flex-direction="column"
               header
                 text "" role="heading" aria-level=2
                 row role="group"
@@ -258,11 +258,11 @@ component Landmarks
                     text c.name
               scroll id="detail-scroll" flex=1 min-height=0 scroll=pullHero testId="detail-scroll"
                 column gap=14
-                  image `assets/apple/${l.id}.jpg` id="hero" margin-left="var(--exact-safe-area-inset-left)" width="calc(100% - var(--exact-safe-area-inset-left) - var(--exact-safe-area-inset-right))"
+                  image `assets/apple/${l.id}.jpg` id="hero" width="100%"
                     margin-top=(0 - heroPull) height=`calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2 + ${heroPull}px)`
-                    object-fit="cover" -exact-background-extension="auto" aria-hidden=true
+                    object-fit="cover" -exact-safe-area="extend" aria-hidden=true
                   // The sample's `VStack` has SwiftUI's default spacing, 2 points between these two texts
-                  column gap=2 padding-left="calc(26px + var(--exact-safe-area-inset-left))" padding-right="calc(52px + var(--exact-safe-area-inset-right))"
+                  column gap=2 padding-left=26 padding-right=52
                     text l.name role="heading" aria-level=1 font="-exact-title1" font-weight=700 testId="detail-name"
                     // SwiftUI's `Text` takes the body style's 22-point leading; a UIKit label, the font's 20.3
                     text l.description white-space="pre-line" user-select="text" line-height=1.294 testId="detail-description"
@@ -327,12 +327,12 @@ component Landmarks
           for l in data.landmarks.filter((x) => x.id == e.params.id) key=l.id
             // The sample's inspector: beside the detail in an expanded split, a sheet at a
             // compact width; its content has no bar.
-            column navigationKey=`${e.id}` navigationPresentation="modal" navigationInspector=true navigationScroll="info-list" -exact-safe-area="left right" testId="route-info" position="absolute" inset=0 display="flex" flex-direction="column"
+            column navigationKey=`${e.id}` navigationPresentation="modal" navigationInspector=true navigationScroll="info-list" testId="route-info" position="absolute" inset=0 display="flex" flex-direction="column"
               // The form's grey, except where there is no form, as the sample's sentence alone shows.
               background-color=(segment == "activities" and l.badge == "" ? "-exact-background" : "-exact-grouped-background")
               // The sample's picker on the sheet's own ground, a band above the form's grey: its
               // padding, then the 5 more points of its stack's spacing before the form.
-              view padding="16px calc(16px + var(--exact-safe-area-inset-right)) 21px calc(16px + var(--exact-safe-area-inset-left))" background-color="-exact-background"
+              view padding="16px 16px 21px 16px" background-color="-exact-background"
                 row role="tablist" aria-label="View Mode" testId="segments"
                   button role="tab" aria-selected=(segment == "map") press=choose("map") flex=1 testId="segment-map"
                     text "Map"
@@ -357,7 +357,7 @@ component Landmarks
               else if l.badge == ""
                 // The sample's sentence alone, centred on the sheet's ground: no form.
                 column flex=1 justify-content="center" align-items="center" testId="info-activities"
-                  padding="16px calc(16px + var(--exact-safe-area-inset-right)) 16px calc(16px + var(--exact-safe-area-inset-left))"
+                  padding=16
                   text "There isn’t a badge for this landmark." text-align="center" testId="no-badge"
               else
                 list id="info-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="info-activities"
@@ -385,12 +385,11 @@ component Featured
     pull: number
   view
     // A press of its own, so the platform dims it while held, as the sample's plain-styled link.
-    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=`Featured Landmark, ${l.name}` margin-top=(0 - pull) height=`calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2 + ${pull}px)` box-sizing="border-box" position="relative" overflow="hidden"
-      display="flex" flex-direction="column" justify-content="flex-end" align-items="center" padding-bottom=40
-      padding-left="var(--exact-safe-area-inset-left)" padding-right="var(--exact-safe-area-inset-right)" testId="featured"
+    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=`Featured Landmark, ${l.name}` margin-top=(0 - pull) height=`calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2 + ${pull}px)` box-sizing="border-box" position="relative"
+      display="flex" flex-direction="column" justify-content="flex-end" align-items="center" padding-bottom=40 testId="featured"
       // Inside the safe area, its edges mirrored and blurred beyond it (the sample's backgroundExtensionEffect).
-      image `assets/apple/${l.id}.jpg` position="absolute" top=0 left="var(--exact-safe-area-inset-left)" height="100%"
-        width="calc(100% - var(--exact-safe-area-inset-left) - var(--exact-safe-area-inset-right))" object-fit="cover" -exact-background-extension="auto" aria-hidden=true testId="featured-image"
+      image `assets/apple/${l.id}.jpg` position="absolute" inset=0 height="100%"
+        width="100%" object-fit="cover" -exact-safe-area="extend" aria-hidden=true testId="featured-image"
       text "Featured Landmark" font="-exact-subheadline" font-weight=700 color="#ffffff" opacity=0.8 position="relative"
       text l.name font="-exact-large-title" font-weight=700 color="#ffffff" position="relative"
       button press=learn(l.id) buttonStyle="bordered-prominent" margin-bottom=6 margin-top=21 position="relative" testId="learn-more"
@@ -405,8 +404,8 @@ component Strip
     aim: action
     open: action
   view
-    list display="flex" width="100%" height="max(140px, 20cqh)" overflow-x="scroll" overflow-y="hidden" gap=14 padding-left="calc(28px + var(--exact-safe-area-inset-left))"
-      padding-right="calc(14px + var(--exact-safe-area-inset-right))" box-sizing="border-box" scrollbar-width="none" testId=tid
+    list display="flex" width="100%" height="max(140px, 20cqh)" overflow-x="scroll" overflow-y="hidden" gap=14 padding-left=28
+      padding-right=14 box-sizing="border-box" scrollbar-width="none" testId=tid
       for l in ls key=l.id
         Card(l=l, menu=menu, aim=aim, open=open)
 
@@ -538,9 +537,11 @@ component Badges
     open: bool
     toggle: action
   view
-    column position="absolute" right="calc(16px + var(--exact-safe-area-inset-right))" bottom="calc(16px + var(--exact-safe-area-inset-bottom))" width=74 align-items="center" gap=20 glassGroup=16 testId="badges"
+    column position="absolute" right=16 bottom=16 width=74 align-items="center" glassGroup=16 testId="badges"
       if open
-        column gap=14
+        // Above the button, out of flow: a node leaves layout as its exit starts, and this column would shrink under it.
+        // A glass with opacity on its path is isolated from the group, so it fades whole.
+        column position="absolute" left=0 right=0 bottom="calc(100% + 20px)" align-items="center" gap=14 -exact-exit-animation="vanish 350ms ease both"
           for l in ls.filter((x) => earned(x, checked)) key=l.id
             column backgroundMaterial="glass" border-radius=24 padding=12 aria-label=l.name
               BadgeMark(l=l, size=52, hexagon=48, symbol=l.badgeSize)

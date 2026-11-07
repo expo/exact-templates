@@ -14,7 +14,7 @@
 // template's app/, where .gitignore keeps them out of the repository.
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 
 function main(argv) {
@@ -127,7 +127,8 @@ function makeApp(template, from, own, script, target, name, bundleId) {
 function developInPlace(template, from, own, script) {
   const scratch = mkdtempSync(join(tmpdir(), 'exact-template-'));
   try {
-    const work = resolve(scratch, template);
+    // Named as the folder the files go to: Exact names an app's crates by its folder, and `exact.mjs` must agree
+    const work = resolve(scratch, basename(from));
     exactNew(script, work, own.app.name, own.app.id);
     let added = 0;
     for (const entry of readdirSync(work, { recursive: true, withFileTypes: true })) {

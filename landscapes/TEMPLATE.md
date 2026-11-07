@@ -21,7 +21,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 | Behaviour | Where |
 | --- | --- |
 | The sidebar's three pages and its search field; a page chosen there replaces the detail; the app opens on Landmarks with the list behind Back | `app.contract`, the `home` route (`list id="pages"`), `action follow`; `app.json`'s `start_url` |
-| The featured landmark, half the window high, its name and Learn More over the photo; the photo continuing, mirrored and blurred, under the sidebar and the Duo's side strip; the photo growing when the page is pulled down | `Featured`, `-exact-background-extension="auto"`, `pullFeatured` |
+| The featured landmark, half the window high, its name and Learn More over the photo; the photo continuing, mirrored and blurred, under the sidebar and the Duo's side strip; the photo growing when the page is pulled down | `Featured`, `-exact-safe-area="extend"`, `pullFeatured` |
 | Each continent's landmarks as cards in a row that scrolls sideways | `Strip`, `Card` |
 | A card's long-press menu: Share, Favorite, and the collections it is in | `CardMenu`, the card's `contextmenu=aim` and `contextPopover` |
 | The map of every landmark: MapKit on iOS, a web module on the web | the `map` route, `landmark-map`; `modules/apple/LandmarkMap.swift`, `modules/web/index.js` |
@@ -47,7 +47,7 @@ On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.
 
 ## Needs
 
-Exact's iPhone Duo series at `f9744dd955`, which `exact.json` pins: branch `duo/series-rebase` of github.com/ide/exact2, 19 commits on Exact's main at `ff53dbbcb9`. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` and the `--exact-safe-area-inset-*` values, `-exact-background-extension`, the inspector (`navigationInspector`) and its closing with the pop, the split on the Duo, and `app.json`'s `before_build`.
+Exact's safe-area branch, which `exact.json` pins: `proto/safe-area-live` of github.com/ide/exact2 and the commits above it. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` with `extend` and `ignore`, the inspector (`navigationInspector`) and its closing with the pop, the split on the Duo, and `app.json`'s `before_build`.
 
 ## Limits
 
