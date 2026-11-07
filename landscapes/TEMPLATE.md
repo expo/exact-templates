@@ -43,12 +43,12 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 
 ## Verified
 
-On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` on the open Duo passes 1 of its 4 tests: the other 3 stop where the test driver taps a bar button in a `row role="group"` ("`_UIButtonBarButton` … covers its middle"). `bun exact.mjs test web` fails all 4: the web build opens on the sidebar's list, not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
+On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` on the open Duo passes all 4 of its tests. `bun exact.mjs test web` has not been run on this Exact; on the last one it failed all 4, the web build opening on the sidebar's list and not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
 
 ## Needs
 
-Exact's safe-area branch, which `exact.json` pins: `proto/safe-area-live` of github.com/ide/exact2 and the commits above it. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` with `extend` and `ignore`, the inspector (`navigationInspector`) and its closing with the pop, the split on the Duo, and `app.json`'s `before_build`.
+Exact's safe-area branch with this template's fixes, which `exact.json` pins: `landscapes/live` of github.com/ide/exact2, on `proto/safe-area-live`. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` with `extend` and `ignore`, the inspector (`navigationInspector`) and its closing with the pop, the split on the Duo, and `app.json`'s `before_build`.
 
 ## Limits
 
-`QUEUE.md` has what is left to do. In short, the web build opens on the wrong page, and three of the four tests stop at the bar's grouped buttons. Fetching the photos needs a Mac (`sips` scales them), so on another machine every build stops at `before_build` until `assets/apple/` is copied from a Mac; the script then finds it complete.
+`QUEUE.md` has what is left to do. In short, the web build opened on the wrong page when last run. Fetching the photos needs a Mac (`sips` scales them), so on another machine every build stops at `before_build` until `assets/apple/` is copied from a Mac; the script then finds it complete.
