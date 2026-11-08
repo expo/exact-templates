@@ -44,7 +44,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 
 ## Verified
 
-On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` passes all 9 of its tests on the open Duo and on the closed one. `bun exact.mjs test web` has not been run on this Exact; on the last one it failed all 4, the web build opening on the sidebar's list and not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
+On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` passes all 8 of its tests on the open Duo and on the closed one. `bun exact.mjs test web` has not been run on this Exact; on the last one it failed all 4, the web build opening on the sidebar's list and not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
 
 ## Needs
 

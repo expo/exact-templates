@@ -116,10 +116,10 @@ component Landmarks
   derive basePage = match stack(nav).at(1) { case some(e) => `/${e.name}`, case none => "" }
   // The top route that is a page, not an inspector or a sheet above it.
   derive topPage = match stack(nav).filter((e) => e.name != "info" and e.name != "select").at(-1) { case some(e) => e.id, case none => -1 }
-  // The page the results cover while a query is typed: the one it was typed over, while it is in the
-  // stack, so a result opened over it comes back to them; else the top page. The page stays beneath
-  // them, so clearing the field shows it as it was.
-  derive resultsOver = stack(nav).map((e) => e.id).includes(searchAnchor) ? searchAnchor : topPage
+  // The page search results cover, none while nothing is typed: the one the query was typed over, while
+  // it is in the stack, so a result opened over it comes back to them; else the top page. The page stays
+  // beneath them, so clearing the field shows it as it was.
+  derive resultsOver = searched == "" ? -1 : stack(nav).map((e) => e.id).includes(searchAnchor) ? searchAnchor : topPage
 
   // A page chosen in the list replaces the detail, as the sample's sidebar does: `open` lands
   // in its declared chain, the list and the page; any other location goes as usual. Another page
@@ -180,7 +180,7 @@ component Landmarks
     main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow width="100%" height="100%" accent-color="-exact-system-indigo" viewport-fit="cover"
       for e in stack(nav) key=e.id
         if e.name == "home"
-          column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "pages") testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column"
+          column navigationKey=`${e.id}` navigationScroll=(e.id == resultsOver ? "search-list" : "pages") testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column"
             // The sample's sidebar has no title; its search is the split's. Its rows are SwiftUI's 52
             // points high in the sidebar as in the list, where a UIKit sidebar's are 44.
             header
@@ -197,14 +197,14 @@ component Landmarks
                 link href="/collections" testId="page-collections" display="flex" align-items="center" gap=12 min-height=52
                   image "symbol:sf/book.closed"
                   text "Collections"
-            if searched != "" and e.id == resultsOver
+            if e.id == resultsOver
               SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "landmarks"
           // Under the side strip as under the bar: the pictures reach there, as the
           // sample's background extension draws them; the rest is padded clear.
-          column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "landmarks-scroll")
-            navigationBar=(searched != "" and e.id == resultsOver ? "auto" : "transparent") testId="route-landmarks" position="absolute" inset=0 display="flex" flex-direction="column"
+          column navigationKey=`${e.id}` navigationScroll=(e.id == resultsOver ? "search-list" : "landmarks-scroll")
+            navigationBar=(e.id == resultsOver ? "auto" : "transparent") testId="route-landmarks" position="absolute" inset=0 display="flex" flex-direction="column"
             scroll id="landmarks-scroll" flex=1 min-height=0 scrollbar-width="none" scroll=pullFeatured testId="landmarks-scroll"
               column gap=14
                 for f in data.landmarks.filter((l) => l.id == "1016") key=f.id
@@ -215,23 +215,23 @@ component Landmarks
                     Strip(ls=data.landmarks.filter((l) => l.continent == c), tid=`strip-${c}`, menu=`card-menu-${e.id}`, aim=aim, open=follow)
             CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
-            if searched != "" and e.id == resultsOver
+            if e.id == resultsOver
               SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "map"
-          column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "")
-            navigationBar=(searched != "" and e.id == resultsOver ? "auto" : "transparent") testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
+          column navigationKey=`${e.id}` navigationScroll=(e.id == resultsOver ? "search-list" : "")
+            navigationBar=(e.id == resultsOver ? "auto" : "transparent") testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
             landmark-map flex=1 min-height=0 width="100%" -exact-safe-area="ignore" items=places(data.landmarks) userLocation="true" aria-label="A map of every landmark" testId="map"
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
-            if searched != "" and e.id == resultsOver
+            if e.id == resultsOver
               SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "collections"
-          column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "collections-scroll") testId="route-collections" position="absolute" inset=0 display="flex" flex-direction="column"
+          column navigationKey=`${e.id}` navigationScroll=(e.id == resultsOver ? "search-list" : "collections-scroll") testId="route-collections" position="absolute" inset=0 display="flex" flex-direction="column"
             header
               text "Collections" role="heading" aria-level=1
               // Covered by search results, the page's buttons go with it
-              if not (searched != "" and e.id == resultsOver)
+              if e.id != resultsOver
                 button press=addCollection aria-label="Add" testId="add-collection"
                   image "symbol:add"
             scroll id="collections-scroll" flex=1 min-height=0
@@ -246,17 +246,17 @@ component Landmarks
                     CollectionTile(c=c, ls=members(c, data.landmarks), open=follow)
             CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
-            if searched != "" and e.id == resultsOver
+            if e.id == resultsOver
               SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "landmark"
           for l in data.landmarks.filter((x) => x.id == e.params.id) key=l.id
-            column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "detail-scroll")
-              navigationBar=(searched != "" and e.id == resultsOver ? "auto" : "transparent") testId="route-landmark" position="absolute" inset=0 display="flex" flex-direction="column"
+            column navigationKey=`${e.id}` navigationScroll=(e.id == resultsOver ? "search-list" : "detail-scroll")
+              navigationBar=(e.id == resultsOver ? "auto" : "transparent") testId="route-landmark" position="absolute" inset=0 display="flex" flex-direction="column"
               header
                 text "" role="heading" aria-level=2
                 // Covered by search results, the page's buttons go with it
-                if not (searched != "" and e.id == resultsOver)
+                if e.id != resultsOver
                   row role="group"
                     button press=shareLandmark(l.name, "#hero") aria-label="Share…" testId="share"
                       image "symbol:share"
@@ -283,7 +283,7 @@ component Landmarks
                     text l.name role="heading" aria-level=1 font="-exact-title1" font-weight=700 testId="detail-name"
                     // SwiftUI's `Text` takes the body style's 22-point leading; a UIKit label, the font's 20.3
                     text l.description white-space="pre-line" user-select="text" line-height=1.294 testId="detail-description"
-              if searched != "" and e.id == resultsOver
+              if e.id == resultsOver
                 SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "collection"
