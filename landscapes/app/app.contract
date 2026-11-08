@@ -125,11 +125,11 @@ component Landmarks
   // in its declared chain, the list and the page; any other location goes as usual. Another page
   // from the list ends a search; anywhere else, a result included, opens over the results, as
   // Notes opens a note it found, and Back, which arrives here as the page beneath, returns to them.
-  // The keyboard goes either way.
+  // The keyboard goes either way, and the inspector closes rather than hold what opens.
   action follow(url: string)
     let page = ["/landmarks", "/map", "/collections"].includes(url)
     let another = page and url != basePage
-    nav = page ? open(nav, url) : go(nav, url)
+    nav = page ? open(nav, url) : go(top(nav).name == "info" ? back(nav) : nav, url)
     if another
       query = ""
     blur()
@@ -180,7 +180,7 @@ component Landmarks
     main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow width="100%" height="100%" accent-color="-exact-system-indigo" viewport-fit="cover"
       for e in stack(nav) key=e.id
         if e.name == "home"
-          column navigationKey=`${e.id}` navigationScroll="pages" testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column"
+          column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "pages") testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column"
             // The sample's sidebar has no title; its search is the split's. Its rows are SwiftUI's 52
             // points high in the sidebar as in the list, where a UIKit sidebar's are 44.
             header
@@ -198,7 +198,7 @@ component Landmarks
                   image "symbol:sf/book.closed"
                   text "Collections"
             if searched != "" and e.id == resultsOver
-              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, open=follow)
+              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "landmarks"
           // Under the side strip as under the bar: the pictures reach there, as the
@@ -216,7 +216,7 @@ component Landmarks
             CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
             if searched != "" and e.id == resultsOver
-              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, open=follow)
+              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "map"
           column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "")
@@ -224,7 +224,7 @@ component Landmarks
             landmark-map flex=1 min-height=0 width="100%" -exact-safe-area="ignore" items=places(data.landmarks) userLocation="true" aria-label="A map of every landmark" testId="map"
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
             if searched != "" and e.id == resultsOver
-              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, open=follow)
+              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "collections"
           column navigationKey=`${e.id}` navigationScroll=(searched != "" and e.id == resultsOver ? "search-list" : "collections-scroll") testId="route-collections" position="absolute" inset=0 display="flex" flex-direction="column"
@@ -247,7 +247,7 @@ component Landmarks
             CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
             if searched != "" and e.id == resultsOver
-              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, open=follow)
+              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "landmark"
           for l in data.landmarks.filter((x) => x.id == e.params.id) key=l.id
@@ -284,7 +284,7 @@ component Landmarks
                     // SwiftUI's `Text` takes the body style's 22-point leading; a UIKit label, the font's 20.3
                     text l.description white-space="pre-line" user-select="text" line-height=1.294 testId="detail-description"
               if searched != "" and e.id == resultsOver
-                SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, open=follow)
+                SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
 
         if e.name == "collection"
           for c in cols.filter((x) => x.id == e.params.id) key=c.id
@@ -562,7 +562,7 @@ component CollectionPage
         button commandfor=`delete-collection-${entry}` command="close" testId="delete-keep"
           text "Keep"
       if q != ""
-        SearchResults(q=q, ls=foundLs, cs=foundCs, open=open)
+        SearchResults(q=q, ls=foundLs, cs=foundCs)
 
 // What search finds, over the page it covers: landmarks whose name or continent holds the query
 // and collections whose name does, each a row that opens its page, in UIKit's grouped list; with
@@ -573,7 +573,6 @@ component SearchResults
     q: string
     ls: Landmark[]
     cs: Collection[]
-    open: action
   view
     column position="absolute" inset=0 display="flex" flex-direction="column" background-color="-exact-grouped-background" testId="search-results"
       if ls.length == 0 and cs.length == 0

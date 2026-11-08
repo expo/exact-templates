@@ -97,3 +97,14 @@ test "A result opens over the results, which come back when its page goes; an em
   type "search" ""
   clock settle
   expect tree missing "search-results"
+
+test "Another page chosen from the list ends the search"
+  at "/"
+  clock settle
+  type "search" "zzz"
+  clock settle
+  expect tree has "search-empty"
+  type "app" "/map"
+  clock settle
+  expect state query == ""
+  expect tree missing "search-results"
