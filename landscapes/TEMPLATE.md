@@ -21,6 +21,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 | Behaviour | Where |
 | --- | --- |
 | The sidebar's three pages and its search field; a page chosen there replaces the detail; the app opens on Landmarks with the list behind Back | `app.contract`, the `home` route (`list id="pages"`), `action follow`; `app.json`'s `start_url` |
+| Search (the sample's field finds nothing): results over the page in front, landmarks by name or continent and collections by name; a result opens over them and Back returns; another page from the list ends the search | `app.contract`, `SearchResults`, `resultsOver`, `action search`, `action follow` |
 | The featured landmark, half the window high, its name and Learn More over the photo; the photo continuing, mirrored and blurred, under the sidebar and the Duo's side strip; the photo growing when the page is pulled down | `Featured`, `-exact-safe-area="extend"`, `pullFeatured` |
 | Each continent's landmarks as cards in a row that scrolls sideways | `Strip`, `Card` |
 | A card's long-press menu: Share, Favorite, and the collections it is in | `CardMenu`, the card's `contextmenu=aim` and `contextPopover` |

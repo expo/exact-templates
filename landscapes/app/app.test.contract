@@ -65,3 +65,35 @@ test "Delete asks first, then removes the collection and leaves its page"
   clock settle
   expect state cols.2 .id == "1004"
   expect tree missing "route-collection"
+
+test "Search finds landmarks by name or by continent, over the page in front"
+  at "/"
+  clock settle
+  type "search" "mount"
+  clock settle
+  expect tree has "result-1016"
+  expect tree has "result-1007"
+  expect tree missing "result-1017"
+  type "search" "Asia"
+  clock settle
+  expect tree has "result-1017"
+  expect tree missing "result-1007"
+  type "search" "zzz"
+  clock settle
+  expect tree has "search-empty"
+
+test "A result opens over the results, which come back when its page goes; an empty field ends the search"
+  at "/"
+  clock settle
+  type "search" "fuji"
+  clock settle
+  tap "result-1016"
+  clock settle
+  expect text "detail-name" == "Mount Fuji"
+  expect state query == "fuji"
+  type "app" "/"
+  clock settle
+  expect tree has "result-1016"
+  type "search" ""
+  clock settle
+  expect tree missing "search-results"

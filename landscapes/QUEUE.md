@@ -17,6 +17,8 @@ The user's reports, newest first, until each is fixed or answered. Build 11 (App
 - **Focusing a new collection's title scrolls too far** (2026-10-31; below).
 - **The right sidebar is not draggable** (2026-10-31). Measured: UIKit, the sample and Landscapes resize the inspector from its leading edge alike, and none opens or closes it with a drag. Waiting on which drag the user tried.
 - **From the split work** (2026-10-30): the main content should follow the sidebar's curve, and the segmented control sometimes loses its background.
+- **While search is focused, a pushed page's bar buttons go, Back included** (2026-11-08, found answering the search report). On the open Duo simulator with nothing typed, the sample keeps the landmark page's Back, Share and Favorite (the rest in ⋯ above the keyboard); Exact shows none. The sidebar's own button goes in both, which is UIKit's. Not caused by the search results: it shows with the field empty.
+- **Back to the results brings the keyboard back** (2026-11-08). Closed, a result opened from the list and then Back shows the results with the keyboard up, though `follow` blurred the field before the push. Not yet known whether UIKit's active search controller or Exact claims the focus again; compare with a hand-built UIKit list whose search controller stays active.
 - **Focusing search moves less than the sample** (2026-11-06). The sample's page scrolls up as the bar goes and its badge button rides above the keyboard; here the page stays and the button stays behind the keyboard.
 
 ## Found while porting
