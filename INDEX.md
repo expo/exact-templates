@@ -17,3 +17,11 @@ A gallery of the world's landmarks, ported from Apple's sample "Landmarks: Build
 Keywords: landmarks, places, travel, gallery, photos, featured hero, background extension, map, MapKit, collections, favorites, sidebar, split view, inspector, segmented control, cards in a row that scrolls sideways, grid, long-press menu, share, badges, edit mode, Liquid Glass, foldable, iPhone Duo, port of an Apple sample.
 
 Hosts verified: iOS 27.1 on the iPhone Duo, open and closed (1 of 4 tests passes; see `TEMPLATE.md`). Built on Exact `f9744dd955` (`landscapes/exact.json`).
+
+## softwear
+
+A clothing store with a searchable catalogue, product photos and pinch zoom, inventory-aware bag, promo codes, checkout and accounts. A Bun and SQLite demo API serves the web and installed apps.
+
+Keywords: store, shop, shopping, ecommerce, clothing, apparel, catalogue, catalog, product, inventory, stock, size, colour, filters, search, bag, cart, checkout, promo code, account, orders, favorites, photo gallery, pinch zoom, native module, REST, SQLite, server rendering, tabs.
+
+Hosts tested: web (28 UI tests pass; full verification has findings listed in `softwear/TEMPLATE.md`). Built on Exact `9efbeba191` (`softwear/exact.json`).

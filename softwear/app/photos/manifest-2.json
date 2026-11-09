@@ -1,0 +1,146 @@
+{
+  "heavy-weight-go-to-tee": {
+    "file": "heavy-weight-go-to-tee.jpg",
+    "source": "https://ninjatransfers.com/products/alternative-aa1070",
+    "image": "https://ninja-transfers-cdn.imgix.net/alternative-aa1070-unisex-go-to-t-shirtalternative-485101.jpg?auto=format,compress&w=1400",
+    "exact": false,
+    "note": "No 'Heavy Weight Go-To Tee' exists at any reachable retailer; this is the standard AA1070 Go-To Tee (red, not one of the listed colours).",
+    "colors": {}
+  },
+  "keeper-vintage-jersey-tee": {
+    "file": "keeper-vintage-jersey-tee.jpg",
+    "source": "https://www.jiffy.com/alternative-05050BP.html",
+    "image": "https://jiffy.imgix.net/122605_5050BP_Smoke_Grey_6.jpg?auto=format%2Ccompress&w=1400",
+    "exact": true,
+    "colors": {
+      "smoke-grey": "keeper-vintage-jersey-tee--smoke-grey.jpg",
+      "vintage-navy": "keeper-vintage-jersey-tee--vintage-navy.jpg",
+      "vintage-iris": "keeper-vintage-jersey-tee--vintage-iris.jpg"
+    }
+  },
+  "keepsake-vintage-tee": {
+    "file": "keepsake-vintage-tee.jpg",
+    "source": "https://www.jiffy.com/alternative-05052BP.html",
+    "image": "https://jiffy.imgix.net/122616_5052BP_Smoke_Grey_6.jpg?auto=format%2Ccompress&w=1400",
+    "exact": true,
+    "colors": {
+      "smoke-grey": "keepsake-vintage-tee--smoke-grey.jpg",
+      "vintage-navy": "keepsake-vintage-tee--vintage-navy.jpg",
+      "vintage-iris": "keepsake-vintage-tee--vintage-iris.jpg"
+    }
+  },
+  "eco-jersey-crew-tee": {
+    "file": "eco-jersey-crew-tee.jpg",
+    "source": "https://www.jiffy.com/alternative-AA1973.html",
+    "image": "https://jiffy.imgix.net/122459_1973E1_Eco_True_Black_6.jpg?auto=format%2Ccompress&w=1400",
+    "exact": true,
+    "colors": {
+      "eco-true-black": "eco-jersey-crew-tee--eco-true-black.jpg",
+      "eco-grey": "eco-jersey-crew-tee--eco-grey.jpg",
+      "eco-true-navy": "eco-jersey-crew-tee--eco-true-navy.jpg"
+    }
+  },
+  "keeper-weathered-slub-tee": {
+    "file": "keeper-weathered-slub-tee.jpg",
+    "source": "https://www.blankstyle.com/alternative-apparel-6094-keeper-weathered-slub-tee",
+    "image": "https://cdn.blankstyle.com/files/p_images/16698/alternative-apparel_7922-dark-olive-front.jpg",
+    "exact": true,
+    "colors": {
+      "dark-olive": "keeper-weathered-slub-tee--dark-olive.jpg",
+      "washed-black": "keeper-weathered-slub-tee--washed-black.jpg"
+    }
+  },
+  "washed-slub-slouchy-tee": {
+    "file": "washed-slub-slouchy-tee.jpg",
+    "source": "https://www.blankstyle.com/alternative-apparel-6097s1-discontinued-alternative-womens-weathered-slub-so-low-v-neck-tee",
+    "image": "https://cdn.blankstyle.com/files/p_images/25890/alternative-apparel_AA6097-washed-black-front.jpg",
+    "exact": false,
+    "note": "Style not found at any reachable retailer; substituted the women's 6097S1 Weathered Slub So-Low V-Neck Tee (same washed-slub fabric, women's cut).",
+    "colors": {
+      "washed-black": "washed-slub-slouchy-tee--washed-black.jpg"
+    }
+  },
+  "kimber-slinky-jersey-tee": {
+    "file": "kimber-slinky-jersey-tee.jpg",
+    "source": "https://www.jiffy.com/alternative-AA2620.html",
+    "image": "https://jiffy.imgix.net/257dbeb06c518e.jpg?auto=format%2Ccompress&w=1400",
+    "exact": true,
+    "colors": {
+      "black": "kimber-slinky-jersey-tee--black.jpg"
+    }
+  },
+  "slinky-v-neck-tee": {
+    "file": "slinky-v-neck-tee.jpg",
+    "source": "https://www.jiffy.com/alternative-2894B2.html",
+    "image": "https://jiffy.imgix.net/129428_2894B2_Ash_Heather_6_2.jpg?auto=format%2Ccompress&w=1400",
+    "exact": true,
+    "note": "Style 2894B2 Women's Slinky Jersey V-Neck; shown in Ash Heather, which is not in the listed colours.",
+    "colors": {}
+  },
+  "heirloom-crew-tee": {
+    "file": "heirloom-crew-tee.jpg",
+    "source": "https://www.blankstyle.com/aa9070-alternative-apparel-heirloom-crew-t-shirt",
+    "image": "https://cdn.blankstyle.com/files/p_images/10421/alternative-apparel_AA9070-light-navy-front.jpg",
+    "exact": true,
+    "colors": {
+      "light-navy": "heirloom-crew-tee--light-navy.jpg",
+      "black": "heirloom-crew-tee--black.jpg",
+      "heather-grey": "heirloom-crew-tee--heather-grey.jpg"
+    }
+  },
+  "eco-jersey-baseball-tee": {
+    "file": "eco-jersey-baseball-tee.jpg",
+    "source": "https://www.blankstyle.com/2089e1-alternative-apparel-eco-jersey-baseball-t-shirt-raglan-2089e1",
+    "image": "https://cdn.blankstyle.com/files/p_images/9053/alternative-apparel_AA2089-eco-ivory--stars-front.jpg",
+    "exact": true,
+    "colors": {
+      "eco-ivory-stars": "eco-jersey-baseball-tee--eco-ivory-stars.jpg"
+    }
+  },
+  "keeper-long-sleeve-tee": {
+    "file": "keeper-long-sleeve-tee.jpg",
+    "source": "https://www.jiffy.com/alternative-5100BP.html",
+    "image": "https://jiffy.imgix.net/140232_5100BP_Smoke_Grey_6_1.jpg?auto=format%2Ccompress&w=1400",
+    "exact": true,
+    "note": "The 'vintage-black' variant is the colour Jiffy labels 'Black'.",
+    "colors": {
+      "smoke-grey": "keeper-long-sleeve-tee--smoke-grey.jpg",
+      "vintage-navy": "keeper-long-sleeve-tee--vintage-navy.jpg",
+      "vintage-black": "keeper-long-sleeve-tee--vintage-black.jpg"
+    }
+  },
+  "go-to-long-sleeve-tee": {
+    "file": "go-to-long-sleeve-tee.jpg",
+    "source": "https://www.jiffy.com/alternative-5100BP.html",
+    "image": "https://jiffy.imgix.net/140232_5100BP_White_6_2.jpg?auto=format%2Ccompress&w=1400",
+    "exact": false,
+    "note": "No fetchable retailer photo of the Go-To Long Sleeve; substituted the 5100BP Keeper Long-Sleeve Tee in White (same kind).",
+    "colors": {}
+  },
+  "eco-jersey-three-quarter-raglan-henley": {
+    "file": "eco-jersey-three-quarter-raglan-henley.jpg",
+    "source": "https://www.blankstyle.com/aa1989-alternative-apparel-henley-baseball-tee",
+    "image": "https://cdn.blankstyle.com/files/p_images/2009/alternative-apparel_AA1989-eco-grey--camo-front.jpg",
+    "exact": true,
+    "note": "Only colourway available is Eco Grey / Camo, which is not in the listed colours.",
+    "colors": {}
+  },
+  "meegs-racerback-eco-jersey-tank": {
+    "file": "meegs-racerback-eco-jersey-tank.jpg",
+    "source": "https://www.blankstyle.com/alternative-apparel-aa1927-womens-meegs-racerback-tank",
+    "image": "https://cdn.blankstyle.com/files/p_images/1954/alternative-apparel_AA1927-eco-ivory-front.jpg",
+    "exact": true,
+    "colors": {
+      "eco-ivory": "meegs-racerback-eco-jersey-tank--eco-ivory.jpg"
+    }
+  },
+  "weathered-slub-sporty-tank": {
+    "file": "weathered-slub-sporty-tank.jpg",
+    "source": "https://www.blankstyle.com/alternative-apparel-6096-womens-weathered-slub-sporty-tank",
+    "image": "https://cdn.blankstyle.com/files/p_images/16697/alternative-apparel_AA6096-washed-black-front.jpg",
+    "exact": true,
+    "colors": {
+      "washed-black": "weathered-slub-sporty-tank--washed-black.jpg"
+    }
+  }
+}

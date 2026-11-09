@@ -1,0 +1,145 @@
+{
+  "challenger-eco-fleece-hoodie": {
+    "file": "challenger-eco-fleece-hoodie.jpg",
+    "source": "https://jiffy.com/alternative-09595F2.html",
+    "image": "https://jiffy.imgix.net/123112_9595F2_Eco_True_Black_8.jpg",
+    "exact": true,
+    "colors": {
+      "eco-true-black": "challenger-eco-fleece-hoodie--eco-true-black.jpg",
+      "eco-true-navy": "challenger-eco-fleece-hoodie--eco-true-navy.jpg",
+      "eco-black": "challenger-eco-fleece-hoodie--eco-black.jpg"
+    }
+  },
+  "challenger-lightweight-washed-french-terry-hoodie": {
+    "file": "challenger-lightweight-washed-french-terry-hoodie.jpg",
+    "source": "https://jiffy.com/alternative-9595CT.html",
+    "image": "https://jiffyimg.imgix.net/fc8b9da4abb410.jpg",
+    "exact": true,
+    "colors": {
+      "dark-grey": "challenger-lightweight-washed-french-terry-hoodie--dark-grey.jpg",
+      "washed-black": "challenger-lightweight-washed-french-terry-hoodie--washed-black.jpg"
+    }
+  },
+  "rocky-eco-fleece-zip-hoodie": {
+    "file": "rocky-eco-fleece-zip-hoodie.jpg",
+    "source": "https://www.blankstyle.com/aa9590-alternative-apparel-rocky-unisex-zip-hoodie",
+    "image": "https://www.blankstyle.com/files/p_images/377/alternative-apparel_2426-eco-true-currant-front.jpg",
+    "exact": true,
+    "colors": {
+      "eco-true-currant": "rocky-eco-fleece-zip-hoodie.jpg"
+    }
+  },
+  "burnout-french-terry-hooded-pullover": {
+    "file": "burnout-french-terry-hooded-pullover.jpg",
+    "source": "https://jiffy.com/alternative-9595CT.html",
+    "image": "https://jiffy.imgix.net/8311d2df9b0d01.jpg",
+    "exact": false,
+    "colors": {}
+  },
+  "eco-jersey-zip-hoodie": {
+    "file": "eco-jersey-zip-hoodie.jpg",
+    "source": "https://www.4imprint.ca/product/C149302/Alternative-Jersey-Zip-Hoodie-Mens",
+    "image": "https://cdn.4imprint.ca/prod/700/536320.jpg",
+    "exact": true,
+    "colors": {}
+  },
+  "women-s-eco-jersey-cool-down-zip-hoodie": {
+    "file": "women-s-eco-jersey-cool-down-zip-hoodie.jpg",
+    "source": "https://www.4imprint.ca/product/C149302/Alternative-Jersey-Zip-Hoodie-Mens",
+    "image": "https://cdn.4imprint.ca/prod/700/536320.jpg",
+    "exact": false,
+    "colors": {}
+  },
+  "eco-cozy-fleece-pullover-hoodie": {
+    "file": "eco-cozy-fleece-pullover-hoodie.jpg",
+    "source": "https://jiffy.com/alternative-8804PF.html",
+    "image": "https://jiffy.imgix.net/123049_8804PF_Black_6.jpg",
+    "exact": true,
+    "colors": {
+      "black": "eco-cozy-fleece-pullover-hoodie--black.jpg",
+      "heather-grey": "eco-cozy-fleece-pullover-hoodie--heather-grey.jpg"
+    }
+  },
+  "champ-eco-fleece-crewneck-sweatshirt": {
+    "file": "champ-eco-fleece-crewneck-sweatshirt.jpg",
+    "source": "https://ninjaprintondemand.com/products/alternative-aa9575",
+    "image": "https://cdn.shopify.com/s/files/1/0819/1138/2337/files/aa9575_51_fr.jpg",
+    "exact": true,
+    "colors": {
+      "eco-black": "champ-eco-fleece-crewneck-sweatshirt--eco-black.jpg",
+      "eco-grey": "champ-eco-fleece-crewneck-sweatshirt--eco-grey.jpg",
+      "eco-true-navy": "champ-eco-fleece-crewneck-sweatshirt--eco-true-navy.jpg"
+    }
+  },
+  "champ-lightweight-washed-french-terry-crewneck": {
+    "file": "champ-lightweight-washed-french-terry-crewneck.jpg",
+    "source": "https://jiffy.com/alternative-9575CT.html",
+    "image": "https://jiffyimg.imgix.net/7e6c636ffc803e.jpg",
+    "exact": true,
+    "colors": {
+      "washed-black": "champ-lightweight-washed-french-terry-crewneck--washed-black.jpg"
+    }
+  },
+  "champ-eco-fleece-colorblocked-sweatshirt": {
+    "file": "champ-eco-fleece-colorblocked-sweatshirt.jpg",
+    "source": "https://www.blankstyle.com/alternative-apparel-32022f2-unisex-champ-eco-fleece-colorblocked-sweatshirt",
+    "image": "https://www.blankstyle.com/files/p_images/19386/alternative-apparel_2415-eco-grey--eco-true-black-front.jpg",
+    "exact": true,
+    "colors": {}
+  },
+  "eco-cozy-fleece-crewneck-sweatshirt": {
+    "file": "eco-cozy-fleece-crewneck-sweatshirt.jpg",
+    "source": "https://jiffy.com/alternative-8800PF.html",
+    "image": "https://jiffy.imgix.net/123029_8800PF_Heather_Grey_6.jpg",
+    "exact": true,
+    "colors": {
+      "heather-grey": "eco-cozy-fleece-crewneck-sweatshirt--heather-grey.jpg",
+      "natural": "eco-cozy-fleece-crewneck-sweatshirt--natural.jpg",
+      "currant": "eco-cozy-fleece-crewneck-sweatshirt--currant.jpg"
+    }
+  },
+  "lazy-day-pullover": {
+    "file": "lazy-day-pullover.jpg",
+    "source": "https://jiffy.com/alternative-8626F.html",
+    "image": "https://jiffy.imgix.net/123000_8626NM_Black_6.jpg",
+    "exact": true,
+    "colors": {
+      "black": "lazy-day-pullover--black.jpg",
+      "dark-navy": "lazy-day-pullover--dark-navy.jpg"
+    }
+  },
+  "lazy-day-burnout-french-terry-pullover": {
+    "file": "lazy-day-burnout-french-terry-pullover.jpg",
+    "source": "https://jiffy.com/alternative-8626F.html",
+    "image": "https://jiffy.imgix.net/123000_8626NM_Dark_Navy_6.jpg",
+    "exact": false,
+    "colors": {}
+  },
+  "eco-jersey-slouchy-pullover": {
+    "file": "eco-jersey-slouchy-pullover.jpg",
+    "source": "https://jiffy.com/alternative-8626F.html",
+    "image": "https://jiffy.imgix.net/123000_8626NM_Black_6.jpg",
+    "exact": false,
+    "colors": {}
+  },
+  "go-to-tee": {
+    "file": "go-to-tee.jpg",
+    "source": "https://ninjaprintondemand.com/products/alternative-aa1070",
+    "image": "https://cdn.shopify.com/s/files/1/0819/1138/2337/files/aa1070_00_fr.jpg",
+    "exact": true,
+    "colors": {
+      "white": "go-to-tee--white.jpg",
+      "black": "go-to-tee--black.jpg",
+      "light-navy": "go-to-tee--light-navy.jpg"
+    }
+  },
+  "her-go-to-tee": {
+    "file": "her-go-to-tee.jpg",
+    "source": "https://jiffy.com/alternative-1172CV.html",
+    "image": "https://jiffy.imgix.net/122364_1172CV_Heather_Grey_6.jpg",
+    "exact": false,
+    "colors": {
+      "heather-grey": "her-go-to-tee--heather-grey.jpg"
+    }
+  }
+}

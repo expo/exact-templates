@@ -1,0 +1,1612 @@
+// Softwear: Alternative Apparel's catalog sold direct, as one Exact app that is a website and a inApp app.
+//
+// The site: pages at URLs. The home page, the shop and the story are the catalog's own, fixed when the site is
+// built, so they render ahead (`render=build`) and arrive whole, as a static site's pages do. A product page shows
+// what is left of each size, which changes after a build, so `serve` renders it per request (`render=request`);
+// the bag, checkout, account and search are the reader's own and render in the browser. The catalog is app.ts's
+// (catalog.ts); stock, the mailing list, accounts and orders are server.ts's, the API.
+//
+// The app: the same routes under four tabs. In the installed app (iOS, Android) each route's `header` is the
+// platform's bar and the root `tablist` its tab bar; in a browser those are hidden and the site's own header and
+// footer show instead. Everything between is one file. A page's layout never reads the viewport: a page rendered at
+// build keeps the build's reading, so what must differ by width is CSS's (`flex-wrap`, a grid's `minmax`). The app's
+// toast alone reads the fold, and it only ever shows after a press.
+//
+// The bag is the person's, kept on the device (`persist`): each line is `slug|colour|size|qty`, which the server
+// reads again when the order is placed. No payment is taken and nothing ships.
+use EmptyState from "exact:content"
+
+routes nav
+  tab shop "/" render=build
+    catalog "/shop" render=build
+    product "/p/:slug" render=request
+    photo "/p/:slug/photo"
+    story "/story" render=build
+  tab search "/search"
+  tab bag "/bag"
+    checkout "/checkout"
+    order "/order/:id"
+  tab account "/account"
+  notfound render=build
+
+shape Color
+  name: string
+  hex: string
+  photo: string
+
+shape Product
+  slug: string
+  style: string
+  name: string
+  category: string
+  gender: string
+  fabric: string
+  weight: string
+  fit: string
+  description: string
+  details: string[]
+  colors: Color[]
+  sizes: string[]
+  priceCents: number
+  compareCents: number
+  tags: string[]
+  kind: string
+  photo: string
+
+shape SizeStock
+  size: string
+  count: number
+
+shape Stock
+  slug: string
+  ready: bool
+  sizes: SizeStock[]
+
+shape Joined
+  ok: bool
+  error: string
+  code: string
+  returning: bool
+
+shape Account
+  ok: bool
+  error: string
+  email: string
+  name: string
+  code: string
+  memberSince: string
+  subscribed: bool
+
+shape Line
+  slug: string
+  name: string
+  color: string
+  size: string
+  qty: number
+  priceCents: number
+
+shape Order
+  found: bool
+  id: string
+  email: string
+  name: string
+  placedAt: string
+  status: string
+  shipping: string
+  subtotalCents: number
+  discountCents: number
+  shippingCents: number
+  totalCents: number
+  lines: Line[]
+
+shape Placed
+  ok: bool
+  error: string
+  id: string
+
+shape Promo
+  code: string
+  pct: number
+
+shape LineStock
+  key: string
+  count: number
+
+shape Notified
+  ok: bool
+  error: string
+  slug: string
+
+shape Viewport
+  width: number
+  height: number
+  devicePosture: string
+  horizontalViewportSegments: number
+  verticalViewportSegments: number
+
+shape Host
+  app: bool
+
+shape Category
+  key: string
+  label: string
+  kind: string
+  hex: string
+
+style Wrap
+  width="100%" box-sizing="border-box" max-width="75rem" margin-left="auto" margin-right="auto" padding-left=20 padding-right=20
+
+style Eyebrow
+  font-size="0.75rem" letter-spacing="0.14em" text-transform="uppercase" font-weight=600 color="muted"
+
+style Title
+  font-size="1.75rem" font-weight=700 letter-spacing="-0.01em" overflow-wrap="break-word" min-width=0 max-width="100%"
+
+style Pill
+  padding="12px 22px" border-radius=999 background-color="brand" color="onbrand" font-weight=600 text-align="center" text-decoration="none"
+
+style Ghost
+  padding="12px 22px" border-radius=999 border="1px solid var(--line)" font-weight=600 text-align="center" text-decoration="none" color="ink"
+
+style Chip
+  padding="7px 14px" border-radius=999 border="1px solid var(--line)" font-size="0.875rem" white-space="nowrap" text-decoration="none"
+
+style IconLink
+  padding=8 border-radius=999 color="ink" text-decoration="none" display="flex" align-items="center" gap=4
+
+// The photo that flies from a card into the product page, and back.
+style Fly
+  -exact-layout-transition="-exact-spring(240, 26, 1)"
+
+style Field
+  min-height=44 box-sizing="border-box" padding="10px 12px" border="1px solid var(--line)" border-radius=10 background-color="page" color="ink"
+
+// A rail of cards: it snaps card by card and fades at its far end to say there is more; room after the last card
+// keeps it clear of the fade once the rail is scrolled to its end.
+style Rail
+  display="flex" gap=16 overflow-x="auto" padding="0 40px 8px 0" scroll-snap-type="x mandatory" scrollbar-width="none" mask-image="linear-gradient(to right, #000 90%, transparent 100%)"
+
+// Every button is a capsule, as the links styled as buttons (Pill, Ghost) are and as iOS draws its own.
+style Capsule
+  -exact-corner-style="capsule"
+
+// A photo's frame: white, with a hairline, so a studio shot sits on it whole (`Photo`).
+style Frame
+  background-color="photo" border="1px solid var(--line)" overflow="hidden"
+
+fn money(cents: number): string = formatNumber(cents / 100, "currency", "USD")
+fn plural(n: number, one: string, many: string): string = `${n} ${n == 1 ? one : many}`
+
+// A bag line is `slug|colour|size|qty`: the same key with a new count is the same line.
+fn part(l: string, i: number): string = match l.split("|").at(i) { case some(s) => s, case none => "" }
+fn keyOf(l: string): string = `${part(l, 0)}|${part(l, 1)}|${part(l, 2)}`
+fn qtyOf(l: string): number = match parseNumber(part(l, 3)) { case some(n) => n, case none => 1 }
+fn withQty(l: string, n: number): string = `${keyOf(l)}|${n}`
+fn merged(bag: string[], line: string): string[] = bag.filter(l => keyOf(l) == keyOf(line)).length == 0 ? bag.concat([line]) : bag.map(l => keyOf(l) == keyOf(line) ? withQty(l, clampQty(qtyOf(l) + qtyOf(line))) : l)
+fn clampQty(n: number): number = max(1, min(10, round(n)))
+fn qtyFor(bag: string[], key: string): number = sum(bag.filter(l => keyOf(l) == key).map(l => qtyOf(l)))
+fn demandFor(bag: string[], line: string): number = sum(bag.filter(l => part(l, 0) == part(line, 0) and part(l, 2) == part(line, 2)).map(l => qtyOf(l)))
+fn afterPurchase(bag: string[], purchased: string[]): string[] = bag.map(l => withQty(l, max(0, qtyOf(l) - qtyFor(purchased, keyOf(l))))).filter(l => qtyOf(l) > 0)
+
+fn productOf(ps: Product[], slug: string): Product[] = ps.filter(p => p.slug == slug)
+fn priceOf(ps: Product[], slug: string): number = match first(ps.filter(p => p.slug == slug)) { case some(p) => p.priceCents, case none => 0 }
+fn nameOf(ps: Product[], slug: string): string = match first(ps.filter(p => p.slug == slug)) { case some(p) => p.name, case none => "" }
+fn kindOf(ps: Product[], slug: string): string = match first(ps.filter(p => p.slug == slug)) { case some(p) => p.kind, case none => "tee" }
+fn hexIn(p: Product, color: string): string = match first(p.colors.filter(c => c.name == color)) { case some(c) => c.hex, case none => firstHex(p) }
+fn hexOf(ps: Product[], slug: string, color: string): string = match first(ps.filter(p => p.slug == slug)) { case some(p) => hexIn(p, color), case none => "#cccccc" }
+fn ownPhoto(p: Product, color: string): string = match first(p.colors.filter(c => c.name == color)) { case some(c) => c.photo, case none => "" }
+fn photoIn(p: Product, color: string): string = ownPhoto(p, color) == "" ? p.photo : ownPhoto(p, color)
+fn photoOf(ps: Product[], slug: string, color: string): string = match first(ps.filter(p => p.slug == slug)) { case some(p) => photoIn(p, color), case none => "" }
+fn coverOf(ps: Product[], category: string): string = match first(ps.filter(p => p.category == category)) { case some(p) => p.photo, case none => "" }
+fn firstHex(p: Product): string = match first(p.colors) { case some(c) => c.hex, case none => "#cccccc" }
+fn firstColor(p: Product): string = match first(p.colors) { case some(c) => c.name, case none => "" }
+fn colorOr(p: Product, picked: string): string = p.colors.filter(c => c.name == picked).length > 0 ? picked : firstColor(p)
+fn colorOf(ps: Product[], slug: string, picked: string): string = match first(ps.filter(p => p.slug == slug)) { case some(p) => colorOr(p, picked), case none => "" }
+fn countOf(stock: Stock, size: string): number = match first(stock.sizes.filter(s => s.size == size)) { case some(s) => s.count, case none => 99 }
+fn hasStock(p: Product, stock: Stock): bool = stock.ready and stock.slug == p.slug
+// The size picked carries from one product to the next, but never one the product lacks or has sold out of.
+fn sizeOr(p: Product, picked: string, stock: Stock): string = p.sizes.includes(picked) and not (hasStock(p, stock) and countOf(stock, picked) <= 0) ? picked : ""
+fn soldOut(p: Product, stock: Stock): string[] = hasStock(p, stock) ? p.sizes.filter(s => countOf(stock, s) <= 0) : []
+fn leftOf(ls: LineStock[], key: string): number = match first(ls.filter(s => s.key == key)) { case some(s) => s.count, case none => 99 }
+// What a style is worn with: a hoodie with joggers and a beanie, a tee with shorts. Kids' styles go with kids'.
+fn pairsWith(category: string): string[] = category == "hoodies" or category == "sweatshirts" or category == "long-sleeves" ? ["pants", "accessories"] : category == "tees" or category == "tanks" ? ["shorts", "pants", "accessories"] : category == "pants" ? ["hoodies", "sweatshirts", "tees"] : category == "shorts" ? ["tees", "tanks"] : category == "accessories" ? ["hoodies", "sweatshirts"] : ["kids"]
+fn hasTag(p: Product, t: string): bool = p.tags.includes(t)
+fn lineTotal(ps: Product[], l: string): number = priceOf(ps, part(l, 0)) * qtyOf(l)
+fn subtotalOf(ps: Product[], bag: string[]): number = sum(bag.map(l => lineTotal(ps, l)))
+fn countAll(bag: string[]): number = sum(bag.map(l => qtyOf(l)))
+fn shippingFor(method: string, after: number): number = method == "express" ? 1400 : after >= 7500 ? 0 : 600
+// Search reads the name, category, fabric, fit, style number, the colours a style comes in and its tags.
+fn matches(p: Product, needle: string): bool = `${p.name} ${p.category} ${p.fabric} ${p.gender} ${p.tags.join(" ")} ${p.kind} ${p.fit} ${p.style} ${p.colors.map(c => c.name).join(" ")}`.toLowerCase().includes(needle)
+
+// The shop's location: `/shop?c=hoodies&g=women&s=price-asc&z=M`, only the parts that are set.
+fn q(name: string, v: string): string = v == "" ? "" : `&${name}=${encodeURIComponent(v)}`
+fn withQuery(p: string, qs: string): string = qs == "" ? p : `${p}?${qs.slice(1)}`
+fn shopUrlZ(c: string, g: string, s: string, z: string): string = withQuery("/shop", q("c", c) + q("g", g) + q("s", s) + q("z", z))
+fn shopUrl(c: string, g: string, s: string): string = shopUrlZ(c, g, s, "")
+fn ownTab(url: string): bool = url == "/bag" or url == "/account" or url.startsWith("/search")
+fn catLabel(c: string): string = c == "" ? "Everything" : c == "sale" ? "Sale" : c == "hoodies" ? "Hoodies" : c == "sweatshirts" ? "Sweatshirts" : c == "tees" ? "Tees" : c == "long-sleeves" ? "Long sleeves" : c == "tanks" ? "Tanks" : c == "pants" ? "Pants" : c == "shorts" ? "Shorts" : c == "kids" ? "Kids" : c == "accessories" ? "Accessories" : c
+fn categories(): Category[] = [Category(key="hoodies", label="Hoodies", kind="hoodie", hex="#8a9a7b"), Category(key="sweatshirts", label="Sweatshirts", kind="crew", hex="#c7b9a5"), Category(key="tees", label="Tees", kind="tee", hex="#efe9da"), Category(key="long-sleeves", label="Long sleeves", kind="longsleeve", hex="#5c6b8a"), Category(key="tanks", label="Tanks", kind="tank", hex="#d9a79a"), Category(key="pants", label="Pants", kind="jogger", hex="#4a4a4a"), Category(key="shorts", label="Shorts", kind="shorts", hex="#a7a7a5"), Category(key="kids", label="Kids", kind="hoodie", hex="#f1c27d"), Category(key="accessories", label="Accessories", kind="beanie", hex="#1f2b45")]
+fn shipLabel(m: string): string = m == "express" ? "Express, 2 days" : "Standard, 4 to 6 days"
+
+component App
+  state bag: string[] = [] persist
+  state saved: string[] = [] persist
+  state member = "" persist
+  state promo = "" persist
+  state scheme = "system" persist
+  state pickedColor = ""
+  state pickedSize = "" persist
+  state qty = "1"
+  state needSize = false
+  state notifyDraft = ""
+  state joinDraft = ""
+  state promoDraft = ""
+  state signinDraft = ""
+  state nameDraft = ""
+  state nameEdited = false
+  // The address is kept on the device, so a second order needs no retyping.
+  state coEmail = ""
+  state coName = "" persist
+  state coAddress = "" persist
+  state coCity = "" persist
+  state coZip = "" persist
+  state coShip = "standard" persist
+  // The submitted quantities still present in the bag; later additions belong to the next order.
+  state submittedBag: string[] = []
+  state submittedEmail = ""
+  state submittedMember = ""
+  state submittedPromo = ""
+  state toast = ""
+  state toastN = 0
+
+  // Whether this is the installed app (iOS, Android) or the website: app.ts tells them apart (a browser has a
+  // `navigator`, Hermes has none). The site is the placeholder, so a page rendered ahead is the site's.
+  resource host = loadHost() as shape Host else empty()
+  resource viewport = exactViewport() as shape Viewport
+  resource catalog = loadCatalog() as shape Product[] else empty()
+  derive inApp = host.app
+  // A book fold: the app's toast keeps to the trailing segment, off the hinge. Only the toast reads this, and it
+  // shows only after a press, so a page rendered at build never does.
+  derive book = viewport.horizontalViewportSegments == 2
+  derive stackDepth = depth(nav)
+
+  derive bagCount = countAll(bag)
+  derive subtotal = subtotalOf(catalog, bag)
+  // A code's worth is the server's answer: the store's codes and every member's own.
+  resource promoInfo = checkPromo(promo) as shape Promo else empty()
+  derive promoPct = promoInfo.code == promo ? promoInfo.pct : 0
+  derive discount = round(subtotal * promoPct / 100)
+  derive afterDiscount = subtotal - discount
+  derive shippingCents = shippingFor(coShip, afterDiscount)
+  derive total = afterDiscount + shippingCents
+  derive promoNote = promo == "" ? "" : promoPct > 0 ? `${promo} applied: ${promoPct}% off.` : pending(promoInfo) ? `Checking ${promo}…` : failed(promoInfo) ? `Can't check ${promo} right now; it is checked again when you order.` : `${promo} isn't a code we know.`
+  // What is left of each line in the bag, so a shopper learns of a shortfall there, not at Place order.
+  resource bagStock = loadBagStock(bag.map(l => keyOf(l))) as shape LineStock[] else empty()
+  derive bagShort = bag.filter(l => leftOf(bagStock, keyOf(l)) < demandFor(bag, l)).length
+
+  // The shop's filters are its location's query, so Back, a reload and a shared link keep them.
+  derive catEntry = match stack(nav).filter(e => e.name == "catalog").at(-1) { case some(e) => e, case none => top(nav) }
+  derive cat = searchParam(catEntry, "c")
+  derive gender = searchParam(catEntry, "g")
+  derive sort = searchParam(catEntry, "s")
+  derive sizeFilter = searchParam(catEntry, "z")
+  derive byCat = cat == "" ? catalog : cat == "sale" ? catalog.filter(p => p.compareCents > 0) : catalog.filter(p => p.category == cat)
+  // Women's and men's each take the unisex styles too; kids' are only their own.
+  derive byGender = gender == "" ? byCat : gender == "kids" ? byCat.filter(p => p.gender == "kids") : byCat.filter(p => p.gender == gender or p.gender == "unisex")
+  derive bySize = sizeFilter == "" ? byGender : byGender.filter(p => p.sizes.includes(sizeFilter))
+  derive shopShown = sort == "price-asc" ? sortBy(bySize, p => p.priceCents) : sort == "price-desc" ? sortBy(bySize, p => p.priceCents, "desc") : sort == "new" ? sortBy(bySize, p => hasTag(p, "new") ? 0 : 1) : bySize
+
+  // The product shown, and what is left of each size: asked only for a product the catalog has.
+  derive productSlug = match stack(nav).filter(e => e.name == "product").at(-1) { case some(e) => e.params.slug, case none => "" }
+  // The page beneath the top one: a product's photo is named for the page its card was on, so the pair that flies
+  // is a card and its product, never a home card and the same card in the shop.
+  derive cameFrom = match stack(nav).at(-2) { case some(e) => e.name, case none => "" }
+  resource stock = loadStock(nameOf(catalog, productSlug) == "" ? "" : productSlug) as shape Stock else empty()
+  mutation notified as shape Notified
+  derive notifiedSlug = match notified { case some(r) => r.ok ? r.slug : "", case none => "" }
+  derive notifyError = match notified { case some(r) => r.error, case none => "" }
+
+  derive searchEntry = match stack(nav).filter(e => e.name == "search").at(-1) { case some(e) => e, case none => top(nav) }
+  derive query = searchParam(searchEntry, "q")
+  derive needle = query.trim().toLowerCase()
+  derive results = catalog.filter(p => needle != "" and matches(p, needle))
+
+  resource account = loadAccount(member) as shape Account else empty()
+  resource orders = loadOrders(member) as shape Order[] else empty()
+  derive orderId = match stack(nav).filter(e => e.name == "order").at(-1) { case some(e) => e.params.id, case none => "" }
+  resource order = loadOrder(orderId) as shape Order else empty()
+
+  mutation joined as shape Joined refreshes account
+  mutation signedIn as shape Account then afterSignIn
+  mutation renamed as shape Account refreshes account
+  mutation placed as shape Placed refreshes orders, account, stock, bagStock then afterOrder
+  derive nameValue = nameEdited ? nameDraft : account.name
+  derive nameError = match renamed { case some(r) => r.error, case none => "" }
+  derive orderError = match failure(order) { case some(f) => f.message, case none => "" }
+  derive joinNote = match joined { case some(r) => r.ok ? (r.returning ? `You're already on the list, and ${r.code} still works.` : `You're in. ${r.code} takes 15% off your first order.`) : r.error, case none => "" }
+  derive joinOk = match joined { case some(r) => r.ok, case none => false }
+  derive joinCode = match joined { case some(r) => r.ok ? r.code : "", case none => "" }
+  derive signinError = match signedIn { case some(r) => r.error, case none => "" }
+  derive signedOk = match signedIn { case some(r) => r.ok, case none => false }
+  derive signedEmail = match signedIn { case some(r) => r.email, case none => "" }
+  derive placeError = match placed { case some(r) => r.error, case none => "" }
+  derive placedOk = match placed { case some(r) => r.ok, case none => false }
+  derive placedId = match placed { case some(r) => r.id, case none => "" }
+  derive checkoutHint = bag.length == 0 ? "Your bag is empty." : coEmail.trim() == "" ? "Enter an email for the receipt." : coName.trim() == "" ? "Enter the name it ships to." : (coAddress.trim() == "" or coCity.trim() == "" or coZip.trim() == "") ? "Enter the shipping address." : ""
+
+  // Leaving a page ends its toast: its word was about that page, and it must not cover what the next one offers.
+  action pick(name: string)
+    toast = ""
+    nav = select(nav, name)
+  // A link's location; the browser's Back, Forward and a deep link arrive here too. A filter on the shop or a
+  // search is the page's own query, so it replaces: Back leaves the page rather than stepping through each.
+  action follow(url: string)
+    toast = ""
+    if top(nav).name == "catalog" and url.startsWith("/shop")
+      nav = replace(nav, url)
+    else if top(nav).name == "search" and url.startsWith("/search")
+      nav = replace(nav, url)
+    else if inApp and ownTab(url)
+      nav = open(nav, url)
+    else
+      nav = go(nav, url)
+  action back
+    toast = ""
+    nav = back(nav)
+  action setCat(v: string)
+    nav = replace(nav, shopUrlZ(v, gender, sort, sizeFilter))
+  action setGender(v: string)
+    nav = replace(nav, shopUrlZ(cat, v, sort, sizeFilter))
+  action setSort(v: string)
+    nav = replace(nav, shopUrlZ(cat, gender, v, sizeFilter))
+  action setSize(v: string)
+    nav = replace(nav, shopUrlZ(cat, gender, sort, v))
+  action search(v: string)
+    if top(nav).name == "search"
+      nav = replace(nav, withQuery("/search", q("q", v)))
+    else
+      nav = go(nav, withQuery("/search", q("q", v)))
+
+  action pickColor(name: string)
+    pickedColor = name
+  action pickSize(s: string)
+    pickedSize = s
+    needSize = false
+  action editQty(v: string)
+    qty = v
+  action stepQty(d: number)
+    let n = match parseNumber(qty) { case some(x) => x, case none => 1 }
+    qty = `${clampQty(n + d)}`
+  // Add to bag stays pressable without a size, so the press can say what is missing instead of doing nothing.
+  action addToBag(slug: string, color: string, size: string)
+    if size == ""
+      needSize = true
+    else
+      let n = match parseNumber(qty) { case some(x) => x, case none => 1 }
+      let capped = qtyFor(bag, `${slug}|${color}|${size}`) + clampQty(n) > 10
+      bag = merged(bag, `${slug}|${color}|${size}|${clampQty(n)}`)
+      qty = "1"
+      toast = capped ? "Limit of 10 per colour and size." : `Added to bag: ${nameOf(catalog, slug)}`
+      toastN = toastN + 1
+      haptic("success")
+  action editNotify(v: string)
+    notifyDraft = v
+  action notifyMe(slug: string)
+    let addr = notifyDraft.trim() == "" ? member : notifyDraft.trim()
+    if addr != "" and not pending(notified)
+      send notified = notifyMe(addr, slug)
+  action hideToast
+    toast = ""
+  // The photo route's viewer says "dismiss" when the photo is pulled down at its resting size.
+  action zoomSaid(text: string)
+    if text == "dismiss"
+      nav = back(nav)
+  task dismiss when toast != "" key=toastN
+    after(5000, hideToast)
+  action setLineQty(key: string, v: string)
+    let n = match parseNumber(v) { case some(x) => x, case none => 1 }
+    bag = bag.map(l => keyOf(l) == key ? withQty(l, clampQty(n)) : l)
+    if pending(placed)
+      submittedBag = submittedBag.map(l => keyOf(l) == key ? withQty(l, min(qtyOf(l), clampQty(n))) : l)
+  action stepLineQty(key: string, d: number)
+    setLineQty(key, `${qtyFor(bag, key) + d}`)
+  action removeLine(key: string)
+    bag = bag.filter(l => keyOf(l) != key)
+    if pending(placed)
+      submittedBag = submittedBag.filter(l => keyOf(l) != key)
+  action toggleSaved(slug: string)
+    saved = saved.includes(slug) ? saved.filter(s => s != slug) : saved.concat([slug])
+    haptic("selection")
+
+  action editJoin(v: string)
+    joinDraft = v
+  action joinList
+    if joinDraft.trim() != "" and not pending(joined)
+      send joined = subscribe(joinDraft.trim())
+  action editPromo(v: string)
+    promoDraft = v
+  action applyPromo
+    promo = promoDraft.trim().toUpperCase()
+  // The code a signup or the account page hands over, applied without retyping.
+  action applyCode(code: string)
+    promo = code
+    promoDraft = code
+    toast = `${code} applied to your bag`
+    toastN = toastN + 1
+  action clearPromo
+    promo = ""
+    promoDraft = ""
+
+  action editSignin(v: string)
+    signinDraft = v
+  action signIn
+    if signinDraft.trim() != "" and not pending(signedIn)
+      send signedIn = signIn(signinDraft.trim())
+  action afterSignIn
+    if signedOk
+      member = signedEmail
+      signinDraft = ""
+      nameEdited = false
+      renamed = none
+  action signOut
+    member = ""
+    nameDraft = ""
+    nameEdited = false
+    renamed = none
+  action editName(v: string)
+    nameDraft = v
+    nameEdited = true
+  action saveName
+    if nameEdited and not pending(renamed)
+      send renamed = saveName(member, nameValue.trim())
+  action retryOrder
+    refresh order
+
+  action openCheckout
+    if coEmail == ""
+      coEmail = member
+    if coName == ""
+      coName = account.name
+    toast = ""
+    nav = go(nav, path("checkout"))
+  action editCoEmail(v: string)
+    coEmail = v
+  action editCoName(v: string)
+    coName = v
+  action editCoAddress(v: string)
+    coAddress = v
+  action editCoCity(v: string)
+    coCity = v
+  action editCoZip(v: string)
+    coZip = v
+  action setShip(v: string)
+    coShip = v
+  action placeOrder
+    if checkoutHint == "" and not pending(placed)
+      let email = coEmail.trim().toLowerCase()
+      submittedEmail = email
+      submittedMember = member
+      submittedPromo = promo
+      submittedBag = bag
+      send placed = placeOrder(email, coName.trim(), coAddress.trim(), coCity.trim(), coZip.trim(), coShip, bag, promo)
+  action afterOrder
+    if placedOk
+      if member == submittedMember
+        member = submittedEmail
+      bag = afterPurchase(bag, submittedBag)
+      if promo == submittedPromo
+        promo = ""
+        promoDraft = ""
+      nav = go(nav, path("order", placedId))
+    submittedBag = []
+
+  action chooseScheme(v: string)
+    scheme = v
+    if v == "dark"
+      setScheme("dark")
+    else if v == "light"
+      setScheme("light")
+    else
+      setScheme("system")
+  action applyScheme
+    chooseScheme(scheme)
+  task restoreScheme mount
+    after(1, applyScheme)
+
+  view
+    view navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app" width="100%" height="100%"
+      display="flex" flex-direction="column" color="ink" background-color="page"
+      head title="Softwear" description="Alternative Apparel's hoodies, tees and joggers, sold direct. Eco-Fleece, garment-washed, low-impact dyes."
+      column flex=1 min-height=0 position="relative"
+        for t in nav.tabs key=t.name
+          // `flex=1`: on the web the shown panel is in the page's flow, and it grows to the window so a short page's
+          // footer sits at the bottom.
+          column role="tabpanel" id=`panel-${t.name}` position="absolute" inset=0 flex=1
+            for e in t.stack key=e.id
+
+              if e.name == "shop"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text "Softwear" role="heading" aria-level=1
+                    if not inApp
+                      SiteHeader(current="home", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title="Softwear · Soft goods, nothing else"
+                      main flex=1 display="flex" flex-direction="column"
+                        // The hero: the one thing the page is for.
+                        section aria-labelledby="hero-title" background-color="band" color="onband"
+                          row class=Wrap flex-wrap="wrap" align-items="center" gap=32 padding-top=56 padding-bottom=56
+                            column flex="1 1 320px" gap=18 min-width=0
+                              text "Eco-Fleece, direct" class=Eyebrow color="onbandmuted"
+                              text "Soft goods. Nothing else." overflow-wrap="break-word" id="hero-title" role="heading" aria-level=1 font-size="3.25rem" font-weight=800 letter-spacing="-0.03em" line-height=1.2
+                              text "Alternative Apparel's lived-in hoodies, tees and joggers, without the markup. Garment-washed, low-impact dyes, and the softest fleece we know." font-size="1.125rem" color="onbandmuted" max-width="34rem" line-height=1.5
+                              row gap=12 flex-wrap="wrap" padding-top=8
+                                link href=shopUrl("hoodies", "", "") class=Pill testId="hero-hoodies"
+                                  text "Shop hoodies"
+                                link href="/shop" class=Ghost color="onband" border="1px solid var(--onbandmuted)" testId="hero-all"
+                                  text "Shop everything"
+                            column flex="1 1 260px" align-items="center" min-width=0
+                              view width=260 max-width="100%" aspect-ratio="4 / 5" border-radius=24 overflow="hidden" background-color="card"
+                                Photo(file=photoOf(catalog, "challenger-eco-fleece-hoodie", ""), kind="hoodie", hex="#efe9da", size=200, big=true, alt="", fly="", zoom="")
+                        // What the store promises, in one line.
+                        view border-bottom="1px solid var(--line)"
+                          view class=Wrap display="grid" grid-template-columns="repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr))" gap="10px 24px" padding-top=14 padding-bottom=14 font-size="0.875rem" color="muted"
+                            row gap=8 align-items="center" justify-content="center"
+                              image "symbol:package" aria-hidden=true
+                              text "Free shipping over $75"
+                            row gap=8 align-items="center" justify-content="center"
+                              image "symbol:refresh" aria-hidden=true
+                              text "Free 30-day returns"
+                            row gap=8 align-items="center" justify-content="center"
+                              image "symbol:sparkles" aria-hidden=true
+                              text "Recycled fibres, low-impact dyes"
+                            row gap=8 align-items="center" justify-content="center"
+                              image "symbol:person" aria-hidden=true
+                              text "Members get 15% off"
+                        // Categories.
+                        section aria-labelledby="cats-title" class=Wrap padding-top=40 padding-bottom=8 gap=16 display="flex" flex-direction="column"
+                          text "Shop by category" id="cats-title" role="heading" aria-level=2 class=Title
+                          column role="list" display="grid" grid-template-columns="repeat(auto-fit, minmax(min(100%, 6.25rem), 1fr))" gap="16px 12px"
+                            for c in categories() key=c.key
+                              link href=shopUrl(c.key, "", "") role="listitem" display="flex" flex-direction="column" gap=8 min-width=0 color="ink" text-decoration="none" testId=`cat-${c.key}`
+                                view aspect-ratio="4 / 5" border-radius=16 class=Frame
+                                  Photo(file=coverOf(catalog, c.key), kind=c.kind, hex=c.hex, size=64, big=false, alt="", fly="", zoom="")
+                                text c.label font-weight=600 text-align="center" font-size="0.9375rem"
+                        // Bestsellers, sideways on a inApp.
+                        section aria-labelledby="best-title" class=Wrap padding-top=40 display="flex" flex-direction="column" gap=16
+                          row align-items="baseline" justify-content="space-between" gap=16 flex-wrap="wrap"
+                            text "Bestsellers" id="best-title" role="heading" aria-level=2 class=Title
+                            link href=shopUrl("", "", "") color="muted" testId="best-all"
+                              text "See everything"
+                          row role="list" class=Rail
+                            for p in catalog.filter(x => hasTag(x, "bestseller")) key=p.slug
+                              ProductCard(p=p, width="14rem", saved=saved.includes(p.slug), fly=e.name)
+                        // The fabric story.
+                        section aria-labelledby="fleece-title" class=Wrap padding-top=48
+                          row flex-wrap="wrap" align-items="center" gap=32 background-color="card" border-radius=24 padding=32
+                            column flex="1 1 300px" gap=14 min-width=0
+                              text "The fabric" class=Eyebrow
+                              text "Eco-Fleece, worn in from day one" id="fleece-title" role="heading" aria-level=2 class=Title
+                              text "Half recycled polyester, half cotton, brushed on both sides and garment-washed so it never has a stiff first week. It is the reason the Challenger has been in the drawer for twenty years." line-height=1.55 color="muted"
+                              row gap=12 flex-wrap="wrap" padding-top=4
+                                link href=path("story") class=Ghost testId="story-link"
+                                  text "Read the story"
+                                link href=shopUrl("sweatshirts", "", "") class=Ghost
+                                  text "Shop sweatshirts"
+                            row flex="1 1 240px" justify-content="center" gap=12 min-width=0
+                              view width=150 aspect-ratio="4 / 5" border-radius=16 class=Frame
+                                Photo(file=photoOf(catalog, "champ-eco-fleece-crewneck-sweatshirt", ""), kind="crew", hex="#a7a7a5", size=110, big=false, alt="", fly="", zoom="")
+                              view width=150 aspect-ratio="4 / 5" border-radius=16 class=Frame
+                                Photo(file=photoOf(catalog, "eco-fleece-dodgeball-joggers", ""), kind="jogger", hex="#1f2b45", size=110, big=false, alt="", fly="", zoom="")
+                        // New arrivals.
+                        section aria-labelledby="new-title" class=Wrap padding-top=48 display="flex" flex-direction="column" gap=16
+                          row align-items="baseline" justify-content="space-between" gap=16 flex-wrap="wrap"
+                            text "New this season" id="new-title" role="heading" aria-level=2 class=Title
+                            link href=shopUrl("", "", "new") color="muted"
+                              text "See what's new"
+                          column role="list" display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 10rem), 1fr))" gap=16
+                            for p in catalog.filter(x => hasTag(x, "new")) key=p.slug
+                              ProductCard(p=p, width="auto", saved=saved.includes(p.slug), fly=e.name)
+                        // Join the list.
+                        section aria-labelledby="join-title" class=Wrap padding-top=56 padding-bottom=56
+                          JoinBlock(draft=joinDraft, edit=editJoin, join=joinList, note=joinNote, ok=joinOk, busy=pending(joined), prefix="home", code=joinCode, applied=(joinCode != "" and promo == joinCode), apply=applyCode)
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "catalog"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text catLabel(cat) role="heading" aria-level=1
+                    if not inApp
+                      SiteHeader(current="shop", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title=`${catLabel(cat)} · Softwear` description="Every hoodie, sweatshirt, tee and jogger in the catalog, by category, fit and price."
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=20 padding-top=28 padding-bottom=56
+                        if not inApp
+                          text catLabel(cat) role="heading" aria-level=1 class=Title testId="shop-title"
+                        // The categories as links: a filtered shop is a page with a URL.
+                        row role="list" aria-label="Categories" flex-wrap="nowrap" overflow-x="auto" scrollbar-width="none" gap=8 padding-bottom=4
+                          link href=shopUrlZ("", gender, sort, sizeFilter) role="listitem" class=Chip aria-current=(cat == "" ? "page" : "false") background-color=(cat == "" ? "ink" : "page") color=(cat == "" ? "page" : "ink") testId="chip-all"
+                            text "All"
+                          for c in categories() key=c.key
+                            link href=shopUrlZ(c.key, gender, sort, sizeFilter) role="listitem" class=Chip aria-current=(cat == c.key ? "page" : "false") background-color=(cat == c.key ? "ink" : "page") color=(cat == c.key ? "page" : "ink") testId=`chip-${c.key}`
+                              text c.label
+                          link href=shopUrlZ("sale", gender, sort, sizeFilter) role="listitem" class=Chip aria-current=(cat == "sale" ? "page" : "false") background-color=(cat == "sale" ? "ink" : "page") color=(cat == "sale" ? "page" : "brand") testId="chip-sale"
+                            text "Sale"
+                        row flex-wrap="wrap" align-items="center" justify-content="space-between" gap="8px 16px"
+                          text plural(shopShown.length, "style", "styles") color="muted" testId="shop-count"
+                          // Three fields that share a row where it is wide enough, two and one where it is not: never a ragged stack.
+                          row flex-wrap="wrap" gap=8 flex="1 1 22rem" max-width="30rem"
+                            column gap=4 flex="1 1 7rem" min-width=0
+                              text "For" id="gender-label" font-size="0.75rem" color="muted"
+                              select value=gender change=setGender width="100%" aria-labelledby="gender-label" testId="gender"
+                                option "Everyone" value=""
+                                option "Women" value="women"
+                                option "Men" value="men"
+                                option "Kids" value="kids"
+                            column gap=4 flex="1 1 7rem" min-width=0
+                              text "Size" id="size-filter-label" font-size="0.75rem" color="muted"
+                              select value=sizeFilter change=setSize width="100%" aria-labelledby="size-filter-label" testId="size"
+                                option "Any" value=""
+                                option "XS" value="XS"
+                                option "S" value="S"
+                                option "M" value="M"
+                                option "L" value="L"
+                                option "XL" value="XL"
+                                option "2XL" value="2XL"
+                                option "3XL" value="3XL"
+                                option "YXS" value="YXS"
+                                option "YS" value="YS"
+                                option "YM" value="YM"
+                                option "YL" value="YL"
+                                option "YXL" value="YXL"
+                                option "S/M" value="S/M"
+                                option "L/XL" value="L/XL"
+                                option "One Size" value="One Size"
+                            column gap=4 flex="1 1 7rem" min-width=0
+                              text "Sort" id="sort-label" font-size="0.75rem" color="muted"
+                              select value=sort change=setSort width="100%" aria-labelledby="sort-label" testId="sort"
+                                option "Featured" value=""
+                                option "Price: low to high" value="price-asc"
+                                option "Price: high to low" value="price-desc"
+                                option "New first" value="new"
+                        if shopShown.length == 0
+                          EmptyState(symbol="symbol:search", title="Nothing here yet", message="Try another category or clear the filters.")
+                            link href="/shop" testId="shop-clear"
+                              text "Show everything"
+                        else
+                          column role="list" display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 10rem), 1fr))" gap=16 testId="shop-grid"
+                            for p in shopShown key=p.slug
+                              ProductCard(p=p, width="auto", saved=saved.includes(p.slug), fly=e.name)
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "product"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` navigationSource=`zoom-photo-${e.params.slug}` status-bar-style="light-content" position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text nameOf(catalog, e.params.slug) role="heading" aria-level=2
+                    if not inApp
+                      SiteHeader(current="shop", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=32 padding-top=24 padding-bottom=56
+                        if nameOf(catalog, e.params.slug) == ""
+                          head title="Not Found" status=404
+                          EmptyState(symbol="symbol:alert", title="No such product", message="Its link may be out of date.")
+                            link href="/shop" testId="missing-shop"
+                              text "Shop everything"
+                        else
+                          for p in productOf(catalog, e.params.slug) key=p.slug
+                            head title=`${p.name} · Softwear` description=p.description
+                            row flex-wrap="wrap" gap=32 align-items="flex-start"
+                              // The garment in the colour chosen.
+                              column flex="1 1 340px" min-width=0 max-width="34rem" gap=12
+                                column border-radius=24 aspect-ratio="4 / 5" position="relative" class=Frame min-width=0 min-height=0 testId="gallery"
+                                  Photo(file=photoIn(p, colorOr(p, pickedColor)), kind=p.kind, hex=hexIn(p, colorOr(p, pickedColor)), size=260, big=true, alt=`${p.name} in ${colorOr(p, pickedColor)}`, fly=`${cameFrom}-photo-${p.slug}`, zoom=`zoom-photo-${p.slug}`)
+                                  if photoIn(p, colorOr(p, pickedColor)) != ""
+                                    link href=`/p/${p.slug}/photo` position="absolute" inset=0 cursor="zoom-in" aria-label="See the photo larger" testId="zoom-open"
+                                  if p.compareCents > 0
+                                    view position="absolute" top=16 left=16 padding="4px 10px" border-radius=999 background-color="brand"
+                                      text "Sale" color="onbrand" font-size="0.8125rem" font-weight=600
+                                  button press=toggleSaved(p.slug) aria-label=(saved.includes(p.slug) ? "Remove from saved" : "Save for later") aria-pressed=saved.includes(p.slug) buttonStyle="plain" position="absolute" top=12 right=12 testId="save"
+                                    image (saved.includes(p.slug) ? "symbol:heart-fill" : "symbol:heart")
+                                text (ownPhoto(p, colorOr(p, pickedColor)) != "" or p.photo == "" ? `Shown in ${colorOr(p, pickedColor)}` : `${colorOr(p, pickedColor)} · pictured in a sample colour`) font-size="0.8125rem" color="muted" text-align="center" testId="shown-color"
+                              column flex="1 1 320px" gap=20 min-width=0
+                                column gap=6
+                                  text (p.style == "" ? p.category.toUpperCase() : `Style ${p.style}`) class=Eyebrow
+                                  text p.name role="heading" aria-level=1 class=Title testId="product-name"
+                                  row gap=10 align-items="baseline" flex-wrap="wrap"
+                                    text money(p.priceCents) font-size="1.25rem" font-weight=600 testId="product-price"
+                                    if p.compareCents > 0
+                                      text money(p.compareCents) color="muted" text-decoration="line-through"
+                                      text `Save ${round((1 - p.priceCents / p.compareCents) * 100)}%` color="brand" font-size="0.875rem" font-weight=600
+                                text p.description line-height=1.55
+                                // Colour.
+                                column gap=10
+                                  text `Colour: ${colorOr(p, pickedColor)}` font-size="0.875rem" font-weight=600 id="color-label"
+                                  row role="radiogroup" aria-labelledby="color-label" gap=10 flex-wrap="wrap"
+                                    for c, i in p.colors key=c.name
+                                      button role="radio" aria-checked=(colorOr(p, pickedColor) == c.name) aria-label=c.name press=pickColor(c.name) appearance="none" display="flex" align-items="center" justify-content="center" box-sizing="border-box" padding=0 width=44 height=44 min-width=44 min-height=44 flex-shrink=0 border-radius=999 border=(colorOr(p, pickedColor) == c.name ? "2px solid var(--ink)" : "2px solid transparent") testId=`color-${i}`
+                                        view width=28 height=28 border-radius=999 background-color=c.hex border="1px solid var(--swatchline)"
+                                // Size, with what is left: a sold-out size is struck through, one nearly gone gets a mark.
+                                column gap=10
+                                  row align-items="baseline" justify-content="space-between" flex-wrap="wrap"
+                                    text (sizeOr(p, pickedSize, stock) == "" ? "Size" : `Size: ${sizeOr(p, pickedSize, stock)}`) font-size="0.875rem" font-weight=600 id="size-label" testId="size-label"
+                                    link href=path("story") + "#sizing" min-height=44 display="flex" align-items="center" font-size="0.8125rem" color="muted"
+                                      text "Size guide"
+                                  row role="radiogroup" aria-labelledby="size-label" gap=8 flex-wrap="wrap"
+                                    for s in p.sizes key=s
+                                      button role="radio" aria-checked=(sizeOr(p, pickedSize, stock) == s) disabled=(hasStock(p, stock) and countOf(stock, s) <= 0) press=pickSize(s) aria-label=(hasStock(p, stock) and countOf(stock, s) <= 0 ? `${s}, sold out` : hasStock(p, stock) and countOf(stock, s) <= 3 ? `${s}, only ${countOf(stock, s)} left` : s) appearance="none" position="relative" min-width=52 min-height=44 padding="10px 12px" border-radius=10 border="1px solid var(--line)" background-color=(sizeOr(p, pickedSize, stock) == s ? "ink" : "page") color=(sizeOr(p, pickedSize, stock) == s ? "page" : "ink") text-decoration=(hasStock(p, stock) and countOf(stock, s) <= 0 ? "line-through" : "none") font-weight=600 testId=`size-${s}`
+                                        text s
+                                        if hasStock(p, stock) and countOf(stock, s) > 0 and countOf(stock, s) <= 3
+                                          view position="absolute" top=5 right=5 width=6 height=6 border-radius=999 background-color="brand" aria-hidden=true testId=`low-${s}`
+                                  if needSize and sizeOr(p, pickedSize, stock) == ""
+                                    text "Pick a size first." font-size="0.8125rem" color="brand" font-weight=600 testId="size-hint"
+                                  if hasStock(p, stock) and sizeOr(p, pickedSize, stock) != "" and countOf(stock, sizeOr(p, pickedSize, stock)) <= 3
+                                    text `Only ${countOf(stock, sizeOr(p, pickedSize, stock))} left in ${sizeOr(p, pickedSize, stock)}` font-size="0.8125rem" color="brand" font-weight=600 testId="stock-note"
+                                  else if soldOut(p, stock).length > 0
+                                    text `Sold out in ${soldOut(p, stock).join(", ")}` font-size="0.8125rem" color="muted" testId="stock-note"
+                                  else if failed(stock)
+                                    text "Stock isn't available right now; we'll check when you order." font-size="0.8125rem" color="muted" testId="stock-note"
+                                  // A sold-out size: an address, and a word when it is back.
+                                  if soldOut(p, stock).length > 0
+                                    if notifiedSlug == p.slug
+                                      row gap=8 align-items="center" font-size="0.8125rem" color="muted" testId="notify-note"
+                                        image "symbol:checkmark" aria-hidden=true
+                                        text "We'll email you when it's back in stock."
+                                    else
+                                      row gap=8 align-items="center" flex-wrap="wrap"
+                                        input value=(notifyDraft == "" ? member : notifyDraft) input=editNotify submit=notifyMe(p.slug) type="email" placeholder="you@example.com" aria-label="Email for a restock note" autocomplete="email" inputmode="email" class=Field flex="1 1 160px" min-width=0 min-height=40 padding="8px 12px" font-size="0.875rem" testId="notify-email"
+                                        button press=notifyMe(p.slug) disabled=((notifyDraft.trim() == "" and member == "") or pending(notified)) buttonStyle="bordered" class=Capsule testId="notify"
+                                          text "Tell me when it's back"
+                                      if notifyError != "" and not pending(notified)
+                                        text notifyError font-size="0.8125rem" color="error" testId="notify-error"
+                                // Quantity and the one action.
+                                row gap=12 align-items="center" flex-wrap="wrap"
+                                  row align-items="center" border="1px solid var(--line)" border-radius=10 overflow="hidden"
+                                    button press=stepQty(-1) disabled=(clampQty(match parseNumber(qty) { case some(n) => n, case none => 1 }) <= 1) aria-label="One fewer" buttonStyle="plain" color="ink" min-width=44 min-height=44 testId="qty-less"
+                                      image "symbol:minus"
+                                    input value=qty input=editQty inputmode="numeric" aria-label="Quantity" width="2.75rem" min-height=44 text-align="center" border="none" background-color="page" color="ink" font-variant-numeric="tabular-nums" testId="qty"
+                                    button press=stepQty(1) disabled=(clampQty(match parseNumber(qty) { case some(n) => n, case none => 1 }) >= 10) aria-label="One more" buttonStyle="plain" color="ink" min-width=44 min-height=44 testId="qty-more"
+                                      image "symbol:add"
+                                  button press=addToBag(p.slug, colorOr(p, pickedColor), sizeOr(p, pickedSize, stock)) buttonStyle="filled" class=Capsule flex="1 1 200px" testId="add-to-bag"
+                                    text (sizeOr(p, pickedSize, stock) == "" ? "Choose a size" : `Add to bag · ${money(p.priceCents * clampQty(match parseNumber(qty) { case some(n) => n, case none => 1 }))}`)
+                                text "Free shipping over $75 · Free 30-day returns · No payment is taken on this demo store" font-size="0.8125rem" color="muted"
+                                // The facts.
+                                dl display="grid" grid-template-columns="minmax(0, 1fr)" gap="8px 16px" margin=0 padding-top=8 border-top="1px solid var(--line)"
+                                  dt
+                                    text "Fabric" font-weight=600 font-size="0.875rem"
+                                  dd margin=0
+                                    text p.fabric font-size="0.875rem" color="muted"
+                                  if p.weight != ""
+                                    dt
+                                      text "Weight" font-weight=600 font-size="0.875rem"
+                                    dd margin=0
+                                      text p.weight font-size="0.875rem" color="muted"
+                                  dt
+                                    text "Fit" font-weight=600 font-size="0.875rem"
+                                  dd margin=0
+                                    text p.fit font-size="0.875rem" color="muted"
+                                column gap=6
+                                  text "Details" font-weight=600 font-size="0.875rem"
+                                  for d in p.details key=d
+                                    row gap=8
+                                      text "•" color="muted"
+                                      text d font-size="0.875rem" color="muted"
+                            // What it is worn with, then more of its kind.
+                            if catalog.filter(x => pairsWith(p.category).includes(x.category) and x.slug != p.slug).length > 0
+                              section aria-labelledby="pairs-title" display="flex" flex-direction="column" gap=16
+                                text "Goes with it" id="pairs-title" role="heading" aria-level=2 class=Title
+                                row role="list" class=Rail testId="pairs"
+                                  for r in catalog.filter(x => pairsWith(p.category).includes(x.category) and x.slug != p.slug).slice(0, 6) key=r.slug
+                                    ProductCard(p=r, width="12.5rem", saved=saved.includes(r.slug), fly="")
+                            if catalog.filter(x => x.category == p.category and x.slug != p.slug).length > 0
+                              section aria-labelledby="related-title" display="flex" flex-direction="column" gap=16
+                                text `More ${catLabel(p.category).toLowerCase()}` id="related-title" role="heading" aria-level=2 class=Title
+                                row role="list" class=Rail testId="related"
+                                  for r in catalog.filter(x => x.category == p.category and x.slug != p.slug).slice(0, 6) key=r.slug
+                                    ProductCard(p=r, width="12.5rem", saved=saved.includes(r.slug), fly="")
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              // The photo at its full size, over the product: a full-screen cover on the phone (iOS 18 zooms it out of the
+              // gallery), a dialog in a browser. `zoom-image` is the app's module: it pinches, pans and double-taps.
+              if e.name == "photo"
+                column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`zoom-photo-${e.params.slug}` position="absolute" inset=0 display="flex" flex-direction="column" background-color="band" color="onband" testId="lightbox"
+                  if inApp or e.id == top(nav).id
+                    // The lightbox's own row, in the app too: UIKit's bar takes its title's colour from the app's theme, dark on
+                    // this dark band, and no route can change that. Pulling the photo down closes it as well (`zoomSaid`).
+                    header appearance="none" display="flex" align-items="center" justify-content="space-between" gap=12 padding="8px 8px 4px 20px"
+                      text `${nameOf(catalog, e.params.slug)} in ${colorOf(catalog, e.params.slug, pickedColor)}` role="heading" aria-level=2 flex=1 min-width=0 font-size="0.9375rem" font-weight=500 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                      button id="back" press=back aria-label="Close" class=IconLink color="onband" testId="zoom-close"
+                        image "symbol:close"
+                    zoom-image source=`assets/p/${photoOf(catalog, e.params.slug, colorOf(catalog, e.params.slug, pickedColor))}` flex=1 min-height=0 width="100%" message=zoomSaid aria-label=`${nameOf(catalog, e.params.slug)} in ${colorOf(catalog, e.params.slug, pickedColor)}. Pinch or double-tap to zoom; pull down to close` testId="zoom"
+                    text "Pinch or double-tap to zoom" text-align="center" font-size="0.8125rem" color="onbandmuted" padding="8px 16px calc(env(safe-area-inset-bottom) + 12px)"
+
+              if e.name == "story"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text "Our story" role="heading" aria-level=2
+                    if not inApp
+                      SiteHeader(current="story", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title="Our story · Softwear" description="Why we sell Alternative Apparel direct, what Eco-Fleece is, and how our sizes run."
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=28 padding-top=32 padding-bottom=56 max-width="44rem"
+                        text "Our story" class=Eyebrow
+                        text "The softest basics we could find, sold the simple way" role="heading" aria-level=1 class=Title font-size="2.25rem" line-height=1.1
+                        text "Alternative Apparel made the hoodie people reach for first: brushed Eco-Fleece, washed so it arrives already broken in, cut so it drapes instead of hangs. When the brand stopped selling to the public, we kept buying it by the case. Softwear is that case, opened." line-height=1.6 font-size="1.0625rem"
+                        column gap=10 id="fabric"
+                          text "What Eco-Fleece is" role="heading" aria-level=2 font-size="1.375rem" font-weight=700
+                          text "A 6.5 oz blend of recycled polyester, organic and conventional cotton, and a little rayon for drape. It is yarn-dyed and fabric-washed with low-impact dyes, which is why the colours look lived in on the first day and stay that way." line-height=1.6 color="muted"
+                        column gap=14 id="sizing"
+                          text "How our sizes run" role="heading" aria-level=2 font-size="1.375rem" font-weight=700
+                          text "Unisex styles are cut straight; take your usual size for a relaxed fit or one down for a closer one. Women's styles run true to size. Kids' sizes are youth sizes, by age. Beanies are one size; socks come in S/M and L/XL." line-height=1.6 color="muted"
+                          // The garment's measurements, laid flat, in inches.
+                          view overflow-x="auto"
+                            table border-spacing=0 width="100%" max-width="36rem" font-size="0.875rem" font-variant-numeric="tabular-nums" testId="size-table"
+                              caption text-align="left" padding-bottom=8 color="muted"
+                                text "Unisex and women's styles: the garment laid flat, in inches"
+                              thead
+                                tr
+                                  th scope="col" text-align="left" padding="8px 12px 8px 0" border-bottom="1px solid var(--line)"
+                                    text "Size"
+                                  th scope="col" text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)"
+                                    text "Chest"
+                                  th scope="col" text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)"
+                                    text "Body length"
+                                  th scope="col" text-align="right" padding="8px 0 8px 12px" border-bottom="1px solid var(--line)"
+                                    text "Sleeve"
+                              tbody
+                                for r in ["XS|18|26|33", "S|19|27|34", "M|20½|28|35", "L|22|29|36", "XL|24|30|37", "2XL|26|31|38", "3XL|28|32|39"] key=part(r, 0)
+                                  tr
+                                    th scope="row" text-align="left" padding="8px 12px 8px 0" border-bottom="1px solid var(--line)" font-weight=600
+                                      text part(r, 0)
+                                    td text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)" color="muted"
+                                      text part(r, 1)
+                                    td text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)" color="muted"
+                                      text part(r, 2)
+                                    td text-align="right" padding="8px 0 8px 12px" border-bottom="1px solid var(--line)" color="muted"
+                                      text part(r, 3)
+                          view overflow-x="auto"
+                            table border-spacing=0 width="100%" max-width="36rem" font-size="0.875rem" font-variant-numeric="tabular-nums" testId="kids-size-table"
+                              caption text-align="left" padding-bottom=8 color="muted"
+                                text "Kids' styles, by age"
+                              thead
+                                tr
+                                  th scope="col" text-align="left" padding="8px 12px 8px 0" border-bottom="1px solid var(--line)"
+                                    text "Size"
+                                  th scope="col" text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)"
+                                    text "Age"
+                                  th scope="col" text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)"
+                                    text "Chest"
+                                  th scope="col" text-align="right" padding="8px 0 8px 12px" border-bottom="1px solid var(--line)"
+                                    text "Body length"
+                              tbody
+                                for r in ["YXS|4 to 5|13|18", "YS|6 to 7|14|20", "YM|8 to 9|15|22", "YL|10 to 12|16|24", "YXL|14 to 16|17|26"] key=part(r, 0)
+                                  tr
+                                    th scope="row" text-align="left" padding="8px 12px 8px 0" border-bottom="1px solid var(--line)" font-weight=600
+                                      text part(r, 0)
+                                    td text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)" color="muted"
+                                      text part(r, 1)
+                                    td text-align="right" padding="8px 12px" border-bottom="1px solid var(--line)" color="muted"
+                                      text part(r, 2)
+                                    td text-align="right" padding="8px 0 8px 12px" border-bottom="1px solid var(--line)" color="muted"
+                                      text part(r, 3)
+                        column gap=10 id="shipping"
+                          text "Shipping and returns" role="heading" aria-level=2 font-size="1.375rem" font-weight=700
+                          text "Standard shipping is free over $75 and $6 otherwise; express is $14 and arrives in two days. Anything unworn comes back within 30 days for a full refund. This is a demo store: no payment is taken and nothing ships." line-height=1.6 color="muted"
+                        column gap=10 id="about"
+                          text "About this store" role="heading" aria-level=2 font-size="1.375rem" font-weight=700
+                          text "Softwear is a demonstration of an online store built with Exact: one source for the website and the iOS and Android apps. Alternative Apparel is a trademark of its owner; this store is not affiliated with it." line-height=1.6 color="muted"
+                        row gap=12 flex-wrap="wrap"
+                          link href="/shop" class=Pill testId="story-shop"
+                            text "Shop everything"
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "search"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                      text "Search" role="heading" aria-level=1 flex=1
+                      input type="search" value=query input=search placeholder="Hoodies, joggers, kids…" aria-label="Search the catalog" width="100%" position="sticky" top=0 testId="search-app"
+                    if not inApp
+                      SiteHeader(current="search", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title=(query == "" ? "Search · Softwear" : `${query} · Search · Softwear`)
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=20 padding-top=28 padding-bottom=56
+                        if not inApp
+                          text "Search" role="heading" aria-level=1 class=Title
+                          input type="search" value=query input=search placeholder="Hoodies, joggers, kids…" aria-label="Search the catalog" autofocus=true class=Field font-size="1.125rem" testId="search"
+                        if needle == ""
+                          column gap=12
+                            text "Popular right now" font-size="0.875rem" color="muted"
+                            row gap=8 flex-wrap="wrap" role="list"
+                              for s in ["Eco-Fleece", "Hoodie", "Joggers", "Kids", "Slub", "Tank"] key=s
+                                link href=`/search?q=${encodeURIComponent(s)}` role="listitem" class=Chip color="ink" testId=`popular-${s}`
+                                  text s
+                        else if results.length == 0
+                          EmptyState(symbol="symbol:search", title=`Nothing for “${query.trim()}”`, message="Try a fabric, a category or a style name.")
+                            link href="/shop" testId="search-shop"
+                              text "Shop everything"
+                        else
+                          text plural(results.length, "match", "matches") color="muted" testId="result-count"
+                          column role="list" display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 10rem), 1fr))" gap=16
+                            for p in results key=p.slug
+                              ProductCard(p=p, width="auto", saved=saved.includes(p.slug), fly=e.name)
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "bag"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text "Bag" role="heading" aria-level=1
+                    if not inApp
+                      SiteHeader(current="bag", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title="Your bag · Softwear"
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=24 padding-top=28 padding-bottom=56
+                        if not inApp
+                          text (bag.length == 0 ? "Your bag" : `Your bag · ${plural(bagCount, "item", "items")}`) role="heading" aria-level=1 class=Title testId="bag-title"
+                        if bag.length == 0
+                          EmptyState(symbol="symbol:cart", title="Your bag is empty", message="Everything you add is kept on this device until you check out.")
+                            link href=shopUrl("", "", "") testId="bag-shop"
+                              text "Shop bestsellers"
+                        else
+                          row flex-wrap="wrap" gap=32 align-items="flex-start"
+                            column role="list" flex="2 1 22rem" min-width=0 gap=0 testId="bag-lines"
+                              for l, i in bag key=keyOf(l)
+                                // At the largest text size the details wrap under the photo; the price stays in the name's row either way.
+                                row role="listitem" flex-wrap="wrap" gap=16 padding="16px 0" border-bottom="1px solid var(--line)" align-items="flex-start" testId=`line-${i}`
+                                  column width=88 height=104 border-radius=12 class=Frame flex-shrink=0
+                                    Photo(file=photoOf(catalog, part(l, 0), part(l, 1)), kind=kindOf(catalog, part(l, 0)), hex=hexOf(catalog, part(l, 0), part(l, 1)), size=62, big=false, alt="", fly="", zoom="")
+                                  column flex="1 1 12rem" min-width=0 gap=6
+                                    // The name and the line's price share a row, until the largest text, when the price takes the next line
+                                    // and the name its room. The name's padding is the finger's: its margin takes it back from the layout.
+                                    row flex-wrap="wrap" gap=12 justify-content="space-between" align-items="flex-start"
+                                      link href=path("product", part(l, 0)) color="ink" text-decoration="none" font-weight=600 flex="1 1 10rem" min-width=0 padding="18px 0 6px" margin="-18px 0 -6px" testId=`line-name-${i}`
+                                        text nameOf(catalog, part(l, 0))
+                                      text money(lineTotal(catalog, l)) font-weight=600 font-variant-numeric="tabular-nums" white-space="nowrap" testId=`line-total-${i}`
+                                    text (qtyOf(l) > 1 ? `${part(l, 1)} · Size ${part(l, 2)} · ${money(priceOf(catalog, part(l, 0)))} each` : `${part(l, 1)} · Size ${part(l, 2)}`) font-size="0.875rem" color="muted"
+                                    // The server's count for this line, when it is short of what is asked.
+                                    if leftOf(bagStock, keyOf(l)) < demandFor(bag, l)
+                                      text (leftOf(bagStock, keyOf(l)) == 0 ? "Sold out in this size. Remove it to check out." : `Only ${leftOf(bagStock, keyOf(l))} left in this size.`) font-size="0.8125rem" color="brand" font-weight=600 testId=`line-stock-${i}`
+                                    row gap=12 align-items="center" flex-wrap="wrap" padding-top=4
+                                      row align-items="center" border="1px solid var(--line)" border-radius=10 overflow="hidden"
+                                        button press=stepLineQty(keyOf(l), -1) disabled=(qtyOf(l) <= 1) aria-label=`One fewer ${nameOf(catalog, part(l, 0))}` buttonStyle="plain" color="ink" min-width=44 min-height=44 testId=`qty-less-${i}`
+                                          image "symbol:minus"
+                                        input value=`${qtyOf(l)}` input=setLineQty(keyOf(l)) inputmode="numeric" aria-label=`Quantity of ${nameOf(catalog, part(l, 0))}` width="2.75rem" min-height=44 text-align="center" border="none" background-color="page" color="ink" font-variant-numeric="tabular-nums" testId=`qty-${i}`
+                                        button press=stepLineQty(keyOf(l), 1) disabled=(qtyOf(l) >= 10) aria-label=`One more ${nameOf(catalog, part(l, 0))}` buttonStyle="plain" color="ink" min-width=44 min-height=44 testId=`qty-more-${i}`
+                                          image "symbol:add"
+                                      button press=removeLine(keyOf(l)) buttonStyle="plain" color="muted" aria-label=`Remove ${nameOf(catalog, part(l, 0))}` testId=`remove-${i}`
+                                        image "symbol:delete"
+                                        text "Remove"
+                            column flex="1 1 16rem" min-width=0 gap=16 background-color="card" border-radius=20 padding=24 testId="summary"
+                              text "Summary" role="heading" aria-level=2 font-size="1.125rem" font-weight=700
+                              column gap=8
+                                row gap=8 align-items="center"
+                                  input value=promoDraft input=editPromo submit=applyPromo placeholder="Promo code" aria-label="Promo code" autocapitalize="characters" flex=1 min-width=0 testId="promo"
+                                  button press=applyPromo disabled=(promoDraft.trim() == "") buttonStyle="bordered" class=Capsule testId="apply-promo"
+                                    text "Apply"
+                                if promoNote != ""
+                                  row gap=8 align-items="center" flex-wrap="wrap"
+                                    text promoNote font-size="0.8125rem" color=(discount > 0 ? "brand" : "muted") flex="1 1 10rem" min-width=0 testId="promo-note"
+                                    button press=clearPromo buttonStyle="plain" font-size="0.8125rem" testId="clear-promo"
+                                      text "Clear"
+                              column gap=8 font-variant-numeric="tabular-nums"
+                                row justify-content="space-between" flex-wrap="wrap" gap=8
+                                  text "Subtotal"
+                                  text money(subtotal) testId="subtotal"
+                                if discount > 0
+                                  row justify-content="space-between" color="brand" flex-wrap="wrap" gap=8
+                                    text `Discount (${promo})` min-width=0 overflow-wrap="break-word"
+                                    text `−${money(discount)}` testId="discount"
+                                row justify-content="space-between" flex-wrap="wrap" gap=8
+                                  text "Shipping"
+                                  text (shippingFor("standard", afterDiscount) == 0 ? "Free" : money(shippingFor("standard", afterDiscount))) testId="shipping"
+                                if shippingFor("standard", afterDiscount) > 0
+                                  text `Add ${money(7500 - afterDiscount)} more for free shipping.` font-size="0.8125rem" color="muted" testId="free-shipping-hint"
+                                row justify-content="space-between" padding-top=8 border-top="1px solid var(--line)" font-weight=700 font-size="1.125rem" flex-wrap="wrap" gap=8
+                                  text "Total"
+                                  text money(afterDiscount + shippingFor("standard", afterDiscount)) testId="total"
+                              button press=openCheckout disabled=(bagShort > 0) buttonStyle="filled" class=Capsule testId="checkout"
+                                text "Check out"
+                              if bagShort > 0
+                                text (bagShort == 1 ? "One line asks for more than we have: change it to check out." : `${bagShort} lines ask for more than we have: change them to check out.`) font-size="0.8125rem" color="brand" text-align="center" testId="bag-short"
+                              text "No payment is taken: this is a demo store." font-size="0.8125rem" color="muted" text-align="center"
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "checkout"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text "Checkout" role="heading" aria-level=2
+                    if not inApp
+                      SiteHeader(current="bag", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title="Checkout · Softwear"
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=24 padding-top=28 padding-bottom=56
+                        if not inApp
+                          text "Checkout" role="heading" aria-level=1 class=Title
+                        row flex-wrap="wrap" gap=32 align-items="flex-start"
+                          column flex="2 1 20rem" min-width=0 gap=24
+                            column gap=10
+                              text "Contact" role="heading" aria-level=2 font-size="1.125rem" font-weight=700
+                              input value=coEmail input=editCoEmail type="email" placeholder="Email for the receipt" aria-label="Email" autocomplete="email" inputmode="email" class=Field testId="co-email"
+                            column gap=10
+                              text "Ships to" role="heading" aria-level=2 font-size="1.125rem" font-weight=700
+                              input value=coName input=editCoName placeholder="Full name" aria-label="Full name" autocomplete="name" autocapitalize="words" class=Field testId="co-name"
+                              input value=coAddress input=editCoAddress placeholder="Street address" aria-label="Street address" autocomplete="street-address" class=Field testId="co-address"
+                              // Each field clips itself: on iOS, two fields sharing a row otherwise widen the page's scroll extent by their intrinsic widths, and the checkout scrolls sideways.
+                              row gap=10 flex-wrap="wrap"
+                                input value=coCity input=editCoCity placeholder="City" aria-label="City" autocomplete="address-level2" class=Field flex="2 1 10rem" min-width=0 overflow="hidden" testId="co-city"
+                                input value=coZip input=editCoZip placeholder="ZIP" aria-label="ZIP code" autocomplete="postal-code" inputmode="numeric" class=Field flex="1 1 6rem" min-width=0 overflow="hidden" testId="co-zip"
+                            column gap=10
+                              text "Shipping" role="heading" aria-level=2 font-size="1.125rem" font-weight=700 id="ship-label"
+                              column role="radiogroup" aria-labelledby="ship-label" gap=8
+                                for m in ["standard", "express"] key=m
+                                  button role="radio" aria-checked=(coShip == m) press=setShip(m) appearance="none" display="flex" flex-wrap="wrap" align-items="center" gap=12 padding="14px 16px" border-radius=12 border=(coShip == m ? "1px solid var(--ink)" : "1px solid var(--line)") background-color=(coShip == m ? "card" : "page") color="ink" testId=`ship-${m}`
+                                    // The radio's mark: a ring that fills when chosen.
+                                    view width=18 height=18 border-radius=999 box-sizing="border-box" border=(coShip == m ? "6px solid var(--ink)" : "2px solid var(--line)") flex-shrink=0 aria-hidden=true
+                                    text shipLabel(m) font-weight=600 flex=1 text-align="left"
+                                    text (shippingFor(m, afterDiscount) == 0 ? "Free" : money(shippingFor(m, afterDiscount))) font-variant-numeric="tabular-nums"
+                          column flex="1 1 16rem" min-width=0 gap=16 background-color="card" border-radius=20 padding=24
+                            text "Your order" role="heading" aria-level=2 font-size="1.125rem" font-weight=700
+                            column role="list" gap=10
+                              for l, i in bag key=keyOf(l)
+                                row role="listitem" flex-wrap="wrap" gap=10 align-items="center" font-size="0.875rem"
+                                  view width=32 height=40 border-radius=6 class=Frame flex-shrink=0
+                                    Photo(file=photoOf(catalog, part(l, 0), part(l, 1)), kind=kindOf(catalog, part(l, 0)), hex=hexOf(catalog, part(l, 0), part(l, 1)), size=24, big=false, alt="", fly="", zoom="")
+                                  column flex="1 1 10rem" min-width=0
+                                    text nameOf(catalog, part(l, 0)) font-weight=600
+                                    text `${part(l, 1)} · ${part(l, 2)} · ×${qtyOf(l)}` color="muted"
+                                  text money(lineTotal(catalog, l)) font-variant-numeric="tabular-nums"
+                            column gap=6 font-variant-numeric="tabular-nums" padding-top=8 border-top="1px solid var(--line)"
+                              row justify-content="space-between" flex-wrap="wrap" gap=8
+                                text "Subtotal"
+                                text money(subtotal)
+                              if discount > 0
+                                row justify-content="space-between" color="brand" flex-wrap="wrap" gap=8
+                                  text `Discount (${promo})` min-width=0 overflow-wrap="break-word"
+                                  text `−${money(discount)}`
+                              row justify-content="space-between" flex-wrap="wrap" gap=8
+                                text "Shipping"
+                                text (shippingCents == 0 ? "Free" : money(shippingCents))
+                              row justify-content="space-between" font-weight=700 font-size="1.125rem" padding-top=6 flex-wrap="wrap" gap=8
+                                text "Total"
+                                text money(total) testId="co-total"
+                            button press=placeOrder disabled=(checkoutHint != "" or pending(placed)) buttonStyle="filled" class=Capsule testId="place-order"
+                              text (pending(placed) ? "Placing…" : "Place order")
+                            if checkoutHint != ""
+                              text checkoutHint font-size="0.8125rem" color="muted" testId="co-hint"
+                            if bag.length == 0
+                              link href="/shop" font-size="0.875rem" font-weight=600 color="ink" testId="co-shop"
+                                text "Shop everything"
+                            // A refusal names the line; the bag is where it is changed.
+                            if placeError != "" and not pending(placed)
+                              row gap=8 align-items="baseline" flex-wrap="wrap"
+                                text placeError font-size="0.8125rem" color="error" flex="1 1 10rem" testId="co-error"
+                                link href="/bag" font-size="0.8125rem" font-weight=600 color="ink" testId="co-edit-bag"
+                                  text "Edit bag"
+                            text "Nothing is charged and nothing ships: this is a demo store." font-size="0.8125rem" color="muted"
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "order"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text "Order" role="heading" aria-level=2
+                    if not inApp
+                      SiteHeader(current="bag", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title=`Order ${e.params.id} · Softwear`
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=20 padding-top=32 padding-bottom=56 max-width="40rem"
+                        if failed(order) and not pending(order)
+                          EmptyState(symbol="symbol:alert", title="Couldn't load your order", message=orderError)
+                            button press=retryOrder buttonStyle="bordered" class=Capsule testId="order-retry"
+                              text "Try again"
+                        else if order.found and order.id == e.params.id
+                          text "Thank you" class=Eyebrow
+                          text `Your order is in, ${order.name}.` role="heading" aria-level=1 class=Title testId="order-title"
+                          text `Order ${order.id}. A receipt would go to ${order.email}; on this demo store nothing ships.` color="muted" line-height=1.5 testId="order-id"
+                          // Placing an order signs the shopper in as its email, so say so here rather than let the account page surprise them.
+                          if member != "" and member == order.email
+                            row gap=8 align-items="center" font-size="0.875rem" color="muted" testId="order-signed-in"
+                              image "symbol:person-fill" aria-hidden=true
+                              text `You're signed in as ${member}. This order is kept in your account.`
+                          column role="list" gap=10 padding="16px 0" border-top="1px solid var(--line)" border-bottom="1px solid var(--line)"
+                            for l, i in order.lines key=`${l.slug}|${l.color}|${l.size}`
+                              row role="listitem" flex-wrap="wrap" gap=12 align-items="center"
+                                view width=40 height=50 border-radius=8 class=Frame flex-shrink=0
+                                  Photo(file=photoOf(catalog, l.slug, l.color), kind=kindOf(catalog, l.slug), hex=hexOf(catalog, l.slug, l.color), size=30, big=false, alt="", fly="", zoom="")
+                                column flex="1 1 10rem" min-width=0
+                                  text l.name font-weight=600
+                                  text `${l.color} · ${l.size} · ×${l.qty}` font-size="0.875rem" color="muted"
+                                text money(l.priceCents * l.qty) font-variant-numeric="tabular-nums"
+                          column gap=6 font-variant-numeric="tabular-nums"
+                            row justify-content="space-between" flex-wrap="wrap" gap=8
+                              text "Subtotal"
+                              text money(order.subtotalCents)
+                            if order.discountCents > 0
+                              row justify-content="space-between" color="brand" flex-wrap="wrap" gap=8
+                                text "Discount"
+                                text `−${money(order.discountCents)}`
+                            row justify-content="space-between" flex-wrap="wrap" gap=8
+                              text shipLabel(order.shipping)
+                              text (order.shippingCents == 0 ? "Free" : money(order.shippingCents))
+                            row justify-content="space-between" font-weight=700 font-size="1.125rem" padding-top=6 flex-wrap="wrap" gap=8
+                              text "Total"
+                              text money(order.totalCents) testId="order-total"
+                          row gap=12 flex-wrap="wrap" padding-top=8
+                            link href="/shop" class=Pill testId="order-shop"
+                              text "Keep shopping"
+                            link href="/account" class=Ghost testId="order-account"
+                              text "Your orders"
+                        else if pending(order)
+                          progress aria-label="Loading" testId="order-loading"
+                        else
+                          head title="Not Found" status=404
+                          EmptyState(symbol="symbol:alert", title="No such order", message="Its link may be out of date.")
+                            link href="/account" testId="order-missing-account"
+                              text "Your account"
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "account"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text "Account" role="heading" aria-level=1
+                    if not inApp
+                      SiteHeader(current="account", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title="Account · Softwear"
+                      main class=Wrap flex=1 display="flex" flex-direction="column" gap=24 padding-top=28 padding-bottom=56 max-width="44rem"
+                        if member == ""
+                          column gap=12
+                            text "Sign in" role="heading" aria-level=1 class=Title
+                            text "Your orders, your saved styles and your member code. No password: this demo store signs you in with an email alone." color="muted" line-height=1.5
+                            row gap=8 flex-wrap="wrap"
+                              input value=signinDraft input=editSignin submit=signIn type="email" placeholder="you@example.com" aria-label="Email" autocomplete="email" inputmode="email" class=Field flex="1 1 240px" min-width=0 testId="signin-email"
+                              button press=signIn disabled=(signinDraft.trim() == "" or pending(signedIn)) buttonStyle="filled" class=Capsule testId="signin"
+                                text "Continue"
+                            if signinError != "" and not pending(signedIn)
+                              text signinError font-size="0.8125rem" color="error" testId="signin-error"
+                        else
+                          column gap=6
+                            text "Signed in as" class=Eyebrow
+                            text member overflow-wrap="break-word" role="heading" aria-level=1 class=Title font-size="1.375rem" testId="member"
+                          row flex-wrap="wrap" gap=16
+                            column flex="1 1 220px" gap=8 background-color="card" border-radius=16 padding=20 min-width=0
+                              text "Your member code" font-size="0.875rem" color="muted"
+                              text account.code overflow-wrap="break-word" font-size="1.5rem" font-weight=700 letter-spacing="0.06em" testId="account-code"
+                              text "10% off any order, as often as you like." font-size="0.8125rem" color="muted"
+                              if account.code != "" and promo != account.code
+                                button press=applyCode(account.code) buttonStyle="bordered" class=Capsule align-self="flex-start" testId="account-code-apply"
+                                  text "Apply to your bag"
+                              else if account.code != ""
+                                text "Applied to your bag." aria-live="polite" font-size="0.8125rem" color="brand" testId="account-code-applied"
+                            column flex="1 1 220px" gap=8 background-color="card" border-radius=16 padding=20 min-width=0
+                              text "The list" font-size="0.875rem" color="muted"
+                              text (account.subscribed ? "You're on it" : "Not yet") font-size="1.5rem" font-weight=700 testId="account-list"
+                              if not account.subscribed
+                                text "Join below for 15% off your first order." font-size="0.8125rem" color="muted"
+                          column gap=10
+                            text "Name" role="heading" aria-level=2 font-size="1.125rem" font-weight=700
+                            row gap=8 flex-wrap="wrap"
+                              input value=nameValue input=editName submit=saveName placeholder="Your name" aria-label="Your name" autocomplete="name" autocapitalize="words" class=Field flex="1 1 240px" min-width=0 testId="name"
+                              button press=saveName disabled=(not nameEdited or pending(renamed)) buttonStyle="bordered" class=Capsule testId="save-name"
+                                text "Save"
+                            if nameError != "" and not pending(renamed)
+                              text nameError color="ink" font-size="0.875rem" testId="name-error"
+                          column gap=10
+                            text "Orders" role="heading" aria-level=2 font-size="1.125rem" font-weight=700
+                            if orders.length == 0
+                              text (pending(orders) ? "Loading your orders…" : "No orders yet.") color="muted" testId="no-orders"
+                            else
+                              column role="list" gap=8
+                                for o in orders key=o.id
+                                  link href=path("order", o.id) role="listitem" display="flex" flex-wrap="wrap" justify-content="space-between" gap=12 padding="12px 16px" background-color="card" border-radius=12 color="ink" text-decoration="none" testId=`order-${o.id}`
+                                    column gap=2
+                                      text o.id font-weight=600
+                                      text `${plural(sum(o.lines.map(l => l.qty)), "item", "items")} · ${o.status}` font-size="0.875rem" color="muted"
+                                    text money(o.totalCents) font-variant-numeric="tabular-nums"
+                          button press=signOut buttonStyle="bordered" class=Capsule align-self="flex-start" testId="signout"
+                            text "Sign out"
+                        // Saved styles and the appearance are the device's, so a guest has them too.
+                        column gap=10
+                          text "Saved styles" role="heading" aria-level=2 font-size="1.125rem" font-weight=700 testId="saved-title"
+                          if saved.length == 0
+                            text "Tap the heart on a product to keep it here." color="muted"
+                          else
+                            column role="list" display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 11rem), 1fr))" gap=12
+                              for p in catalog.filter(x => saved.includes(x.slug)) key=p.slug
+                                ProductCard(p=p, width="auto", saved=true, fly=e.name)
+                        if member == "" or not account.subscribed
+                          JoinBlock(draft=joinDraft, edit=editJoin, join=joinList, note=joinNote, ok=joinOk, busy=pending(joined), prefix="account", code=joinCode, applied=(joinCode != "" and promo == joinCode), apply=applyCode)
+                        column gap=10
+                          text "Appearance" role="heading" aria-level=2 font-size="1.125rem" font-weight=700 id="scheme-label"
+                          row role="radiogroup" aria-labelledby="scheme-label" flex-wrap="wrap" gap=8
+                            for s in ["system", "light", "dark"] key=s
+                              button role="radio" aria-checked=(scheme == s) press=chooseScheme(s) flex="1 1 6rem" min-width=0 testId=`scheme-${s}`
+                                text (s == "system" ? "System" : s == "light" ? "Light" : "Dark")
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+              if e.name == "notfound"
+                column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
+                  // A browser keeps only the shown page's content: the page beneath leaves as the next arrives, and a photo named on both flies between them. The app keeps every screen of its stack.
+                  if inApp or e.id == top(nav).id
+                    header display=(inApp ? "flex" : "none") align-items="center" padding="8px 16px"
+                      text "Not found" role="heading" aria-level=2
+                    if not inApp
+                      SiteHeader(current="", count=bagCount, signedIn=(member != ""))
+                    scroll document id=`doc-${e.id}` flex=1 min-height=0 display="flex" flex-direction="column"
+                      head title="Not Found"
+                      main class=Wrap flex=1 padding-top=48 padding-bottom=56
+                        EmptyState(symbol="symbol:alert", title="No such page", message="Its link may be out of date.")
+                          link href="/" min-height=44 display="flex" align-items="center" testId="notfound-home"
+                            text "Go home"
+                        if not inApp
+                          ToastSlot(message=toast, hide=hideToast)
+                      if not inApp
+                        SiteFooter()
+                    if inApp and e.id == top(nav).id
+                      RouteToast(message=toast, hide=hideToast, book=book)
+
+      // The tab bar: the platform's in the installed app, hidden in a browser (never `if`, which loses the panels).
+      row role="tablist" display=(inApp and top(nav).name != "photo" ? "flex" : "none")
+        button role="tab" aria-controls="panel-shop" aria-selected=(nav.tab == "shop") press=pick("shop") flex=1 testId="tab-shop"
+          image "symbol:home"
+          text "Shop"
+        button role="tab" aria-controls="panel-search" aria-selected=(nav.tab == "search") press=pick("search") flex=1 testId="tab-search"
+          image "symbol:search"
+          text "Search"
+        button role="tab" aria-controls="panel-bag" aria-selected=(nav.tab == "bag") press=pick("bag") flex=1 testId="tab-bag"
+          image "symbol:cart"
+          text (bagCount == 0 ? "Bag" : `Bag (${bagCount})`)
+        button role="tab" aria-controls="panel-account" aria-selected=(nav.tab == "account") press=pick("account") flex=1 testId="tab-account"
+          image "symbol:person"
+          text "Account"
+
+// The site's header on every page in a browser: the wordmark, the sections, and search, account and the bag.
+component SiteHeader
+  props
+    current: string
+    count: number
+    signedIn: bool
+  view
+    header appearance="none" border-bottom="1px solid var(--line)" background-color="page"
+      view background-color="band" color="onband" testId="demo-notice"
+        column class=Wrap gap=4 padding-top=12 padding-bottom=12 font-size="0.8125rem" line-height=1.5 text-align="center"
+          text "This is a demonstration app for Exact. Its product catalog features Alternative Apparel gear, which is not currently sold direct to consumers. The app runs on web, iOS, macOS, Android, Windows, and Linux."
+          text "Orders are simulated: no real orders are placed, no payments are taken, and nothing ships." font-weight=600
+      row class=Wrap flex-wrap="wrap" align-items="center" gap="8px 20px" padding-top=12 padding-bottom=12
+        link href="/" aria-label="Softwear home" color="ink" text-decoration="none" display="flex" flex-wrap="wrap" align-items="center" gap=9 min-width=0 max-width="100%" testId="home"
+          image "symbol:icon.mark" font-size="1.5rem" aria-hidden=true testId="mark"
+          text "SOFTWEAR" overflow-wrap="break-word" min-width=0 font-weight=800 letter-spacing="0.18em" font-size="1.125rem"
+        row flex=1 justify-content="flex-end" gap=2 align-items="center" order=2
+          link href="/search" aria-label="Search" aria-current=(current == "search" ? "page" : "false") class=IconLink testId="nav-search"
+            image "symbol:search"
+          link href="/account" aria-label=(signedIn ? "Account, signed in" : "Account") aria-current=(current == "account" ? "page" : "false") class=IconLink testId="nav-account"
+            image (signedIn ? "symbol:person-fill" : "symbol:person")
+          link href="/bag" aria-label=`Bag, ${plural(count, "item", "items")}` aria-current=(current == "bag" ? "page" : "false") class=IconLink testId="nav-bag"
+            image "symbol:cart"
+            if count > 0
+              text `${count}` font-size="0.75rem" font-weight=700 min-width="1.25rem" min-height="1.25rem" line-height=1.4 text-align="center" border-radius=999 background-color="brand" color="onbrand" testId="bag-count"
+        // One row that scrolls sideways on a phone, rather than wrapping into a second row of chrome.
+        nav aria-label="Sections" display="flex" flex-wrap="nowrap" overflow-x="auto" scrollbar-width="none" gap=18 order=3 flex="1 1 100%"
+          NavLink(href="/shop", label="Shop", on=(current == "shop"), id="nav-shop")
+          NavLink(href=shopUrl("hoodies", "", ""), label="Hoodies", on=false, id="nav-hoodies")
+          NavLink(href=shopUrl("sweatshirts", "", ""), label="Sweatshirts", on=false, id="nav-sweatshirts")
+          NavLink(href=shopUrl("tees", "", ""), label="Tees", on=false, id="nav-tees")
+          NavLink(href=shopUrl("pants", "", ""), label="Pants", on=false, id="nav-pants")
+          NavLink(href=shopUrl("kids", "", ""), label="Kids", on=false, id="nav-kids")
+          NavLink(href=shopUrl("sale", "", ""), label="Sale", on=false, id="nav-sale")
+          NavLink(href="/story", label="Story", on=(current == "story"), id="nav-story")
+
+component NavLink
+  props
+    href: string
+    label: string
+    on: bool
+    id: string
+  view
+    link href=href aria-current=(on ? "page" : "false") color="ink" text-decoration=(on ? "underline" : "none") font-size="0.9375rem" font-weight=500 padding="6px 0" white-space="nowrap" flex-shrink=0 testId=id
+      text label
+
+// The site's footer, its `contentinfo` landmark.
+component SiteFooter
+  view
+    footer border-top="1px solid var(--line)" padding-top=40 padding-bottom=40 margin-top=24
+      row class=Wrap flex-wrap="wrap" gap=32 justify-content="space-between"
+        column flex="2 1 260px" gap=10 min-width=0
+          text "SOFTWEAR" overflow-wrap="break-word" min-width=0 font-weight=800 letter-spacing="0.18em"
+          text "Alternative Apparel's hoodies, tees and joggers, sold direct. A demonstration store built with Exact: one source for the website and the iOS and Android apps. Not affiliated with Alternative Apparel." font-size="0.875rem" color="muted" line-height=1.55 max-width="34rem"
+        nav aria-label="Shop" display="flex" flex-direction="column" gap=8 flex="1 1 140px" font-size="0.875rem"
+          text "Shop" font-weight=700
+          link href=shopUrl("hoodies", "", "") color="muted" text-decoration="none"
+            text "Hoodies"
+          link href=shopUrl("sweatshirts", "", "") color="muted" text-decoration="none"
+            text "Sweatshirts"
+          link href=shopUrl("tees", "", "") color="muted" text-decoration="none"
+            text "Tees"
+          link href=shopUrl("pants", "", "") color="muted" text-decoration="none"
+            text "Pants"
+          link href=shopUrl("kids", "", "") color="muted" text-decoration="none"
+            text "Kids"
+        nav aria-label="Help" display="flex" flex-direction="column" gap=8 flex="1 1 140px" font-size="0.875rem"
+          text "Help" font-weight=700
+          link href="/story#shipping" color="muted" text-decoration="none"
+            text "Shipping and returns"
+          link href="/story#sizing" color="muted" text-decoration="none"
+            text "Size guide"
+          link href="/story#fabric" color="muted" text-decoration="none"
+            text "Fabric and care"
+          link href="/account" color="muted" text-decoration="none"
+            text "Your account"
+      row class=Wrap padding-top=32 justify-content="space-between" flex-wrap="wrap" gap=8 font-size="0.8125rem" color="muted"
+        row align-items="center" gap=8
+          image "symbol:icon.mark" font-size="1.125rem" aria-hidden=true
+          text "© 2026 Softwear. No payment is taken and nothing ships."
+        link href="/story#about" color="muted" text-decoration="none"
+          text "About this store"
+
+// The toast: what was added or applied, a way to the bag, and a close, gone after five seconds or a press. In the
+// app the route's `RouteToast` carries it; on the web, the page's `ToastSlot`.
+component Toast
+  props
+    message: string
+    hide: action
+  view
+    // The text keeps a readable size at the largest text setting, and the row wraps there rather than squeeze it.
+    row role="status" aria-live="polite" pointer-events="auto" flex-wrap="wrap" margin-left="auto" margin-right="auto" max-width="30rem" gap="4px 10px" align-items="center" padding="10px 8px 10px 16px" border-radius=16 background-color="band" color="onband" box-shadow="0 8px 24px var(--shade)" testId="toast"
+      image "symbol:checkmark" aria-hidden=true font-size="min(-exact-subheadline, 22px)"
+      text message flex="1 1 7rem" min-width=0 font-size="min(-exact-subheadline, 22px)"
+      link href="/bag" font-weight=700 color="onband" text-decoration="underline" padding="8px 6px" white-space="nowrap" testId="toast-bag"
+        text "View bag" font-size="min(-exact-subheadline, 22px)"
+      button press=hide aria-label="Dismiss" buttonStyle="plain" color="onband" min-width=40 min-height=40 testId="toast-close"
+        image "symbol:close" font-size="min(-exact-subheadline, 22px)"
+
+// The app's toast: a child of the route, not the root, so it ends where the route does: above UIKit's tab bar along
+// the bottom, and short of its rail down the side of an iPhone Duo. The route's width is the only reading of the rail
+// there is, and the box around the toast takes no touch, so what lies beside the toast stays pressable. On a book
+// fold it is a pane that does not scroll, so it moves to the trailing segment (docs/recipes/foldables.md).
+component RouteToast
+  props
+    message: string
+    hide: action
+    book: bool
+  view
+    if message != ""
+      view position="absolute" left=(book ? "env(viewport-segment-left 1 0)" : "16px") right=16 bottom=12 z-index=10 pointer-events="none"
+        Toast(message=message, hide=hide)
+
+// The web's toast: a slot of no height at the end of a page's content that sticks to the viewport's bottom, so the
+// toast sits there however far the page is scrolled (the page scrolls as a document, so nothing else is fixed).
+component ToastSlot
+  props
+    message: string
+    hide: action
+  view
+    if message != ""
+      view position="sticky" bottom=20 height=0 overflow="visible" z-index=10
+        view position="absolute" bottom=0 left=0 right=0
+          Toast(message=message, hide=hide)
+
+// The mailing-list signup: an address, and the code it earns, said in place.
+component JoinBlock
+  props
+    draft: string
+    edit: action
+    join: action
+    note: string
+    ok: bool
+    busy: bool
+    prefix: string
+    code: string
+    applied: bool
+    apply: action
+  view
+    column background-color="band" color="onband" border-radius=24 padding=(32) gap=16 align-items="center" text-align="center"
+      text "Join the list" class=Eyebrow color="onbandmuted"
+      text "15% off your first order" role="heading" aria-level=2 font-size="1.875rem" font-weight=800 letter-spacing="-0.02em"
+      text "New colours first, the odd sale, and nothing else. One email a month at most." color="onbandmuted" max-width="30rem"
+      if ok
+        row gap=8 align-items="center" testId=`${prefix}-join-note`
+          image "symbol:checkmark" aria-hidden=true
+          text note font-weight=600
+        // The code earned, applied to the bag in one press rather than retyped.
+        if code != "" and not applied
+          button press=apply(code) buttonStyle="bordered" class=Capsule color="onband" testId=`${prefix}-join-apply`
+            text `Apply ${code} to your bag`
+        else if applied
+          text `${code} is applied to your bag.` aria-live="polite" font-size="0.875rem" color="onbandmuted" testId=`${prefix}-join-applied`
+      else
+        row gap=8 flex-wrap="wrap" justify-content="center" width="100%" max-width="28rem"
+          input value=draft input=edit submit=join type="email" placeholder="you@example.com" aria-label="Email" autocomplete="email" inputmode="email" class=Field flex="1 1 200px" min-width=0 testId=`${prefix}-join-email`
+          button press=join disabled=(draft.trim() == "" or busy) buttonStyle="filled" class=Capsule testId=`${prefix}-join`
+            text "Join"
+        if note != ""
+          text note font-size="0.875rem" testId=`${prefix}-join-note`
+
+// A product in a grid or a rail: the garment in its first colour, the name, the price and the colours it comes in.
+// `fly` names the page the card is on ("" for none): its photo flies to the product page's, which is named the same.
+component ProductCard
+  props
+    p: Product
+    width: string
+    saved: bool
+    fly: string
+  view
+    link href=path("product", p.slug) role="listitem" display="flex" flex-direction="column" gap=10 width=width flex-shrink=0 scroll-snap-align="start" color="ink" text-decoration="none" testId=`card-${p.slug}`
+      column border-radius=16 aspect-ratio="4 / 5" position="relative" class=Frame
+        Photo(file=p.photo, kind=p.kind, hex=firstHex(p), size=150, big=false, alt="", fly=(fly == "" ? "" : `${fly}-photo-${p.slug}`), zoom=(fly == "" ? "" : `zoom-photo-${p.slug}`))
+        if p.compareCents > 0
+          view position="absolute" top=10 left=10 padding="3px 9px" border-radius=999 background-color="brand"
+            text "Sale" color="onbrand" font-size="0.75rem" font-weight=600
+        else if hasTag(p, "new")
+          view position="absolute" top=10 left=10 padding="3px 9px" border-radius=999 background-color="page"
+            text "New" font-size="0.75rem" font-weight=600
+        if saved
+          image "symbol:heart-fill" position="absolute" top=10 right=10 color="brand" aria-label="Saved"
+      column gap=4
+        text p.name font-weight=600 line-height=1.3
+        row gap=8 align-items="baseline"
+          text money(p.priceCents) font-variant-numeric="tabular-nums"
+          if p.compareCents > 0
+            text money(p.compareCents) color="muted" text-decoration="line-through" font-size="0.875rem"
+        row gap=5 align-items="center"
+          for c in p.colors.slice(0, 6) key=c.name
+            view width=10 height=10 border-radius=999 background-color=c.hex border="1px solid var(--swatchline)"
+          if p.colors.length > 6
+            text `+${p.colors.length - 6}` font-size="0.75rem" color="muted"
+
+// A style's photo in its frame (`Frame`): the card size or the product page's. The shots are studio shots on white in
+// several shapes, so each is shown whole (`contain`) on the frame's white, and a veil over the frame dims it in dark
+// mode. A style without a photo gets the drawn garment. `fly` is the shared-element name the photo flies under, `zoom`
+// the id iOS's zoom transition finds (`navigationSource`); both "" for neither.
+component Photo
+  props
+    file: string
+    kind: string
+    hex: string
+    size: number
+    big: bool
+    alt: string
+    fly: string
+    zoom: string
+  view
+    view position="relative" width="100%" height="100%"
+      if file == ""
+        column width="100%" height="100%" align-items="center" justify-content="center"
+          Garment(kind=kind, hex=hex, size=size)
+      else if fly == ""
+        image `assets/${big ? "p" : "t"}/${file}` display="block" width="100%" height="100%" min-width=0 min-height=0 object-fit="contain" aria-hidden=true
+      else if alt == ""
+        image `assets/${big ? "p" : "t"}/${file}` id=zoom sharedElement=fly class=Fly display="block" width="100%" height="100%" min-width=0 min-height=0 object-fit="contain" aria-hidden=true
+      else
+        image `assets/${big ? "p" : "t"}/${file}` id=zoom sharedElement=fly class=Fly display="block" width="100%" height="100%" min-width=0 min-height=0 object-fit="contain" aria-label=alt testId="photo"
+      view position="absolute" inset=0 background-color="veil" aria-hidden=true
+
+// A garment drawn in a colour: the same picture on every host, at any size, with no photo to fetch.
+component Garment
+  props
+    kind: string
+    hex: string
+    size: number
+  view
+    svg width=size height=(size * 1.15) viewBox="0 0 200 230" aria-hidden=true
+      if kind == "hoodie" or kind == "zip-hoodie"
+        path d="M60 76 C54 18 146 18 140 76 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M70 76 C70 36 130 36 130 76 Z" fill="#000" fill-opacity=0.32
+        path d="M62 70 L22 86 L8 178 L44 186 L50 128 L50 216 L150 216 L150 128 L156 186 L192 178 L178 86 L138 70 C128 86 72 86 62 70 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M62 70 L22 86 L8 178 L44 186 L50 128 L50 216 L72 216 L70 110 Z" fill="#000" fill-opacity=0.07
+        if kind == "zip-hoodie"
+          line x1=100 y1=84 x2=100 y2=214 stroke="#000" stroke-opacity=0.3 stroke-width=2
+          line x1=100 y1=84 x2=100 y2=214 stroke="#fff" stroke-opacity=0.25 stroke-width=0.75
+        else
+          path d="M58 160 L142 160 L138 204 L62 204 Z" fill="#000" fill-opacity=0.1
+          line x1=92 y1=86 x2=90 y2=124 stroke="#000" stroke-opacity=0.3 stroke-width=2 stroke-linecap="round"
+          line x1=108 y1=86 x2=110 y2=124 stroke="#000" stroke-opacity=0.3 stroke-width=2 stroke-linecap="round"
+        rect x=50 y=206 width=100 height=10 fill="#000" fill-opacity=0.12
+      else if kind == "crew" or kind == "longsleeve"
+        path d="M62 50 L22 66 L8 178 L44 186 L50 118 L50 216 L150 216 L150 118 L156 186 L192 178 L178 66 L138 50 C130 64 70 64 62 50 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M62 50 L22 66 L8 178 L44 186 L50 118 L50 216 L72 216 L70 100 Z" fill="#000" fill-opacity=0.07
+        ellipse cx=100 cy=54 rx=30 ry=11 fill="#000" fill-opacity=0.22
+        if kind == "crew"
+          ellipse cx=100 cy=54 rx=24 ry=8 fill="#000" fill-opacity=0.12
+          rect x=50 y=206 width=100 height=10 fill="#000" fill-opacity=0.12
+        else
+          ellipse cx=100 cy=52 rx=22 ry=8 fill="#000" fill-opacity=0.2
+      else if kind == "tee"
+        path d="M64 44 L22 62 L36 104 L58 96 L58 214 L142 214 L142 96 L164 104 L178 62 L136 44 C130 58 70 58 64 44 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M64 44 L22 62 L36 104 L58 96 L58 214 L72 214 L70 92 Z" fill="#000" fill-opacity=0.07
+        ellipse cx=100 cy=48 rx=28 ry=10 fill="#000" fill-opacity=0.22
+      else if kind == "tank"
+        path d="M66 36 L56 36 L46 122 L54 214 L146 214 L154 122 L144 36 L134 36 C128 76 72 76 66 36 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M66 36 L56 36 L46 122 L54 214 L70 214 L66 110 Z" fill="#000" fill-opacity=0.07
+      else if kind == "jogger"
+        path d="M52 30 L148 30 L160 118 L150 214 L112 214 L100 120 L88 214 L50 214 L40 118 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M52 30 L40 118 L50 214 L66 214 L62 120 L68 30 Z" fill="#000" fill-opacity=0.07
+        rect x=52 y=30 width=96 height=12 fill="#000" fill-opacity=0.14
+        rect x=50 y=200 width=38 height=14 fill="#000" fill-opacity=0.14
+        rect x=112 y=200 width=38 height=14 fill="#000" fill-opacity=0.14
+        line x1=90 y1=36 x2=90 y2=56 stroke="#000" stroke-opacity=0.3 stroke-width=2 stroke-linecap="round"
+        line x1=110 y1=36 x2=110 y2=56 stroke="#000" stroke-opacity=0.3 stroke-width=2 stroke-linecap="round"
+      else if kind == "shorts"
+        path d="M50 40 L150 40 L158 110 L150 150 L110 150 L100 100 L90 150 L50 150 L42 110 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M50 40 L42 110 L50 150 L64 150 L60 100 L62 40 Z" fill="#000" fill-opacity=0.07
+        rect x=50 y=40 width=100 height=12 fill="#000" fill-opacity=0.14
+        line x1=90 y1=46 x2=90 y2=64 stroke="#000" stroke-opacity=0.3 stroke-width=2 stroke-linecap="round"
+        line x1=110 y1=46 x2=110 y2=64 stroke="#000" stroke-opacity=0.3 stroke-width=2 stroke-linecap="round"
+      else if kind == "beanie"
+        path d="M40 158 C40 64 160 64 160 158 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M40 158 C40 64 100 64 100 158 Z" fill="#000" fill-opacity=0.07
+        rect x=36 y=150 width=128 height=34 rx=6 fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        rect x=36 y=150 width=128 height=34 rx=6 fill="#000" fill-opacity=0.14
+        circle cx=100 cy=66 r=12 fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+      else if kind == "tote"
+        path d="M70 64 C70 36 130 36 130 64" fill="none" stroke=hex stroke-width=8 stroke-linecap="round"
+        path d="M70 64 C70 36 130 36 130 64" fill="none" stroke="#000" stroke-opacity=0.25 stroke-width=8 stroke-linecap="round"
+        rect x=44 y=70 width=112 height=136 rx=4 fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        rect x=44 y=70 width=20 height=136 fill="#000" fill-opacity=0.07
+        rect x=44 y=70 width=112 height=12 fill="#000" fill-opacity=0.12
+      else if kind == "socks"
+        path d="M78 30 L122 30 L122 126 C122 144 156 144 156 172 C156 192 138 202 118 202 L90 202 C80 202 76 194 76 184 Z" fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5
+        path d="M78 30 L92 30 L92 150 L76 184 Z" fill="#000" fill-opacity=0.07
+        rect x=78 y=30 width=44 height=18 fill="#000" fill-opacity=0.14
+        path d="M100 176 C110 170 130 172 150 188" fill="none" stroke="#000" stroke-opacity=0.2 stroke-width=3 stroke-linecap="round"
+      else
+        rect x=40 y=40 width=120 height=150 rx=12 fill=hex stroke="#000" stroke-opacity=0.18 stroke-width=1.5

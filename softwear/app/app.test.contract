@@ -1,0 +1,455 @@
+// Run by `test` or `verify`, which start server.ts on an empty database for the whole run. Each test starts from
+// empty storage, as a first visit does; `reload` keeps it, as a return visit does. A test that walks the site's
+// own header runs on the web; the installed app's chrome has its own test at the end.
+
+test "the shop filters by the category in its location, and the selects write the query" on web
+  size 1280x900
+  at "/shop"
+  clock data
+  expect state shopShown.length == 46
+  tap "chip-hoodies"
+  clock settle
+  expect state cat == "hoodies"
+  expect state shopShown.length == 7
+  expect text "shop-title" == "Hoodies"
+  type "gender" "women"
+  clock settle
+  expect state gender == "women"
+  expect state shopShown.length == 7
+  type "sort" "price-asc"
+  clock settle
+  expect state shopShown.0 .name == "Eco-Jersey Zip Hoodie"
+  tap "chip-sale"
+  clock settle
+  expect state cat == "sale"
+  expect state shopShown.length == 5
+
+test "a filtered shop is a page: its link opens filtered, and Back leaves the shop in one step" on web
+  size 1280x900
+  at "/shop?c=pants&s=price-desc"
+  clock data
+  expect text "shop-count" == "4 styles"
+  expect state shopShown.0 .name == "Eco-Cozy Fleece Sweatpants"
+  tap "chip-kids"
+  clock settle
+  expect state cat == "kids"
+  back
+  clock settle
+  expect state nav.tab == "shop"
+  expect state stackDepth == 1
+
+test "a product is added in its colour and size, merged on a repeat, and kept across a relaunch" on web
+  size 1280x900
+  at "/p/challenger-eco-fleece-hoodie"
+  clock data
+  clock settle
+  expect text "product-name" == "Challenger Eco-Fleece Hoodie"
+  expect text "shown-color" == "Shown in Eco True Black"
+  tap "add-to-bag"
+  expect tree has "size-hint"
+  expect state bag == []
+  tap "color-2"
+  expect text "shown-color" == "Shown in Eco True Navy"
+  tap "size-L"
+  expect text "size-label" == "Size: L"
+  expect tree missing "size-hint"
+  tap "add-to-bag"
+  expect state bag.0 == "challenger-eco-fleece-hoodie|Eco True Navy|L|1"
+  expect tree has "toast"
+  type "qty" "2"
+  tap "add-to-bag"
+  expect state bag.0 == "challenger-eco-fleece-hoodie|Eco True Navy|L|3"
+  expect state bag.length == 1
+  expect state qty == "1"
+  tap "qty-more"
+  expect state qty == "2"
+  expect text "bag-count" == "3"
+  reload
+  clock data
+  expect text "bag-count" == "3"
+
+test "the product page says what is sold out and what is nearly gone, from the server's stock" on web, ios
+  at "/p/challenger-eco-fleece-hoodie"
+  clock data
+  clock settle
+  expect state stock.ready == true
+  expect disabled "size-3XL"
+  expect text "stock-note" == "Sold out in 3XL"
+
+test "the bag changes a quantity, removes a line, applies a promo code and prices shipping" on web
+  size 1280x900
+  at "/p/go-to-tee"
+  clock data
+  clock settle
+  tap "size-XS"
+  tap "add-to-bag"
+  tap "nav-bag"
+  clock settle
+  expect text "bag-title" == "Your bag · 1 item"
+  expect text "subtotal" == "$30.00"
+  expect text "shipping" == "$6.00"
+  expect text "free-shipping-hint" == "Add $45.00 more for free shipping."
+  tap "qty-more-0"
+  tap "qty-more-0"
+  expect text "subtotal" == "$90.00"
+  expect text "shipping" == "Free"
+  expect text "total" == "$90.00"
+  type "promo" "welcome15"
+  tap "apply-promo"
+  clock data
+  expect state promo == "WELCOME15"
+  expect text "discount" == "−$13.50"
+  expect text "total" == "$76.50"
+  type "promo" "NOPE"
+  tap "apply-promo"
+  clock data
+  expect text "promo-note" == "NOPE isn't a code we know."
+  expect text "total" == "$90.00"
+  tap "remove-0"
+  expect state bag == []
+  expect tree has "bag-shop"
+
+test "checkout waits for the address, then places the order, which clears the bag and has its own page" on web
+  size 1280x900
+  at "/p/eco-fleece-dodgeball-joggers"
+  clock data
+  clock settle
+  tap "size-S"
+  tap "add-to-bag"
+  tap "nav-bag"
+  clock settle
+  tap "checkout"
+  clock settle
+  expect disabled "place-order"
+  expect text "co-hint" == "Enter an email for the receipt."
+  type "co-email" "ada@example.com"
+  type "co-name" "Ada Lovelace"
+  expect text "co-hint" == "Enter the shipping address."
+  type "co-address" "12 Analytical Way"
+  type "co-city" "London"
+  type "co-zip" "94110"
+  expect enabled "place-order"
+  tap "ship-express"
+  expect text "co-total" == "$78.00"
+  tap "ship-standard"
+  expect text "co-total" == "$70.00"
+  tap "place-order"
+  clock data
+  clock settle
+  expect state bag == []
+  expect text "order-title" == "Your order is in, Ada Lovelace."
+  expect text "order-total" == "$70.00"
+  tap "order-account"
+  clock settle
+  clock data
+  expect text "member" == "ada@example.com"
+  expect tree missing "no-orders"
+
+test "an order the server refuses keeps the bag and says why" on web
+  size 1280x900
+  at "/p/go-to-tee"
+  clock data
+  clock settle
+  tap "size-XS"
+  tap "add-to-bag"
+  tap "nav-bag"
+  clock settle
+  tap "checkout"
+  clock settle
+  type "co-email" "grace@example.com"
+  type "co-name" "Grace Hopper"
+  type "co-address" "1 Compiler Court"
+  type "co-city" "Arlington"
+  type "co-zip" "22201"
+  fail fetch "/orders"
+  tap "place-order"
+  clock data
+  expect state bag.length == 1
+  expect tree has "co-error"
+  tap "co-edit-bag"
+  clock settle
+  expect tree has "bag-lines"
+  pass fetch "/orders"
+
+test "joining the list earns the welcome code once, and the account page remembers it" on web
+  size 1280x900
+  clock data
+  type "home-join-email" "not an address"
+  tap "home-join"
+  clock data
+  expect text "home-join-note" == "Enter an email address, like you@example.com."
+  type "home-join-email" "fan@example.com"
+  tap "home-join"
+  clock data
+  expect text "home-join-note" == "You're in. WELCOME15 takes 15% off your first order."
+  tap "home-join-apply"
+  expect state promo == "WELCOME15"
+  expect tree has "home-join-applied"
+  tap "nav-account"
+  clock settle
+  type "signin-email" "fan@example.com"
+  tap "signin"
+  clock data
+  expect text "member" == "fan@example.com"
+  expect text "account-list" == "You're on it"
+  reload
+  clock data
+  expect text "member" == "fan@example.com"
+  tap "signout"
+  expect tree has "signin"
+
+test "search finds by name, fabric, category, colour and style number, and an empty search offers popular ones" on web
+  size 1280x900
+  at "/search?q=slub"
+  clock data
+  expect text "result-count" == "3 matches"
+  type "search" "navy"
+  clock settle
+  expect text "result-count" == "39 matches"
+  type "search" "9595"
+  clock settle
+  expect text "result-count" == "2 matches"
+  type "search" "eco-fleece joggers"
+  clock settle
+  expect text "result-count" == "2 matches"
+  type "search" "zzzz"
+  clock settle
+  expect tree has "search-shop"
+  type "search" ""
+  clock settle
+  expect tree has "popular-Kids"
+  tap "popular-Kids"
+  clock settle
+  expect text "result-count" == "5 matches"
+
+test "a saved style shows on the account page, signed in or not" on web
+  size 1280x900
+  at "/p/lazy-day-pullover"
+  clock data
+  clock settle
+  tap "save"
+  expect state saved.0 == "lazy-day-pullover"
+  tap "nav-account"
+  clock settle
+  expect tree has "signin"
+  expect tree has "card-lazy-day-pullover"
+  expect tree has "scheme-dark"
+  type "signin-email" "lazy@example.com"
+  tap "signin"
+  clock data
+  expect text "member" == "lazy@example.com"
+  expect tree has "card-lazy-day-pullover"
+
+test "a product or a page that does not exist says so, with a way back" on web
+  size 1280x900
+  at "/p/no-such-thing"
+  clock data
+  expect tree has "missing-shop"
+  tap "missing-shop"
+  clock settle
+  expect text "shop-title" == "Everything"
+
+test "a path no route matches is the not-found page" on web, ios
+  at "/nothing/here"
+  clock data
+  expect tree has "notfound-home"
+
+test "a member's own code takes 10% off, from the account page in one press" on web
+  size 1280x900
+  at "/account"
+  clock data
+  type "signin-email" "member@example.com"
+  tap "signin"
+  clock data
+  expect text "account-code" == "FRIEND4250"
+  tap "account-code-apply"
+  clock data
+  expect state promo == "FRIEND4250"
+  expect tree has "account-code-applied"
+  tap "nav-shop"
+  clock settle
+  tap "card-go-to-tee"
+  clock data
+  clock settle
+  tap "size-XS"
+  tap "add-to-bag"
+  tap "nav-bag"
+  clock settle
+  clock data
+  expect text "promo-note" == "FRIEND4250 applied: 10% off."
+  expect text "discount" == "−$3.00"
+
+test "a size carried from another product is dropped where it is sold out, so nothing sold out is added" on web
+  size 1280x900
+  at "/p/champ-eco-fleece-crewneck-sweatshirt"
+  clock data
+  clock settle
+  tap "size-3XL"
+  expect text "size-label" == "Size: 3XL"
+  tap "nav-hoodies"
+  clock settle
+  tap "card-challenger-eco-fleece-hoodie"
+  clock data
+  clock settle
+  expect state stock.ready == true
+  expect text "size-label" == "Size"
+  expect text "add-to-bag" == "Choose a size"
+  expect text "stock-note" == "Sold out in 3XL"
+  expect tree has "low-2XL"
+  tap "add-to-bag"
+  expect state bag == []
+  expect tree has "size-hint"
+
+test "a sold-out size takes an address for a word when it is back" on web
+  size 1280x900
+  at "/p/challenger-eco-fleece-hoodie"
+  clock data
+  clock settle
+  type "notify-email" "nope"
+  tap "notify"
+  clock data
+  expect tree has "notify-error"
+  type "notify-email" "back@example.com"
+  tap "notify"
+  clock data
+  expect tree has "notify-note"
+
+test "the kids filter shows only kids' styles, and the size filter narrows to styles in that size" on web
+  size 1280x900
+  at "/shop?g=kids"
+  clock data
+  expect state shopShown.length == 5
+  tap "chip-hoodies"
+  clock settle
+  expect state shopShown.length == 0
+  tap "chip-all"
+  clock settle
+  type "gender" ""
+  clock settle
+  expect state shopShown.length == 46
+  type "size" "One Size"
+  clock settle
+  expect text "shop-count" == "2 styles"
+  type "size" "YXL"
+  clock settle
+  expect state sizeFilter == "YXL"
+  expect state shopShown.length == 5
+  tap "chip-kids"
+  clock settle
+  expect state sizeFilter == "YXL"
+  expect state cat == "kids"
+
+test "the bag says where a line asks for more than the store has, and holds the checkout until it is changed" on web
+  size 1280x900
+  at "/p/go-to-tee"
+  clock data
+  clock settle
+  tap "size-S"
+  type "qty" "5"
+  tap "add-to-bag"
+  tap "nav-bag"
+  clock settle
+  clock data
+  expect text "line-stock-0" == "Only 3 left in this size."
+  expect disabled "checkout"
+  expect tree has "bag-short"
+  tap "qty-less-0"
+  tap "qty-less-0"
+  expect tree missing "line-stock-0"
+  expect enabled "checkout"
+
+test "the product page pairs a hoodie with joggers, then shows more hoodies" on web
+  size 1280x900
+  at "/p/challenger-eco-fleece-hoodie"
+  clock data
+  clock settle
+  expect tree has "pairs"
+  expect tree has "card-eco-fleece-dodgeball-joggers"
+  expect tree has "related"
+  expect tree has "card-rocky-eco-fleece-zip-hoodie"
+
+test "the address is kept for the next order" on web
+  size 1280x900
+  at "/checkout"
+  clock data
+  expect tree has "co-shop"
+  type "co-name" "Ada Lovelace"
+  type "co-address" "12 Analytical Way"
+  type "co-city" "London"
+  type "co-zip" "94110"
+  reload
+  clock data
+  expect state coName == "Ada Lovelace"
+  expect state coZip == "94110"
+
+test "the app gets the tab bar and the platform's bars, and each tab keeps its own stack" on ios, android
+  clock data
+  expect tree missing "nav-bag"
+  tap "tab-search"
+  clock settle
+  type "search-app" "beanie"
+  clock settle
+  expect text "result-count" == "1 match"
+  tap "card-eco-knit-cuff-beanie"
+  clock data
+  clock settle
+  // UIKit's push ends on the wall's time, which the agent's clock does not move: on a phone the route may not be in
+  // its window yet.
+  clock +800 real
+  clock settle
+  tap "size-One Size"
+  tap "add-to-bag"
+  tap "tab-bag"
+  clock settle
+  expect text "subtotal" == "$22.00"
+  tap "tab-search"
+  clock settle
+  expect tree has "add-to-bag"
+
+test "the app's toast says what was added on the route it is on, closes, and leads to the bag" on ios, android
+  clock data
+  tap "tab-shop"
+  clock settle
+  tap "card-go-to-tee"
+  clock data
+  clock settle
+  clock +800 real
+  clock settle
+  tap "size-XS"
+  tap "add-to-bag"
+  expect tree has "toast"
+  tap "toast-close"
+  expect tree missing "toast"
+  tap "add-to-bag"
+  tap "toast-bag"
+  clock settle
+  expect text "subtotal" == "$60.00"
+
+test "the product photo opens large in the lightbox, and its close returns to the product" on web, ios
+  at "/p/rocky-eco-fleece-zip-hoodie"
+  clock data
+  clock settle
+  tap "zoom-open"
+  clock settle
+  expect state stackDepth == 3
+  expect tree has "zoom"
+  tap "zoom-close"
+  clock settle
+  expect state stackDepth == 2
+  expect tree has "gallery"
+
+test "the product photo opens large in the lightbox from the shop tab, and its close returns to the product" on android
+  clock data
+  tap "tab-shop"
+  clock settle
+  tap "card-rocky-eco-fleece-zip-hoodie"
+  clock data
+  clock settle
+  tap "zoom-open"
+  clock settle
+  expect state stackDepth == 3
+  expect tree has "zoom"
+  tap "zoom-close"
+  clock settle
+  expect state stackDepth == 2
+  expect tree has "gallery"

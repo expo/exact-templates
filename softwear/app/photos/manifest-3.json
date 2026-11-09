@@ -1,0 +1,166 @@
+{
+  "slinky-tank": {
+    "file": "slinky-tank.jpg",
+    "source": "https://www.jiffy.com/alternative-3094B2.html",
+    "image": "https://jiffy.imgix.net/8f33e6e61f3d12.jpg",
+    "exact": true,
+    "colors": {
+      "white": "slinky-tank.jpg",
+      "black": "slinky-tank--black.jpg"
+    },
+    "note": "Alternative 3094B2 Women's Slinky-Jersey Tank; main photo is White."
+  },
+  "eco-fleece-dodgeball-joggers": {
+    "file": "eco-fleece-dodgeball-joggers.jpg",
+    "source": "https://www.jiffy.com/alternative-09881F.html",
+    "image": "https://jiffyimg.imgix.net/140243_9881F2_Eco_Grey_6_1.jpg",
+    "exact": true,
+    "colors": {
+      "eco-grey": "eco-fleece-dodgeball-joggers--eco-grey.jpg",
+      "eco-black": "eco-fleece-dodgeball-joggers--eco-black.jpg",
+      "eco-true-navy": "eco-fleece-dodgeball-joggers--eco-true-navy.jpg"
+    },
+    "note": "Alternative 09881F Unisex Dodgeball Eco-Fleece Pant; main photo is Eco Grey; eco-black is jiffy's 'Eco True Black'."
+  },
+  "women-s-eco-fleece-joggers": {
+    "file": "women-s-eco-fleece-joggers.jpg",
+    "source": "https://www.jiffy.com/alternative-31082F.html",
+    "image": "https://jiffy.imgix.net/66e5e0cab25ea9.jpg",
+    "exact": true,
+    "colors": {
+      "eco-grey": "women-s-eco-fleece-joggers.jpg",
+      "eco-black": "women-s-eco-fleece-joggers--eco-black.jpg"
+    },
+    "note": "Alternative 31082F Women's Jogger Eco-Fleece Pant; main photo is Eco Gray."
+  },
+  "eco-cozy-fleece-sweatpants": {
+    "file": "eco-cozy-fleece-sweatpants.jpg",
+    "source": "https://www.amazon.com/dp/B08GQXMBCJ",
+    "image": "https://m.media-amazon.com/images/I/71L93souuIL._AC_SL1500_.jpg",
+    "exact": true,
+    "colors": {
+      "eco-black": "eco-cozy-fleece-sweatpants.jpg"
+    },
+    "note": "Alternative Men's Eco-Cozy Fleece Sweatpant, black, on a model; no wholesale listing found."
+  },
+  "lightweight-french-terry-sweatpants": {
+    "file": "lightweight-french-terry-sweatpants.jpg",
+    "source": "https://www.jiffy.com/alternative-9902ZT.html",
+    "image": "https://jiffy.imgix.net/131487_9902ZT_Black_6_2.jpg",
+    "exact": false,
+    "colors": {
+      "washed-black": "lightweight-french-terry-sweatpants.jpg",
+      "dark-grey": "lightweight-french-terry-sweatpants--dark-grey.jpg"
+    },
+    "note": "Substitute: Alternative 9902ZT Women's Washed Terry Classic Sweatpants (lightweight eco-washed French terry); the unisex retail style has no listing anywhere reachable."
+  },
+  "eco-fleece-dodgeball-shorts": {
+    "file": "eco-fleece-dodgeball-shorts.jpg",
+    "source": "https://www.amazon.com/dp/B07CB75N93",
+    "image": "https://m.media-amazon.com/images/I/61N3-xGUr3L._AC_SL1080_.jpg",
+    "exact": false,
+    "colors": {
+      "eco-black": "eco-fleece-dodgeball-shorts.jpg",
+      "eco-true-navy": "eco-fleece-dodgeball-shorts--eco-true-navy.jpg"
+    },
+    "note": "Substitute: Alternative Men's Eco Fleece Gym Short (same eco-fleece, drawstring, pockets), Eco Black, on a model; only Alternative shorts found anywhere."
+  },
+  "lightweight-french-terry-shorts": {
+    "file": "lightweight-french-terry-shorts.jpg",
+    "source": "https://www.amazon.com/dp/B07CB75N93",
+    "image": "https://m.media-amazon.com/images/I/614aTNLLj2L._AC_SL1080_.jpg",
+    "exact": false,
+    "colors": {
+      "washed-navy": "lightweight-french-terry-shorts.jpg"
+    },
+    "note": "Substitute: the same Alternative Eco Fleece Gym Short in Eco True Navy; no Alternative French terry shorts listing exists on any reachable site."
+  },
+  "eco-knit-cuff-beanie": {
+    "file": "eco-knit-cuff-beanie.jpg",
+    "source": "https://www.jiffy.com/sportsman-SP12.html?ac=Black",
+    "image": "https://jiffyimg.imgix.net/90c5809fcc8e1e.jpg",
+    "exact": false,
+    "colors": {
+      "black": "eco-knit-cuff-beanie.jpg",
+      "heather-grey": "eco-knit-cuff-beanie--heather-grey.jpg",
+      "navy": "eco-knit-cuff-beanie--navy.jpg"
+    },
+    "note": "Not an Alternative product: Sportsman SP12 12-inch solid knit cuffed beanie."
+  },
+  "everyday-canvas-tote": {
+    "file": "everyday-canvas-tote.jpg",
+    "source": "https://www.jiffy.com/econscious-EC8000.html",
+    "image": "https://jiffyimg.imgix.net/691e270ced1445.jpg",
+    "exact": false,
+    "colors": {
+      "natural": "everyday-canvas-tote.jpg",
+      "black": "everyday-canvas-tote--black.jpg"
+    },
+    "note": "Not an Alternative product: econscious EC8000 organic cotton twill everyday tote; main photo is the natural colour."
+  },
+  "eco-fleece-crew-socks": {
+    "file": "eco-fleece-crew-socks.jpg",
+    "source": "https://www.thorlo.com/products/experia-prolite-ultra-light-cushion-crew-running-socks-xpxu00",
+    "image": "https://cdn.shopify.com/s/files/1/0388/8060/8301/products/XPXU-WHITE-3.jpg",
+    "exact": false,
+    "colors": {
+      "eco-ivory": "eco-fleece-crew-socks.jpg"
+    },
+    "note": "Not an Alternative product: Thorlo PROLITE crew sock, white, unbranded flat shot."
+  },
+  "youth-keeper-tee": {
+    "file": "youth-keeper-tee.jpg",
+    "source": "https://www.amazon.com/dp/B07T8JJ7BP",
+    "image": "https://m.media-amazon.com/images/I/619dGOSz9oL._AC_SL1250_.jpg",
+    "exact": true,
+    "colors": {
+      "vintage-coal": "youth-keeper-tee.jpg",
+      "blue-sky": "youth-keeper-tee--blue-sky.jpg",
+      "red": "youth-keeper-tee--red.jpg"
+    },
+    "note": "Alternative Unisex Youth Keeper Tee, Vintage Coal flat lay. The red variant is the launch press photo (on a model, under overalls) from https://printandpromomarketing.com/article/alternative-apparel-launches-youth-clothing-collection/"
+  },
+  "youth-go-to-tee": {
+    "file": "youth-go-to-tee.jpg",
+    "source": "https://ninjatransfers.com/products/alternative-aa1070",
+    "image": "https://cdn.shopify.com/s/files/1/0558/0265/8899/files/alternative-aa1070-unisex-go-to-t-shirtalternative-485101.jpg",
+    "exact": false,
+    "colors": {},
+    "note": "Substitute: the adult Alternative AA1070 Unisex Go-To Tee; no listing of the youth Go-To tee was found on any reachable site."
+  },
+  "youth-champ-eco-fleece-sweatshirt": {
+    "file": "youth-champ-eco-fleece-sweatshirt.jpg",
+    "source": "https://www.amazon.com/dp/B07W2SXBHY",
+    "image": "https://m.media-amazon.com/images/I/71FKNagszaL._AC_SL1250_.jpg",
+    "exact": true,
+    "colors": {
+      "eco-black": "youth-champ-eco-fleece-sweatshirt.jpg",
+      "eco-grey": "youth-champ-eco-fleece-sweatshirt--eco-grey.jpg",
+      "eco-true-navy": "youth-champ-eco-fleece-sweatshirt--eco-true-navy.jpg"
+    },
+    "note": "Alternative Unisex Youth Champ Sweatshirt (K9575), Eco Black flat lay."
+  },
+  "youth-baller-eco-fleece-hoodie": {
+    "file": "youth-baller-eco-fleece-hoodie.jpg",
+    "source": "https://www.amazon.com/dp/B07J2WYJCT",
+    "image": "https://m.media-amazon.com/images/I/91ht5jivzIL._AC_SL1500_.jpg",
+    "exact": false,
+    "colors": {
+      "eco-black": "youth-baller-eco-fleece-hoodie.jpg",
+      "eco-grey": "youth-baller-eco-fleece-hoodie--eco-grey.jpg",
+      "eco-true-navy": "youth-baller-eco-fleece-hoodie--eco-true-navy.jpg"
+    },
+    "note": "Substitute: Alternative Youth Challenger Eco-Fleece Hoodie (K9595), Alternative's youth pullover hoodie; the Baller (cut-off-sleeve) hoodie has no reachable listing."
+  },
+  "youth-eco-fleece-joggers": {
+    "file": "youth-eco-fleece-joggers.jpg",
+    "source": "https://www.amazon.com/dp/B07J2WYJC4",
+    "image": "https://m.media-amazon.com/images/I/812sc9mcAEL._AC_SL1500_.jpg",
+    "exact": true,
+    "colors": {
+      "eco-black": "youth-eco-fleece-joggers.jpg",
+      "eco-grey": "youth-eco-fleece-joggers--eco-grey.jpg"
+    },
+    "note": "Alternative Unisex Big Kids Youth Dodgeball Pant (K9881), Eco Black flat lay."
+  }
+}

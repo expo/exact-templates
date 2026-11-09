@@ -1,0 +1,45 @@
+{
+  "name": "Softwear",
+  "short_name": "Softwear",
+  "description": "Alternative Apparel's hoodies, tees and joggers, direct.",
+  "id": "com.example.softwear",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#f7f4ee",
+  "background_color": "#f7f4ee",
+  "icons": [
+    {
+      "src": "assets/brand/icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ],
+  "modules": [
+    "zoom-image"
+  ],
+  "app": {
+    "id": "com.example.softwear",
+    "name": "Softwear"
+  },
+  "host": {
+    "web": {},
+    "ios": {
+      "minimumOS": "17.0",
+      "deviceFamily": [
+        "iphone",
+        "ipad"
+      ]
+    },
+    "android": {},
+    "macos": {
+      "minimumOS": "14.0",
+      "window": {
+        "width": 900,
+        "height": 700
+      }
+    }
+  },
+  "env": [
+    "API_BASE_URL"
+  ]
+}

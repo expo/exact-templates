@@ -1,0 +1,22 @@
+tamber brand
+
+theme
+  AccentColor = light-dark(#a8492a, #d86a40)
+  brand = light-dark(#a8492a, #d86a40)
+  onbrand = light-dark(#ffffff, #1a1917)
+  page = light-dark(#f7f4ee, #141311)
+  card = light-dark(#ece7de, #211e1a)
+  band = light-dark(#1a1917, #2a2622)
+  onband = #f7f4ee  scheme=fixed
+  onbandmuted = #b9b2a6  scheme=fixed
+  ink = light-dark(#1a1917, #f1ece3)
+  muted = light-dark(#6c655b, #a69d90)  pair=page
+  error = light-dark(#a12a22, #ffaaa3)
+  line = light-dark(#d9d2c5, #332e28)
+  photo = #ffffff  scheme=fixed
+  veil = light-dark(#00000000, #00000026)
+  swatchline = light-dark(#1a191748, #f1ece34d)
+  shade = light-dark(#0000002e, #00000080)
+
+icons
+  icon.mark = icon(svg "brand/mark.svg")
