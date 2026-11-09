@@ -64,6 +64,9 @@ component ExactChat
   // these cursors, which loads more at each edge it reaches
   state windowStart = ""
   state windowEnd = ""
+  // The conversation last opened, kept across launches. Beside the list one
+  // is always selected: this one, else the newest. A phone opens at the list
+  state selected = "" persist
   resource viewport = exactViewport() as shape Viewport
   resource wall = exactTime() as shape Time
   resource inbox = loadInbox() as shape Thread[] else empty()
@@ -328,6 +331,8 @@ component ExactChat
     chosen = []
     picked = []
     latest()
+    if url.startsWith("/conversations/")
+      selected = url.slice(15)
     typing = false
     flightPhase = 0
     arrivedId = ""
@@ -338,6 +343,22 @@ component ExactChat
       nav = go(nav, url)
   action back
     nav = back(nav)
+  // Beside the list, nothing selected (at launch, or as the iPhone Duo
+  // unfolds): the conversation last opened, else the newest. The app is not
+  // told whether the platform's split shows the list beside a conversation,
+  // so it opens one from the width the web splits at, 900: the open Duo, an
+  // iPad turned sideways and a large iPhone's landscape split there, and no
+  // phone opens a conversation over its list. An upright iPad, which splits
+  // narrower, shows the platform's empty detail instead
+  task select when viewport.width >= 900 and top(nav).name == "inbox" and inbox.length > 0
+    after(1, reopen)
+  action reopen
+    if top(nav).name == "inbox"
+      let last = match inbox.filter(t => t.id == selected).at(0) { case some(t) => t.id, case none => "" }
+      let newest = match inbox.at(0) { case some(t) => t.id, case none => "" }
+      let id = last != "" ? last : newest
+      if id != ""
+        follow(path("thread", id))
 
   view
     main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow interactive-widget="resizes-content" viewport-fit="cover" width="100%" height="100%" class=Canvas
@@ -407,10 +428,11 @@ component ExactChat
               Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
         if entry.name == "inbox"
           // Its ground is the platform's: beside the conversation, UIKit's
-          // sidebar. Its bottom safe area takes in the keys while the search
+          // sidebar, from the first frame, before its rows have loaded
+          // (`navigationSplit`). Its bottom safe area takes in the keys while the search
           // is typed in: the list pads its end by it, so its last rows scroll
           // above them, and the empty state ends above it.
-          column navigationKey=`${entry.id}` position="absolute" inset=0
+          column navigationKey=`${entry.id}` navigationSplit="320" position="absolute" inset=0
             header
               h2 "Chats"
               input type="search" value=query input=searchChats placeholder="Search" aria-label="Search conversations" testId="search"

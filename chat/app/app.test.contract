@@ -139,6 +139,26 @@ test "the conversation reopens from the list"
   clock settle
   expect tree has "composer"
 
+test "beside the list, the conversation last opened is open at launch, else the newest"
+  size 1100x760
+  clock data
+  clock settle
+  expect state openId == "alex"
+  // By its location: on an iPhone the split stays collapsed at any size, and Alex's conversation covers the list
+  type "app" "/conversations/jordan"
+  clock settle
+  expect state openId == "jordan"
+  reload
+  clock data
+  clock settle
+  expect state openId == "jordan"
+
+test "a phone opens at the list"
+  clock data
+  clock settle
+  expect state openId == ""
+  expect tree has "conversation-alex"
+
 test "each person keeps their own conversation and draft"
   expect tree has "conversation-priya"
   expect tree has "conversation-jordan"

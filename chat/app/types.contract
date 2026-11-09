@@ -75,6 +75,7 @@ shape Change
   error: string
 
 shape Viewport
+  width: number
   height: number
   prefersReducedMotion: bool
   accessibilityTextSize: bool
