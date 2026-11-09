@@ -226,7 +226,8 @@ component Landmarks
         if e.name == "map"
           column navigationKey=`${e.id}` navigationScroll=(e.id == resultsOver ? "search-list" : "")
             navigationBar=(e.id == resultsOver ? "auto" : "transparent") testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
-            landmark-map flex=1 min-height=0 width="100%" -exact-safe-area="ignore" items=places(data.landmarks) userLocation="true" aria-label="A map of every landmark" testId="map"
+            // The map shows the landmarks only: unlike Apple's sample, the app never asks where the person is.
+            landmark-map flex=1 min-height=0 width="100%" -exact-safe-area="ignore" items=places(data.landmarks) aria-label="A map of every landmark" testId="map"
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
             if e.id == resultsOver
               SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)

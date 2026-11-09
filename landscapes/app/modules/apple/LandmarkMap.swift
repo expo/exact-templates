@@ -6,7 +6,6 @@
 //   items        `placeID|latitude|longitude|name;…`
 //   region       `latitude|longitude|span`; unset, the map frames every item
 //   interactive  `false`: no gestures, as `Map(interactionModes: [])`
-//   userLocation `true`: the person's location, once they allow it
 import CoreLocation
 import Foundation
 import MapKit
@@ -58,7 +57,6 @@ private final class RegionMap: MKMapView {
 final class LandmarkMap: ExactNativeInstance {
     private let map = RegionMap(frame: .zero)
     private let delegate = MapDelegate()
-    private let location = CLLocationManager()
     private var props: [String: String] = [:]
     /// The fetch under way, so a newer `items` supersedes it.
     private var generation = 0
@@ -80,10 +78,6 @@ final class LandmarkMap: ExactNativeInstance {
         let interactive = next["interactive"] != "false"
         map.isScrollEnabled = interactive; map.isZoomEnabled = interactive
         map.isRotateEnabled = interactive; map.isPitchEnabled = interactive
-        if next["userLocation"] == "true", !map.showsUserLocation {
-            if location.authorizationStatus == .notDetermined { location.requestWhenInUseAuthorization() }
-            map.showsUserLocation = true
-        }
         if next["region"] != props["region"], let region = region(next["region"]) { map.show(region) }
         guard next["items"] != props["items"] else { return }
         generation += 1
