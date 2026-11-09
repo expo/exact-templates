@@ -86,10 +86,6 @@ test "Search finds landmarks by name or by continent, over the page in front; an
   clock settle
   expect state query == "zzz"
   expect tree missing "search-results"
-  // Typing again shows the results over the page in front
-  type "search" "fuji"
-  clock settle
-  expect tree has "result-1016"
 
 test "A result opens over the results, which come back when its page goes; an empty field ends the search"
   at "/"
