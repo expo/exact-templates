@@ -294,14 +294,17 @@ component ExactChat
       box position="absolute" width=0 height="1rem" resize=fontChanged aria-hidden=true pointer-events="none"
       for entry in stack(nav) key=entry.id
         if entry.name == "thread"
-          // The route clears its safe area itself, except at the bottom and
-          // the sides, where the composer's blur reaches the screen's edges
-          // and its content pads by the route's insets (LLP 1123 D3, D4):
-          // the transcript's rows, the composer and the flight. Its header is the
+          // The route's content is laid out in the safe area, and the
+          // transcript reaches the screen's sides by itself. The route takes
+          // the bottom edge, where the composer docks in the home indicator's
+          // band and pads by the route's inset there (LLP 1123 D4). What
+          // lines up with the balloons (the rows, the typing indicator, the
+          // flight and the composer) pads by the route's layout margins (LLP
+          // 1123 D9). Its header is the
           // platform's bar, which the iPhone Duo's closed screen moves into
           // its side strip: the contact, a control with its avatar, is the
           // bar's title, and Options its trailing item.
-          column id="conversation" navigationKey=`${entry.id}` -exact-safe-area="bottom left right" position="absolute" inset=0 class=Canvas
+          column id="conversation" navigationKey=`${entry.id}` -exact-safe-area="ignore bottom" position="absolute" inset=0 class=Canvas
             header display="flex" align-items="center"
               button press=contactPressed contextPopover="contact-menu" testId="contact" display="flex" align-items="center" gap=8
                 column width="2.235294rem" height="2.235294rem" border-radius="1.117647rem" align-items="center" justify-content="center" class=Avatar
@@ -320,7 +323,7 @@ component ExactChat
             // Each conversation its own transcript: another's rows, whose ids
             // repeat, would move from where these were
             for open in [entry.params.id] key=open
-              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=true scroll-behavior="smooth" keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=true keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
                 // A row that leaves (a deleted message, the typing
                 // indicator) fades where it shows, as the rows the removal
                 // moves go to their places on the platform's spring for a
@@ -333,7 +336,7 @@ component ExactChat
                     else
                       MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose)
             if failed(inbox)
-              text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="max(16px, var(--exact-layout-margins-inset-left))" padding-right="max(16px, var(--exact-layout-margins-inset-right))"
+              text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left="var(--exact-layout-margins-inset-left)" padding-right="var(--exact-layout-margins-inset-right)"
             if flightPhase >= 1
               // Laid out as a row is, from the field's bottom, under the
               // composer's glass. While it is as wide as the field, a surface
@@ -342,7 +345,7 @@ component ExactChat
               // left edge comes to the balloon's. Both shrink about the
               // balloon's right side with the row's scale, and grow back with
               // the one inside it.
-              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + max(16px, var(--exact-layout-margins-inset-left)))` right=`calc(${flightRight}px + max(16px, var(--exact-layout-margins-inset-right)))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : (flightPhase == 2 ? 0.6 : 1)) translate=`${flightSlide}px ${flightRise}px` scale=(flightPhase >= 3 ? flightScale : 1) transform-origin="100% 50%" transition=flightMotion pointer-events="none"
+              row id="send-flight" testId="send-flight" position="absolute" left=`calc(${flightLeft}px + var(--exact-layout-margins-inset-left))` right=`calc(${flightRight}px + var(--exact-layout-margins-inset-right))` bottom=flightBottom justify-content="flex-end" opacity=(flightPhase == 1 ? 0 : (flightPhase == 2 ? 0.6 : 1)) translate=`${flightSlide}px ${flightRise}px` scale=(flightPhase >= 3 ? flightScale : 1) transform-origin="100% 50%" transition=flightMotion pointer-events="none"
                 row position="relative" flex=1 min-width=0 justify-content="flex-end" scale=(flightPhase >= 4 ? 1 / flightScale : 1) transform-origin="100% 50%" transition=swellMotion
                   box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
                     box position="absolute" inset=0 border-radius=balloonRadius class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
@@ -357,12 +360,12 @@ component ExactChat
           // sidebar. Its bottom safe area takes in the keys while the search
           // is typed in: the list pads its end by it, so its last rows scroll
           // above them, and the empty state ends above it.
-          column navigationKey=`${entry.id}` -exact-safe-area="bottom" position="absolute" inset=0
+          column navigationKey=`${entry.id}` position="absolute" inset=0
             header
               h2 "Chats"
               input type="search" value=query input=searchChats placeholder="Search" aria-label="Search conversations" testId="search"
             column flex=1 min-height=0 position="relative" display="flex" flex-direction="column"
-              list appearance="auto" listStyle="plain" flex=1 min-height=0 padding-bottom="var(--exact-safe-area-inset-bottom)"
+              list appearance="auto" listStyle="plain" flex=1 min-height=0
                 if needle == ""
                   section
                     for person in inbox key=person.id
@@ -400,7 +403,7 @@ component ExactChat
               // over the empty list. The list stays, because the bar's search
               // field belongs to it.
               if noResults
-                column position="absolute" top=0 left=0 right=0 bottom="var(--exact-safe-area-inset-bottom)" display="flex" justify-content="center" testId="no-results"
+                column position="absolute" top=0 left=0 right=0 bottom=0 display="flex" justify-content="center" testId="no-results"
                   EmptyState(symbol="symbol:search", title="No Results", message=`Nothing matches “${query.trim()}”.`)
       // The + card: opened from the + glass, it is UIKit's popover,
       // which grows out of the + and lies over the keys. Its rows are a
