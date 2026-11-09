@@ -41,7 +41,7 @@ A fresh app created with `new.mjs` on the pinned Exact passes all 28 web UI test
 
 ## Needs
 
-Exact `9efbeba191622144cf1da78aa05a6491bcf9004c`, pinned in `exact.json` on the published `llp-ship/20261102-ticket-repairs/integration` branch of `expo/exact`. Bun runs the API and its SQLite database. Browser regression tests use the Exact checkout's Playwright installation. Apple and Android builds require their platform toolchains.
+Exact `4756891bc2a0440eadd9a8e3ec67e2a8c04802cf`, pinned in `exact.json` on the published `main` branch of `expo/exact`. Bun runs the API and its SQLite database. Browser regression tests use the Exact checkout's Playwright installation. Apple and Android builds require their platform toolchains.
 
 ## Limits
 
