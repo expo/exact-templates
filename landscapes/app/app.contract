@@ -84,6 +84,13 @@ fn earned(l: Landmark, checked: string[]): bool = l.badge != "" and not activiti
 // A landmark search finds: its name or its continent holds `q`, typed in any case.
 fn findsLandmark(l: Landmark, q: string): bool = l.name.toLowerCase().includes(q) or l.continent.toLowerCase().includes(q)
 
+// A result's text around the first place it holds `q`, typed in any case: the text before the
+// match, the match as the text spells it, and the text after; all of it before when it holds none.
+fn matchAt(s: string, q: string): number = q == "" ? -1 : s.toLowerCase().indexOf(q.toLowerCase())
+fn beforeMatch(s: string, q: string): string = matchAt(s, q) < 0 ? s : s.slice(0, matchAt(s, q))
+fn matched(s: string, q: string): string = matchAt(s, q) < 0 ? "" : s.slice(matchAt(s, q), matchAt(s, q) + q.length)
+fn afterMatch(s: string, q: string): string = matchAt(s, q) < 0 ? "" : s.slice(matchAt(s, q) + q.length)
+
 // Badge.swift's colours, as the platform's.
 fn badgeColor(name: string): string = name == "orange" ? "-exact-system-orange" : name == "cyan" ? "-exact-system-cyan" : name == "green" ? "-exact-system-green" : name == "mint" ? "-exact-system-mint" : "-exact-system-blue"
 
@@ -98,7 +105,8 @@ component Landmarks
   // The route the search results cover: the top page when the query was last typed
   state searchAnchor = -1
   // Whether typed text shows its results: typing shows them; another page from the list hides them and
-  // keeps the text, so the page shows as chosen and the field still holds what was typed.
+  // keeps the text, so the page shows as chosen and the field still holds what was typed. Back in the
+  // field, the text it holds shows its results again over the page in front, as typing it would.
   state showsResults = false
   // The inspector's Map or Activities, kept while the app runs: the sample's inspector keeps
   // its choice across a close, another landmark, another page and a fold.
@@ -190,7 +198,7 @@ component Landmarks
             // points high in the sidebar as in the list, where a UIKit sidebar's are 44.
             header
               text "" role="heading" aria-level=2
-              input type="search" value=query input=search placeholder="Search" aria-label="Search" testId="search"
+              input type="search" value=query input=search focus=search(query) placeholder="Search" aria-label="Search" testId="search"
             list id="pages" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="pages"
               section
                 link href="/landmarks" testId="page-landmarks" display="flex" align-items="center" gap=12 min-height=52
@@ -572,8 +580,8 @@ component CollectionPage
 
 // What search finds, over the page it covers: landmarks whose name or continent holds the query
 // and collections whose name does, each a row that opens its page, in UIKit's grouped list; with
-// none, UIKit's empty search (`UIContentUnavailableConfiguration.search()`). The sample's search
-// field finds nothing.
+// none, UIKit's empty search (`UIContentUnavailableConfiguration.search()`). The part of a
+// name or continent the query matched is bold. The sample's search field finds nothing.
 component SearchResults
   props
     q: string
@@ -584,7 +592,8 @@ component SearchResults
       if ls.length == 0 and cs.length == 0
         column align-items="center" gap=6 padding="48px 32px 16px" testId="search-empty"
           image "symbol:search" font="-exact-large-title" color="-exact-secondary-label" aria-hidden=true
-          text `No Results for “${q}”` role="heading" aria-level=2 font="-exact-title2" font-weight=700 text-align="center"
+          // A typed word too long for the width breaks where it must, as UIKit's label breaks one
+          text `No Results for “${q}”` role="heading" aria-level=2 font="-exact-title2" font-weight=700 text-align="center" overflow-wrap="anywhere"
           text "Check the spelling or try a new search." color="-exact-secondary-label" text-align="center"
       else
         list id="search-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="search-list"
@@ -596,8 +605,14 @@ component SearchResults
                 link href=path("landmark", l.id) display="flex" align-items="center" testId=`result-${l.id}`
                   image `assets/apple/${l.id}-thumb.jpg` width=48 height=48 object-fit="cover" border-radius=8 margin-right=14 aria-hidden=true
                   column flex=1
-                    text l.name
-                    text l.continent font="-exact-subheadline" color="-exact-secondary-label"
+                    text
+                      text beforeMatch(l.name, q)
+                      text matched(l.name, q) font-weight=600
+                      text afterMatch(l.name, q)
+                    text font="-exact-subheadline" color="-exact-secondary-label"
+                      text beforeMatch(l.continent, q)
+                      text matched(l.continent, q) font-weight=600
+                      text afterMatch(l.continent, q)
           if cs.length > 0
             section
               header
@@ -606,7 +621,10 @@ component SearchResults
                 link href=path("collection", c.id) display="flex" align-items="center" testId=`result-collection-${c.id}`
                   image "symbol:sf/book.closed" width=48 margin-right=14 color="AccentColor" aria-hidden=true
                   column flex=1
-                    text c.name
+                    text
+                      text beforeMatch(c.name, q)
+                      text matched(c.name, q) font-weight=600
+                      text afterMatch(c.name, q)
                     text itemCount(c.landmarkIds.length) font="-exact-subheadline" color="-exact-secondary-label"
 
 // A collection being edited (CollectionDetailEditingView): its title, its
