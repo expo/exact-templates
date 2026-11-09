@@ -1,16 +1,17 @@
 import { describe, expect, test } from 'bun:test';
 import { answer, overlay } from './app.ts';
-import { seedConversation, seedStore, snippet } from './model.ts';
+import { kept, loadMore, seedConversation, seedStore, snippet, viewing } from './model.ts';
 
 describe('conversation storage', () => {
   const thread = async (memory, id) => (await answer('loadInbox', [], {}, memory.api)).find((item) => item.id === id);
+  const transcript = (memory, id, start = '', end = '') => answer('loadTranscript', [id, start, end], {}, memory.api);
 
   test('a send preserves line breaks and replies, and IDs survive deletion', async () => {
     const memory = storage();
     const first = await answer('command', ['send', 'alex', 'First line\nSecond line', 'A quoted message', 1000], {}, memory.api);
     expect(first).toEqual({ id: 'sent-1', error: '' });
     const saved = await thread(memory, 'alex');
-    expect(saved.messages.at(-1)).toMatchObject({ body: 'First line\nSecond line', reply: 'A quoted message' });
+    expect(saved.recent.at(-1)).toMatchObject({ body: 'First line\nSecond line', reply: 'A quoted message' });
     await answer('command', ['delete', 'alex', first.id, '', 1001], {}, memory.api);
     const next = await answer('command', ['receive', 'alex', 'A new reply', '', 1002], {}, memory.api);
     expect(next.id).toBe('received-2');
@@ -34,7 +35,7 @@ describe('conversation storage', () => {
     expect(memory.contents).toBe('{invalid json');
     const reset = await answer('command', ['reset', 'alex', '', '', 1000], {}, memory.api);
     expect(reset.error).toBe('');
-    expect((await thread(memory, 'alex')).messages).toHaveLength(12);
+    expect((await thread(memory, 'alex')).count).toBe(12);
   });
 
   test('prepending history is idempotent and preserves the newest messages', async () => {
@@ -43,10 +44,56 @@ describe('conversation storage', () => {
     await answer('command', ['history', 'alex', '', '', 1001], {}, memory.api);
     await answer('command', ['history', 'alex', '', '', 1002], {}, memory.api);
     const saved = await thread(memory, 'alex');
-    expect(saved.messages).toHaveLength(253);
-    expect(saved.messages.at(-1).body).toBe('The newest message');
-    expect(saved.messages[239].endsRun).toBe(true);
-    expect(saved.messages[240].stamped).toBe(true);
+    expect(saved.count).toBe(253);
+    expect(saved.recent).toHaveLength(viewing);
+    expect(saved.recent.at(-1).body).toBe('The newest message');
+    // The last of the earlier messages and the first seeded one, decorated as their neighbours say
+    const seam = await transcript(memory, 'alex', saved.earlier);
+    expect(seam.rows[239 - (253 - viewing - loadMore)].endsRun).toBe(true);
+    expect(seam.rows[240 - (253 - viewing - loadMore)].stamped).toBe(true);
+  });
+
+  test('a transcript opens at its latest messages and loads more at each edge, holding at most its window', async () => {
+    const memory = storage();
+    await answer('command', ['history', 'alex', '', '', 1000], {}, memory.api);
+    const latest = await transcript(memory, 'alex');
+    expect(latest.count).toBe(252);
+    expect(latest.rows).toHaveLength(viewing);
+    expect(latest.rows.at(-1).last).toBe(true);
+    expect([latest.hasEarlier, latest.hasLater]).toEqual([true, false]);
+    // Earlier and earlier: each step 50 more, until the window lets go of its end
+    let part = latest, start = '', end = '';
+    const sizes = [];
+    while (part.hasEarlier) {
+      [start, end] = [part.earlier, part.earlierEnd];
+      part = await transcript(memory, 'alex', start, end);
+      sizes.push(part.rows.length);
+      expect(part.rows.length).toBeLessThanOrEqual(kept);
+    }
+    expect(sizes.slice(0, 4)).toEqual([100, 150, 200, 200]);
+    expect(part.rows[0].id).toBe('history-0');
+    expect(part.rows[0].stamped).toBe(true);
+    expect(part.hasLater).toBe(true);
+    // And later again, to the end, which the window then follows
+    while (part.hasLater) {
+      part = await transcript(memory, 'alex', part.laterStart, part.later);
+      expect(part.rows.length).toBeLessThanOrEqual(kept);
+    }
+    expect(part.rows.at(-1).id).toBe('seed-12');
+    expect(part.later).toBe('');
+  });
+
+  test('a window whose first message was deleted begins at the one sent before it', async () => {
+    const memory = storage();
+    await answer('command', ['history', 'alex', '', '', 1000], {}, memory.api);
+    const latest = await transcript(memory, 'alex');
+    const start = latest.earlier, id = start.slice(start.indexOf('|') + 1);
+    const before = await transcript(memory, 'alex', start);
+    expect(before.rows[0].id).toBe(id);
+    await answer('command', ['delete', 'alex', id, '', 1001], {}, memory.api);
+    const after = await transcript(memory, 'alex', start);
+    expect(after.rows[0].id).not.toBe(id);
+    expect(after.rows[0].at).toBeLessThanOrEqual(before.rows[0].at);
   });
 
   test('each person has a conversation, the most recent first', async () => {
@@ -56,19 +103,22 @@ describe('conversation storage', () => {
     await answer('command', ['send', 'jordan', 'On my way', '', 1_792_700_000_000], {}, memory.api);
     const after = await answer('loadInbox', [], {}, memory.api);
     expect(after.map((item) => item.id)).toEqual(['jordan', 'alex', 'priya']);
-    expect(after[0].messages.at(-1).body).toBe('On my way');
-    expect(after[1].messages).toHaveLength(12);
+    expect(after[0].recent.at(-1).body).toBe('On my way');
+    expect(after[1].count).toBe(12);
   });
 
-  test('a draft is saved with its conversation alone, and a reset leaves the others', async () => {
+  test('a draft is saved apart from the messages, with its conversation alone, and a reset leaves the others', async () => {
     const memory = storage();
     await answer('command', ['draft', 'priya', 'Half written', 'Morning! Did the package arrive?', 1000], {}, memory.api);
+    expect(memory.contents).toBeUndefined();
+    expect(JSON.parse(memory.files.get('app:/data/drafts.json')).drafts.priya.draft).toBe('Half written');
+    expect(await thread(fresh(memory), 'priya')).toMatchObject({ draft: 'Half written' });
     await answer('command', ['send', 'alex', 'Hello', '', 1001], {}, memory.api);
     expect(await thread(memory, 'priya')).toMatchObject({ draft: 'Half written', reply: 'Morning! Did the package arrive?' });
     expect(await thread(memory, 'alex')).toMatchObject({ draft: '', reply: '' });
     await answer('command', ['reset', 'priya', '', '', 1002], {}, memory.api);
     expect(await thread(memory, 'priya')).toMatchObject({ draft: '' });
-    expect((await thread(memory, 'alex')).messages.at(-1).body).toBe('Hello');
+    expect((await thread(memory, 'alex')).recent.at(-1).body).toBe('Hello');
   });
 
   test('writes that overlap are applied in turn', async () => {
@@ -79,7 +129,7 @@ describe('conversation storage', () => {
     ]);
     const alex = await thread(memory, 'alex');
     expect(alex.draft).toBe('Typing');
-    expect(alex.messages.at(-1).body).toBe('Sent');
+    expect(alex.recent.at(-1).body).toBe('Sent');
   });
 
   test('a file of the first version becomes the conversation with Alex', async () => {
@@ -87,7 +137,7 @@ describe('conversation storage', () => {
     first.messages.push({ id: 'sent-1', body: 'Kept', mine: true, at: 1000, reply: '', stamp: '', receipt: '' });
     first.serial = 1;
     const memory = storage(JSON.stringify(first));
-    expect((await thread(memory, 'alex')).messages.at(-1).body).toBe('Kept');
+    expect((await thread(memory, 'alex')).recent.at(-1).body).toBe('Kept');
     expect(await thread(memory, 'priya')).toBeDefined();
   });
 
@@ -97,8 +147,14 @@ describe('conversation storage', () => {
     const shown = overlay('loadInbox', [], await answer('loadInbox', [], {}, memory.api), [write]);
     expect(shown[0].id).toBe('priya');
     expect(shown[0].serial).toBe(1);
-    expect(shown[0].messages.at(-1)).toMatchObject({ id: 'sent-1', body: 'On my way', mine: true, last: true });
-    expect(shown[0].messages.at(-2).last).toBe(false);
+    expect(shown[0].recent.at(-1)).toMatchObject({ id: 'sent-1', body: 'On my way', mine: true, last: true });
+    expect(shown[0].recent.at(-2).last).toBe(false);
+    expect(shown[0].count).toBe(5);
+    // In a transcript's window that reaches the end too, and not in one that does not
+    const part = await transcript(memory, 'priya', '0|seed-1');
+    const windowed = overlay('loadTranscript', ['priya', '0|seed-1', ''], part, [write]);
+    expect(windowed.rows.at(-1)).toMatchObject({ id: 'sent-1', last: true });
+    expect(overlay('loadTranscript', ['priya', '0|seed-1', ''], { ...part, hasLater: true }, [write])).toBeUndefined();
     expect(await answer('command', write.args, {}, memory.api)).toEqual({ id: 'sent-1', error: '' });
     // Once an answer asked after the reply has it, the answer shows alone
     expect(overlay('loadInbox', [], await answer('loadInbox', [], {}, memory.api), [{ ...write, answered: true }])).toBeUndefined();
@@ -143,23 +199,33 @@ describe('message search', () => {
   });
 });
 
+/** Files by path, the conversations' as `contents`. */
 function storage(initial) {
-  const memory = { contents: initial, failWrites: false, api: undefined };
+  const conversations = 'app:/data/conversation.json';
+  const memory = { files: new Map(initial === undefined ? [] : [[conversations, initial]]), failWrites: false, api: undefined };
+  Object.defineProperty(memory, 'contents', { get: () => memory.files.get(conversations) });
   memory.api = {
     fs: {
-      async readFile() {
-        if (memory.contents === undefined) {
-          throw Object.assign(new Error('No conversation has been saved'), { code: 'ENOENT' });
+      async readFile(path) {
+        if (!memory.files.has(path)) {
+          throw Object.assign(new Error('No such file has been saved'), { code: 'ENOENT' });
         }
-        return new TextEncoder().encode(memory.contents).buffer;
+        return new TextEncoder().encode(memory.files.get(path)).buffer;
       },
-      async atomicWriteFile(_path, bytes) {
+      async atomicWriteFile(path, bytes) {
         if (memory.failWrites) {
           throw new Error('The storage device is full');
         }
-        memory.contents = new TextDecoder().decode(bytes);
+        memory.files.set(path, new TextDecoder().decode(bytes));
       },
     },
   };
   return memory;
+}
+
+/** The same files as `memory`, read again as a new launch reads them. */
+function fresh(memory) {
+  const again = storage();
+  again.files = memory.files;
+  return again;
 }

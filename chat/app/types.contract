@@ -28,7 +28,33 @@ shape Thread
   // How many messages were sent and received in it, deleted ones too: the
   // next is numbered one more (`sent-<n>`)
   serial: number
-  messages: Message[]
+  // How many messages it holds, and its latest, as many as its transcript
+  // first shows; whether more came before them, and the cursor that loads
+  // them (`model.ts`, `inbox`)
+  count: number
+  recent: Message[]
+  hasEarlier: bool
+  earlier: string
+
+// Part of a conversation a transcript scrolled away from its latest
+// messages shows, and the cursors that load more at each edge (`model.ts`,
+// `window`)
+shape Window
+  contact: string
+  rows: Message[]
+  count: number
+  hasEarlier: bool
+  earlier: string
+  earlierEnd: string
+  hasLater: bool
+  later: string
+  laterStart: string
+
+// A message chosen to share, its text kept as it is chosen
+shape ChosenMessage
+  id: string
+  at: number
+  body: string
 
 // A message a search found: its conversation, and its text trimmed around
 // the match, with the match split out to be highlighted (`model.ts`, `found`)

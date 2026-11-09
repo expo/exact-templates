@@ -1,4 +1,4 @@
-use Message, Thread, Found, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials, fade from "./types.contract"
+use Message, Thread, Window, ChosenMessage, Found, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials, fade from "./types.contract"
 use MessageRow, Typing, Balloon, Sent, Received from "./bubble.contract"
 use Composer, ChoiceBar from "./composer.contract"
 use EmptyState from "exact:content"
@@ -57,15 +57,28 @@ component ExactChat
   // share
   state choosing = false
   state chosen: string[] = []
+  state picked: ChosenMessage[] = []
+  // The part of the open conversation its transcript shows, as ChatKit loads
+  // it: its latest messages, which the list answers with it, until the
+  // reader reaches the first; then a window of the conversation, between
+  // these cursors, which loads more at each edge it reaches
+  state windowStart = ""
+  state windowEnd = ""
   resource viewport = exactViewport() as shape Viewport
   resource wall = exactTime() as shape Time
   resource inbox = loadInbox() as shape Thread[] else empty()
+  derive windowed = windowStart != "" or windowEnd != ""
+  resource window = loadTranscript(windowed ? openId : "", windowStart, windowEnd) as shape Window else empty()
   // The messages a search finds, the newest first
   resource matches = searchMessages(query.trim()) as shape Found[] else empty()
-  mutation changed as shape Change queue refreshes inbox, matches then afterChange
+  mutation changed as shape Change queue refreshes inbox, matches, window then afterChange
   mutation drafted as shape Change queue refreshes inbox
   derive openId = top(nav).name == "thread" ? top(nav).params.id : ""
-  derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", phone="", email="", draft="", reply="", serial=0, messages=[]) }
+  derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", phone="", email="", draft="", reply="", serial=0, count=0, recent=[], hasEarlier=false, earlier="") }
+  // The messages the transcript shows: the window's once it has answered,
+  // else the latest; and whether they reach the conversation's end
+  derive loaded = windowed and window.contact == openId and window.rows.length > 0 ? window.rows : conversation.recent
+  derive atEnd = not windowed or window.contact != openId or not window.hasLater
   derive draft = editing == openId ? editedDraft : conversation.draft
   derive reply = editing == openId ? editedReply : conversation.reply
   derive now = wall.epochAtZero + elapsed
@@ -77,10 +90,12 @@ component ExactChat
   // A one-line balloon's corners: half its height
   derive balloonRadius = (bodySize * 1.193359 + 20) / 2
   // A receipt shows under the newest of your messages since their last one
-  // that has been delivered: never under one they have answered
-  derive answered = match conversation.messages.filter(m => not m.mine).at(-1) { case some(theirs) => conversation.messages.map(m => m.id).indexOf(theirs.id) + 1, case none => 0 }
-  derive receiptId = match conversation.messages.slice(answered).filter(m => m.receipt != "" or now - m.at >= 1130).at(-1) { case some(m) => m.id, case none => "" }
-  derive awaitingReceipt = conversation.messages.filter(m => m.mine and m.receipt == "" and now - m.at < 2000).length > 0
+  // that has been delivered: never under one they have answered. Read from
+  // the rows shown where they reach the conversation's end: one before them
+  // is answered or older
+  derive answered = match loaded.filter(m => not m.mine).at(-1) { case some(theirs) => loaded.map(m => m.id).indexOf(theirs.id) + 1, case none => 0 }
+  derive receiptId = atEnd ? match loaded.slice(answered).filter(m => m.receipt != "" or now - m.at >= 1130).at(-1) { case some(m) => m.id, case none => "" } : ""
+  derive awaitingReceipt = atEnd and loaded.filter(m => m.mine and m.receipt == "" and now - m.at < 2000).length > 0
   derive sendError = match changed { case some(c) => c.error, case none => "" }
   // The platform's send: the copy narrows to its balloon in 200 ms and comes
   // from 0.6 to whole as it does. It slides to the row's side and, 55 ms
@@ -90,7 +105,7 @@ component ExactChat
   derive swellMotion = flightPhase >= 4 ? "scale -exact-spring(320, 38, 2)" : "none"
   derive narrowMotion = flightPhase >= 3 ? "translate 200ms cubic-bezier(0.541951, 0, 0.58, 1)" : "none"
   derive flightNarrowed = flightPhase >= 3 ? flightNarrow : 0
-  derive transcript = conversation.messages.concat(typing ? [Message(id="typing", body="", mine=false, at=0, reply="", stamped=false, endsRun=true, last=true, receipt="", readAt=0)] : [])
+  derive transcript = loaded.concat(typing ? [Message(id="typing", body="", mine=false, at=0, reply="", stamped=false, endsRun=true, last=true, receipt="", readAt=0)] : [])
 
   action edit(value: string)
     write(value, reply)
@@ -102,10 +117,33 @@ component ExactChat
   action fontChanged(width: number, height: number)
     bodySize = height
   action began
-    // The newest message comes up with the keys
-    let newest = match transcript.at(-1) { case some(m) => m.id, case none => "" }
+    // The newest message comes up with the keys, the latest shown again
+    // where the reader had scrolled away from them
+    if not atEnd
+      latest()
+    let newest = match (atEnd ? transcript : conversation.recent).at(-1) { case some(m) => m.id, case none => "" }
     if newest != ""
       scrollIntoView("transcript", newest, block="end")
+  // The conversation's latest messages, which the list answers with it
+  action latest
+    windowStart = ""
+    windowEnd = ""
+  // The reader reached the first row shown: the 50 before it, as ChatKit
+  // loads them, the window letting go of rows past 200 at its other end
+  action older
+    if windowed and window.contact == openId
+      if window.hasEarlier
+        windowStart = window.earlier
+        windowEnd = window.earlierEnd
+    else if conversation.hasEarlier
+      windowStart = conversation.earlier
+      windowEnd = ""
+  // The reader reached the last row shown, not the conversation's: the 50
+  // after it
+  action newer
+    if windowed and window.contact == openId and window.hasLater
+      windowEnd = window.later
+      windowStart = window.laterStart
   action send
     if draft.trim() != "" and not pending(changed)
       submitted = draft
@@ -132,6 +170,9 @@ component ExactChat
       flightScale = 0.7 + 0.2 * max(0, min(1, (pill.height - 40.3333) / (6 * 40.3333)))
       let flies = not (viewport.prefersReducedMotion or page.unavailable or pill.unavailable)
       flightPhase = flies ? 1 : 0
+      // A send shows the conversation's latest, where it lands
+      if not atEnd
+        latest()
       send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
       // The transcript shows the new row at its end: the list moves the rows
       // the send shifts on one spring, a reader at the end and one scrolled
@@ -261,23 +302,32 @@ component ExactChat
   action cancelReply
     write(draft, "")
   // More… begins choosing, the balloon it came from chosen
+  // The chosen messages' text is kept as each is chosen, as the rows shown
+  // may load and let go of them before they are shared
   action more
     choosing = true
     chosen = [selectedId]
+    picked = loaded.filter(m => m.id == selectedId).map(m => ChosenMessage(id=m.id, at=m.at, body=m.body))
   action choose(id: string)
-    chosen = chosen.includes(id) ? chosen.filter(c => c != id) : chosen.concat([id])
+    let was = chosen.includes(id)
+    chosen = was ? chosen.filter(c => c != id) : chosen.concat([id])
+    picked = was ? picked.filter(p => p.id != id) : picked.concat(loaded.filter(m => m.id == id).map(m => ChosenMessage(id=m.id, at=m.at, body=m.body)))
   action endChoosing
     choosing = false
     chosen = []
+    picked = []
   action deleteChosen
     send changed = command("delete", openId, chosen.join("\n"), "", wall.epochAtZero + performanceNow())
     choosing = false
     chosen = []
+    picked = []
   action shareChosen
-    share(text=conversation.messages.filter(m => chosen.includes(m.id)).map(m => m.body).join("\n"))
+    share(text=sortBy(picked, p => p.at).map(p => p.body).join("\n"))
   action follow(url: string)
     choosing = false
     chosen = []
+    picked = []
+    latest()
     typing = false
     flightPhase = 0
     arrivedId = ""
@@ -323,7 +373,7 @@ component ExactChat
             // Each conversation its own transcript: another's rows, whose ids
             // repeat, would move from where these were
             for open in [entry.params.id] key=open
-              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=true keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
                 // A row that leaves (a deleted message, the typing
                 // indicator) fades where it shows, as the rows the removal
                 // moves go to their places on the platform's spring for a
@@ -422,7 +472,7 @@ component ExactChat
       column id="conversation-peek" popover="auto" role="menu"
         for thread in inbox.filter(t => t.id == peeked) key=thread.id
           button contextPreview=true press=follow(path("thread", thread.id)) popovertarget="conversation-peek" popovertargetaction="hide" aria-label=`Open ${thread.name}` testId="peek-preview" display="flex" flex-direction="column" justify-content="flex-end" width="18.823529rem" padding-top=12 padding-bottom=12 box-sizing="border-box" class=Canvas
-            for m in thread.messages.slice(-5) key=m.id
+            for m in thread.recent.slice(-5) key=m.id
               row justify-content=(m.mine ? "flex-end" : "flex-start") padding-left=12 padding-right=12 padding-top=2 padding-bottom=(m.endsRun ? 8 : 2)
                 box max-width="80%"
                   Balloon(body=m.body, mine=m.mine, tail=m.endsRun, bodySize=bodySize, identifier=`peek-${m.id}`, shift=0, shiftMotion="none", tailMotion="none")
@@ -518,5 +568,5 @@ component ConversationRow
       // Yesterday, the weekday this week, else the date
       row align-items="baseline" gap=8
         text person.name font="-exact-headline" flex=1 min-width=0 line-clamp=1
-        text (match person.messages.at(-1) { case some(m) => formatDay(m.at, now, utcOffset, "list"), case none => "" }) testId=`sent-${person.id}` font="-exact-subheadline" class=Secondary flex-shrink=0
-      text (match person.messages.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary
+        text (match person.recent.at(-1) { case some(m) => formatDay(m.at, now, utcOffset, "list"), case none => "" }) testId=`sent-${person.id}` font="-exact-subheadline" class=Secondary flex-shrink=0
+      text (match person.recent.at(-1) { case some(m) => m.body, case none => "" }) font="-exact-subheadline" line-clamp=2 class=Secondary

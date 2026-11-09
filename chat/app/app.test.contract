@@ -21,7 +21,7 @@ test "sending clears the draft and saves the message across a relaunch"
   expect text "receipt-sent-1" == "Delivered"
   reload
   clock data
-  expect state inbox.0.messages.12.body == "I’m on my way!"
+  expect state inbox.0.recent.12.body == "I’m on my way!"
 
 test "whitespace is not sendable and a multiline draft survives a relaunch"
   tap "conversation-alex"
@@ -57,7 +57,7 @@ test "a long transcript keeps the composer usable and the newest message accessi
   tap "options"
   tap "load-history"
   clock data
-  expect state conversation.messages.length == 252
+  expect state conversation.count == 252
   type "composer" "Still here after the earlier messages."
   tap "send"
   clock data
