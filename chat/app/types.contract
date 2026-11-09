@@ -107,6 +107,10 @@ keyframes receipt
 keyframes fade
   to opacity=0
 
+// A part of a new row that comes in where it is
+keyframes appear
+  from opacity=0
+
 // A selection mark slides in from beyond the leading edge, and out to it
 keyframes markIn
   from translate="-37px 0px"

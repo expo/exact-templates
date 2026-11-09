@@ -1,4 +1,4 @@
-use Message, Secondary, arrive, receipt, fade, dot, markIn, markOut from "./types.contract"
+use Message, Secondary, arrive, appear, receipt, fade, dot, markIn, markOut from "./types.contract"
 
 // Calendar days from `at` to `now`, both at the offset
 fn daysBetween(at: number, now: number, offset: number): number = floor((now + offset * 60000) / 86400000) - floor((at + offset * 60000) / 86400000)
@@ -99,11 +99,13 @@ component Balloon
 
 // Rows are laid out by their balloons' bodies: a tail paints into the
 // space below its row and never moves another. A run's last row keeps room
-// for it, and the row holding the receipt room for that instead. When the
-// receipt moves on, both rooms resize on a critically damped spring while
-// the old words fade in 100 ms as they leave (a fade, which reduced motion
-// keeps), and the new ones grow about their centre once those are gone. Only
-// the receipt's row holds its words.
+// for it, and the row holding the receipt room for that instead. A room
+// takes its height with the change that gives it, and the list moves the
+// rows that change shifts, all on one spring, as a collection view's batch
+// update does. When the receipt moves on, the old words fade in 100 ms as
+// they leave (a fade, which reduced motion keeps), and the new ones grow
+// about their centre once those are gone. Only the receipt's row holds its
+// words.
 component MessageRow
   props
     message: Message
@@ -128,7 +130,6 @@ component MessageRow
   // The receipt's room is its offset, its line and 1 point: 19.333 at the
   // default text size. The last row's tail paints into the transcript's foot.
   derive room = hasReceipt ? 6.3333 + bodySize * 0.764706 : (tail and not message.last ? 6.65 : 0)
-  derive roomMotion = reduced ? "none" : "height -exact-spring(438.65, 41.888, 1)"
   // Choosing begins and ends in 0.3 s on the default curve, as the platform's does
   derive chooseMotion = reduced ? "none" : "300ms ease-in-out"
   view
@@ -142,9 +143,10 @@ component MessageRow
     // row chooses it (the platform's selection mode), the row's one element
     // for VoiceOver then
     column testId=`row-${message.id}` position="relative" padding-left="max(16px, var(--exact-layout-margins-inset-left))" padding-right="max(16px, var(--exact-layout-margins-inset-right))" padding-top=(message.stamped ? 0 : 2) padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
-      // The day bold and the time regular: "Today 9:41 AM", "Monday 6:12 PM"
+      // The day bold and the time regular: "Today 9:41 AM", "Monday 6:12 PM".
+      // A sent row's comes in where it is as its balloon flies there.
       if message.stamped
-        text testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" margin-bottom=9
+        text testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" margin-bottom=9 animation=(hidden and not reduced ? "appear 300ms ease-out both" : "none")
           text stampDay(message.at, now, utcOffset) font-weight=600
           text ` ${formatTime(message.at, utcOffset, "short")}`
       if message.reply != ""
@@ -152,7 +154,7 @@ component MessageRow
           text message.reply class=Secondary border-left="2px solid -exact-separator" padding-left=8 max-width="85%" font-size="0.764706rem" line-clamp=2
       box align-self=(message.mine ? "flex-end" : "flex-start") opacity=(hidden ? 0 : 1) aria-hidden=choosing max-width="min(85%, calc(100% - 89.333333px))" contextmenu=aim(message.id, message.body) contextPopover="message-menu" swiperight=replyTo(message.body) touch-action="pan-y" animation=(arriving and not reduced ? "arrive 220ms ease-out both" : "none") transform-origin="0% 100%" margin-left=(choosing and not message.mine ? "calc(var(--exact-safe-area-inset-left) + 57px - max(16px, var(--exact-layout-margins-inset-left)))" : "0px") -exact-layout-transition=chooseMotion
         Balloon(body=message.body, mine=message.mine, tail=tail, bodySize=bodySize, identifier=`bubble-${message.id}`, shift=0, shiftMotion="none", tailMotion=(reduced ? "none" : "scale -exact-spring(438.649, 41.8879, 1), opacity -exact-spring(438.649, 41.8879, 1)"))
-      column height=room transition=roomMotion flex-shrink=0 pointer-events="none" opacity=(choosing ? 0 : 1)
+      column height=room flex-shrink=0 pointer-events="none" opacity=(choosing ? 0 : 1)
         if message.mine and hasReceipt
           text (message.receipt == "Read" and message.readAt > 0 ? `Read ${formatDay(message.readAt, now, utcOffset, "list")}` : (message.receipt != "" ? message.receipt : "Delivered")) testId=`receipt-${message.id}` class=Secondary align-self="flex-end" font-size="0.647059rem" line-height="0.764706rem" font-weight=600 margin-top=5.3333 margin-right=19.667 animation=(hasReceipt and message.receipt == "" and now - message.at < 1900 and not reduced ? "receipt 610ms cubic-bezier(0.25, 1, 0.5, 1) 100ms backwards" : "none") -exact-exit-animation="fade 100ms ease-out both"
       if choosing

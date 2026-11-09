@@ -133,8 +133,10 @@ component ExactChat
       let flies = not (viewport.prefersReducedMotion or page.unavailable or pill.unavailable)
       flightPhase = flies ? 1 : 0
       send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
-      // The transcript makes room by scrolling, as the platform's does in 0.3 s
-      scrollIntoView("transcript", id, block="end", behavior="smooth")
+      // The transcript shows the new row at its end: the list moves the rows
+      // the send shifts on one spring, a reader at the end and one scrolled
+      // away alike
+      scrollIntoView("transcript", id, block="end")
       // With no flight to take it, the draft leaves the field as the row shows
       if not flies
         write("", "")
