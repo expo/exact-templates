@@ -76,8 +76,10 @@ component ExactChat
   derive composerHeight = max(60, min(263.158, viewport.height * 0.45))
   // A one-line balloon's corners: half its height
   derive balloonRadius = (bodySize * 1.193359 + 20) / 2
-  // A receipt shows only while the conversation ends with yours
-  derive receiptId = match conversation.messages.at(-1) { case some(last) => (last.mine ? (match conversation.messages.filter(m => m.mine and (m.receipt != "" or now - m.at >= 1130)).at(-1) { case some(m) => m.id, case none => "" }) : ""), case none => "" }
+  // A receipt shows under the newest of your messages since their last one
+  // that has been delivered: never under one they have answered
+  derive answered = match conversation.messages.filter(m => not m.mine).at(-1) { case some(theirs) => conversation.messages.map(m => m.id).indexOf(theirs.id) + 1, case none => 0 }
+  derive receiptId = match conversation.messages.slice(answered).filter(m => m.receipt != "" or now - m.at >= 1130).at(-1) { case some(m) => m.id, case none => "" }
   derive awaitingReceipt = conversation.messages.filter(m => m.mine and m.receipt == "" and now - m.at < 2000).length > 0
   derive sendError = match changed { case some(c) => c.error, case none => "" }
   // The platform's send: the copy narrows to its balloon in 200 ms and comes
