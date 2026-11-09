@@ -97,6 +97,9 @@ component Landmarks
   state query = ""
   // The route the search results cover: the top page when the query was last typed
   state searchAnchor = -1
+  // Whether typed text shows its results: typing shows them; another page from the list hides them and
+  // keeps the text, so the page shows as chosen and the field still holds what was typed.
+  state showsResults = false
   // The inspector's Map or Activities, kept while the app runs: the sample's inspector keeps
   // its choice across a close, another landmark, another page and a fold.
   state segment = "map"
@@ -116,22 +119,23 @@ component Landmarks
   derive basePage = match stack(nav).at(1) { case some(e) => `/${e.name}`, case none => "" }
   // The top route that is a page, not an inspector or a sheet above it.
   derive topPage = match stack(nav).filter((e) => e.name != "info" and e.name != "select").at(-1) { case some(e) => e.id, case none => -1 }
-  // The page search results cover, none while nothing is typed: the one the query was typed over, while
-  // it is in the stack, so a result opened over it comes back to them; else the top page. The page stays
-  // beneath them, so clearing the field shows it as it was.
-  derive resultsOver = searched == "" ? -1 : stack(nav).map((e) => e.id).includes(searchAnchor) ? searchAnchor : topPage
+  // The page search results cover, none while nothing is typed or another page hid them: the one the query
+  // was typed over, while it is in the stack, so a result opened over it comes back to them; else the top
+  // page. The page stays beneath them, so clearing the field shows it as it was.
+  derive resultsOver = searched == "" or not showsResults ? -1 : stack(nav).map((e) => e.id).includes(searchAnchor) ? searchAnchor : topPage
 
   // A page chosen in the list replaces the detail, as the sample's sidebar does: `open` lands
   // in its declared chain, the list and the page; any other location goes as usual. Another page
-  // from the list ends a search; anywhere else, a result included, opens over the results, as
-  // Notes opens a note it found, and Back, which arrives here as the page beneath, returns to them.
+  // from the list hides the results and keeps the typed text; anywhere else, a result included,
+  // opens over the results, as Notes opens a note it found, and Back, which arrives here as the
+  // page beneath, returns to them.
   // The keyboard goes either way, and the inspector closes rather than hold what opens.
   action follow(url: string)
     let page = ["/landmarks", "/map", "/collections"].includes(url)
     let another = page and url != basePage
     nav = page ? open(nav, url) : go(top(nav).name == "info" ? back(nav) : nav, url)
     if another
-      query = ""
+      showsResults = false
     blur()
   action back
     nav = back(nav)
@@ -147,6 +151,7 @@ component Landmarks
     nav = top(nav).name == "info" ? back(nav) : push(nav, path("info", id))
   action search(v: string)
     searchAnchor = topPage
+    showsResults = true
     query = v
   action choose(s: string)
     segment = s
