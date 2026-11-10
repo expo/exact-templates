@@ -52,6 +52,10 @@ shape Collection
 shape Data
   landmarks: Landmark[]
 
+// The routes a person can see now: the list beside a page on an open Duo, the top page alone on a closed one.
+shape Page
+  shownRoutes: string[]
+
 shape Ack
   ok: bool
   id: string
@@ -97,6 +101,7 @@ fn badgeColor(name: string): string = name == "orange" ? "-exact-system-orange" 
 component Landmarks
   resource data = loadData() as shape Data
   resource cols = loadCollections() as shape Collection[]
+  resource facts = exactPage() as shape Page
   mutation changed as shape Ack queue refreshes cols
   mutation added as shape Ack refreshes cols then openAdded
   // Activities changed this session, as `landmark:activity`.
@@ -108,6 +113,8 @@ component Landmarks
   // keeps the text, so the page shows as chosen and the field still holds what was typed. Back in the
   // field, the text it holds shows its results again over the page in front, as typing it would.
   state showsResults = false
+  // The page a Back to the list left, which the split shows beside the list again as a closed Duo opens.
+  state leftPage = ""
   // The inspector's Map or Activities, kept while the app runs: the sample's inspector keeps
   // its choice across a close, another landmark, another page and a fold.
   state segment = "map"
@@ -127,24 +134,34 @@ component Landmarks
   derive basePage = match stack(nav).at(1) { case some(e) => `/${e.name}`, case none => "" }
   // The top route that is a page, not an inspector or a sheet above it.
   derive topPage = match stack(nav).filter((e) => e.name != "info" and e.name != "select").at(-1) { case some(e) => e.id, case none => -1 }
-  // The page search results cover, none while nothing is typed or another page hid them: the one the query
-  // was typed over, while it is in the stack, so a result opened over it comes back to them; else the top
+  // The list, whose header holds the search field, and whether it shows: beside the page on an open Duo, and
+  // closed only while no page covers it.
+  derive listId = match stack(nav).at(0) { case some(e) => e.id, case none => -1 }
+  derive fieldShown = facts.shownRoutes.includes(`${listId}`)
+  // The page search results cover, none while nothing is typed, another page hid them or the field is out
+  // of sight: the one the query was typed over, while it is in the stack, so a result opened over it comes
+  // back to them, unless that is the list with a page beside it (typed closed, then opened); else the top
   // page. The page stays beneath them, so clearing the field shows it as it was.
-  derive resultsOver = searched == "" or not showsResults ? -1 : stack(nav).map((e) => e.id).includes(searchAnchor) ? searchAnchor : topPage
+  derive resultsOver = searched == "" or not showsResults or not fieldShown ? -1 : stack(nav).map((e) => e.id).includes(searchAnchor) and (searchAnchor != listId or topPage == listId) ? searchAnchor : topPage
 
   // A page chosen in the list replaces the detail, as the sample's sidebar does: `open` lands
   // in its declared chain, the list and the page; any other location goes as usual. Another page
   // from the list hides the results and keeps the typed text; anywhere else, a result included,
   // opens over the results, as Notes opens a note it found, and Back, which arrives here as the
-  // page beneath, returns to them.
-  // The keyboard goes either way, and the inspector closes rather than hold what opens.
+  // page beneath, returns to them. The page a Back to the list left, opened over the list alone, is
+  // the split showing it beside the list again as a closed Duo opens: the search and its keyboard
+  // stay. The keyboard goes otherwise, and the inspector closes rather than hold what opens.
   action follow(url: string)
     let page = ["/landmarks", "/map", "/collections"].includes(url)
-    let another = page and url != basePage
+    let returning = page and basePage == "" and url == leftPage
+    // A Back to the list (a closed Duo's) arrives as the list's location: the page it leaves
+    let left = url == "/" and basePage != "" ? basePage : ""
     nav = page ? open(nav, url) : go(top(nav).name == "info" ? back(nav) : nav, url)
-    if another
+    leftPage = left
+    if page and not returning and url != basePage
       showsResults = false
-    blur()
+    if not returning
+      blur()
   action back
     nav = back(nav)
   action learn(id: string)
