@@ -34,21 +34,27 @@ private final class MapDelegate: NSObject, MKMapViewDelegate {
     }
 }
 
-/// A map that shows its region at the size it ends up: MapKit fits a span to the map's
-/// bounds when it is set and keeps that scale as they change, so a map no one moves fits
-/// its region again at each new size, as SwiftUI's `Map(position: .region(…))` does; one a
+/// A map that shows its region, or a box of points, at the size it ends up: MapKit fits a span
+/// to the map's bounds when it is set and keeps that scale as they change, so a map no one
+/// moves fits it again at each new size, as SwiftUI's `Map(position: .region(…))` does; one a
 /// person can move keeps where they took it.
 private final class RegionMap: MKMapView {
-    private var wanted: MKCoordinateRegion?
+    private enum Target { case region(MKCoordinateRegion), box(MKMapRect, UIEdgeInsets) }
+    private var wanted: Target?
     private var fitted: CGSize?
     override func layoutSubviews() {
         super.layoutSubviews()
         guard let wanted, bounds.width > 0, bounds.height > 0, fitted == nil || (fitted != bounds.size && !isScrollEnabled && !isZoomEnabled) else { return }
         fitted = bounds.size
-        setRegion(wanted, animated: false)
+        switch wanted {
+        case .region(let region): setRegion(region, animated: false)
+        case .box(let box, let padding): setVisibleMapRect(box, edgePadding: padding, animated: false)
+        }
     }
-    func show(_ region: MKCoordinateRegion) {
-        wanted = region
+    func show(_ region: MKCoordinateRegion) { show(.region(region)) }
+    func show(_ box: MKMapRect, padding: UIEdgeInsets) { show(.box(box, padding)) }
+    private func show(_ target: Target) {
+        wanted = target
         fitted = nil
         setNeedsLayout()
     }
@@ -83,6 +89,14 @@ final class LandmarkMap: ExactNativeInstance {
         generation += 1
         let token = generation
         let wanted = items(next["items"] ?? "")
+        // Unset, the region is every item's, as SwiftUI's automatic position frames them, from their
+        // coordinates at the map's first layout, not from the places the lookup below finds: until it
+        // answers MapKit shows its default region, near the device. The box has 28 points more room
+        // above than below, which reproduces SwiftUI's centre and span on the Duo.
+        if region(next["region"]) == nil, !wanted.isEmpty {
+            let box = wanted.reduce(MKMapRect.null) { $0.union(MKMapRect(origin: MKMapPoint($1.coordinate), size: MKMapSize())) }
+            map.show(box, padding: UIEdgeInsets(top: 28, left: 0, bottom: 0, right: 0))
+        }
         Task { @MainActor [weak self] in
             var annotations: [MKMapItemAnnotation] = []
             for item in wanted {
@@ -94,14 +108,6 @@ final class LandmarkMap: ExactNativeInstance {
             guard let self, self.generation == token else { return }
             self.map.removeAnnotations(self.map.annotations.filter { $0 is MKMapItemAnnotation })
             self.map.addAnnotations(annotations)
-            // Unset, the region is every item's, as SwiftUI's automatic position frames them: their
-            // coordinates' box with 28 points more room above than below, which reproduces its
-            // centre and span on the Duo. `showAnnotations` leaves room for MapKit's marker views
-            // and sits about 36 points further north.
-            if self.region(self.props["region"]) == nil {
-                let box = annotations.reduce(MKMapRect.null) { $0.union(MKMapRect(origin: MKMapPoint($1.coordinate), size: MKMapSize())) }
-                self.map.setVisibleMapRect(box, edgePadding: UIEdgeInsets(top: 28, left: 0, bottom: 0, right: 0), animated: false)
-            }
         }
     }
 
@@ -112,10 +118,12 @@ final class LandmarkMap: ExactNativeInstance {
                                   span: MKCoordinateSpan(latitudeDelta: f[2], longitudeDelta: f[2]))
     }
 
-    private func items(_ text: String) -> [(placeID: String, name: String)] {
+    /// `placeID|latitude|longitude|name` rows, `;` between them (`places` in app.contract).
+    private func items(_ text: String) -> [(placeID: String, coordinate: CLLocationCoordinate2D, name: String)] {
         text.split(separator: ";").compactMap { row in
             let f = row.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-            return f.count >= 4 && !f[0].isEmpty ? (f[0], f[3]) : nil
+            guard f.count >= 4, !f[0].isEmpty, let latitude = Double(f[1]), let longitude = Double(f[2]) else { return nil }
+            return (f[0], CLLocationCoordinate2D(latitude: latitude, longitude: longitude), f[3])
         }
     }
 
