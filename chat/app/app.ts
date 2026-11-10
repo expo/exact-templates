@@ -146,12 +146,26 @@ function serially<T>(work: () => Promise<T>): Promise<T> {
  * that lands replaces them, so an answer reads no file. A write that fails leaves them as they were.
  */
 const cache = new WeakMap<Storage, Store>();
+/** The read under way, by storage: the sources that answer at launch, all at once, wait on one read of the files. */
+const reading = new WeakMap<Storage, Promise<Store>>();
 
-async function load(storage: Storage): Promise<Store> {
+function load(storage: Storage): Promise<Store> {
   const held = cache.get(storage);
   if (held !== undefined) {
-    return held;
+    return Promise.resolve(held);
   }
+  let read = reading.get(storage);
+  if (read === undefined) {
+    read = readStore(storage).finally((): void => {
+      reading.delete(storage);
+    });
+    reading.set(storage, read);
+  }
+  return read;
+}
+
+/** The saved conversations, read from the files, or seeded where there are none. */
+async function readStore(storage: Storage): Promise<Store> {
   let bytes: ArrayBuffer;
   try {
     bytes = await storage.fs.readFile(file);

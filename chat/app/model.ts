@@ -62,8 +62,14 @@ export interface Thread extends Contact {
 export const viewing = 50;
 /** How many more messages a transcript loads at an edge it reaches: ChatKit's `defaultConversationLoadMoreCount`. */
 export const loadMore = 50;
-/** The most messages a transcript's window holds: loading at one edge lets go of the other's beyond them. */
-export const kept = 200;
+/**
+ * The most messages a transcript's window holds: loading at one edge lets go of the other's beyond them. A window at
+ * rest holds the 5,000 points the transcript loads ahead of its first row (its `reach-margin`), a page landed past
+ * them, the screen, and a screen past its last row, even on a 1,300-point iPad screen of one-line messages (about 38
+ * points each); with fewer, a page landing at one edge would let go of rows within reach of the other, which would
+ * load them back.
+ */
+export const kept = 300;
 
 /**
  * Part of a conversation, as a transcript scrolled away from its latest messages shows it (LLP 1027.004): its rows,

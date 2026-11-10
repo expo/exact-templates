@@ -131,8 +131,9 @@ component ExactChat
   action latest
     windowStart = ""
     windowEnd = ""
-  // The reader reached the first row shown: the 50 before it, as ChatKit
-  // loads them, the window letting go of rows past 200 at its other end
+  // The reader came within 5,000 points of the first row shown: the 50
+  // before it, as ChatKit loads them, the window letting go of rows past
+  // 300 at its other end
   action older
     if windowed and window.contact == openId
       if window.hasEarlier
@@ -394,7 +395,12 @@ component ExactChat
             // Each conversation its own transcript: another's rows, whose ids
             // repeat, would move from where these were
             for open in [entry.params.id] key=open
-              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+              // Older messages load while 5,000 points of them are still
+              // above the reader, more than a fast fling glides (UIKit's
+              // glide runs about half a second of the fling's speed), so a
+              // fling goes on as they land; one that would reach the loaded
+              // first row, UIKit ends there
+              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
                 // A row that leaves (a deleted message, the typing
                 // indicator) fades where it shows, as the rows the removal
                 // moves go to their places on the platform's spring for a
