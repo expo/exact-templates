@@ -63,11 +63,11 @@ export const viewing = 50;
 /** How many more messages a transcript loads at an edge it reaches: ChatKit's `defaultConversationLoadMoreCount`. */
 export const loadMore = 50;
 /**
- * The most messages a transcript's window holds: loading at one edge lets go of the other's beyond them. A window at
- * rest holds the 5,000 points the transcript loads ahead of its first row (its `reach-margin`), a page landed past
- * them, the screen, and a screen past its last row, even on a 1,300-point iPad screen of one-line messages (about 38
- * points each); with fewer, a page landing at one edge would let go of rows within reach of the other, which would
- * load them back.
+ * The most messages a transcript's window holds: loading at one edge lets go of the other's beyond them. They must
+ * span the transcript's `reach-margin` above the reader (5,000 points), a page landed past it, the screen, and its
+ * margin below the reader (a screen): on a 1,300-point iPad screen, 9,500 points, or 250 one-line messages of about 38
+ * points each, and 300 leave a page to spare. With fewer, a page landing at one edge would let go of rows within the
+ * other's margin, which would load them back.
  */
 export const kept = 300;
 
@@ -191,8 +191,9 @@ export function latestFirst(threads: Thread[]): Thread[] {
 
 /**
  * The window of `contact`'s conversation from cursor `start` to cursor `end`: the latest `viewing` messages where
- * both are empty, from `start` to the end where only `end` is, and never more than `kept`. It reads only the rows it
- * answers and their neighbours, so its cost does not grow with the conversation's length.
+ * both are empty, from `start` to the end where only `end` is, and never more than `kept`. It finds its cursors from
+ * the conversation's end and reads only the rows it answers and their neighbours, so its cost grows with how far back
+ * the window is, not with the conversation's length.
  */
 export function window(store: Store, contact: string, start: string, end: string): Window {
   const messages = store.conversations[contact]?.messages ?? [];
@@ -235,7 +236,7 @@ function cursor(item: SavedMessage): string {
 function place(messages: SavedMessage[], named: string): number {
   const bar = named.indexOf('|');
   const at = Number(named.slice(0, bar)), id = named.slice(bar + 1);
-  const index = messages.findIndex((item): boolean => item.id === id);
+  const index = messages.findLastIndex((item): boolean => item.id === id);
   if (index >= 0 || !Number.isFinite(at)) {
     return Math.max(0, index);
   }
@@ -359,7 +360,8 @@ export function message(id: string, body: string, mine: boolean, at: number, rep
   return { id, body, mine, at, reply, receipt: '', readAt: 0 };
 }
 
-export function earlierMessages(): SavedMessage[] {
+/** `length` messages, 30 seconds apart, ending before the seeded ones: `action history` puts 240 before a conversation. */
+export function earlierMessages(length = 240): SavedMessage[] {
   const samples = [
     'Did you get a chance to look at that place?',
     'I did! It looks lovely.',
@@ -368,8 +370,8 @@ export function earlierMessages(): SavedMessage[] {
     'Saturday works. I can head over after lunch.',
     'Perfect 👌',
   ];
-  return Array.from({ length: 240 }, (_, index): SavedMessage => ({
-    ...message(`history-${index}`, samples[index % samples.length]!, index % 4 >= 2, 1_792_608_060_000 + index * 30_000),
+  return Array.from({ length }, (_, index): SavedMessage => ({
+    ...message(`history-${index}`, samples[index % samples.length]!, index % 4 >= 2, 1_792_615_230_000 - (length - 1 - index) * 30_000),
     receipt: index % 4 >= 2 ? 'Delivered' : '',
   }));
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { answer, overlay } from './app.ts';
-import { kept, loadMore, seedConversation, seedStore, snippet, viewing } from './model.ts';
+import { earlierMessages, kept, loadMore, seedConversation, seedStore, snippet, viewing } from './model.ts';
 
 describe('conversation storage', () => {
   const thread = async (memory, id) => (await answer('loadInbox', [], {}, memory.api)).find((item) => item.id === id);
@@ -18,18 +18,12 @@ describe('conversation storage', () => {
   });
 
   test('the sources that answer together at launch read the saved files once', async () => {
-    const memory = fresh(storage(JSON.stringify(seedStore())));
-    let reads = 0;
-    const readFile = memory.api.fs.readFile;
-    memory.api.fs.readFile = (path) => {
-      reads += 1;
-      return readFile(path);
-    };
+    const memory = storage(JSON.stringify(seedStore()));
     const [threads, part] = await Promise.all([answer('loadInbox', [], {}, memory.api), transcript(memory, 'alex'), answer('searchMessages', ['coffee'], {}, memory.api)]);
     expect(threads).toHaveLength(3);
     expect(part.rows.at(-1).id).toBe('seed-12');
     // The conversations' file and the drafts' file
-    expect(reads).toBe(2);
+    expect(memory.reads).toBe(2);
   });
 
   test('a failed atomic write leaves the previous conversation intact', async () => {
@@ -72,12 +66,11 @@ describe('conversation storage', () => {
     // A conversation of more than two windows, so that loading at one edge lets go of the other
     const store = seedStore();
     const alex = store.conversations.alex;
-    const first = alex.messages[0];
-    const older = Array.from({ length: 2 * kept }, (_, index) => ({ ...first, id: `older-${index}`, at: first.at - (2 * kept - index) * 60_000 }));
+    const older = earlierMessages(2 * kept);
     store.conversations.alex = { ...alex, messages: [...older, ...alex.messages] };
     const memory = storage(JSON.stringify(store));
     const latest = await transcript(memory, 'alex');
-    expect(latest.count).toBe(2 * kept + alex.messages.length);
+    expect(latest.count).toBe(older.length + alex.messages.length);
     expect(latest.rows).toHaveLength(viewing);
     expect(latest.rows.at(-1).last).toBe(true);
     expect([latest.hasEarlier, latest.hasLater]).toEqual([true, false]);
@@ -90,9 +83,8 @@ describe('conversation storage', () => {
       sizes.push(part.rows.length);
       expect(part.rows.length).toBeLessThanOrEqual(kept);
     }
-    const growing = Array.from({ length: (kept - viewing) / loadMore }, (_, index) => viewing + (index + 1) * loadMore);
-    expect(sizes.slice(0, growing.length + 1)).toEqual([...growing, kept]);
-    expect(part.rows[0].id).toBe('older-0');
+    expect(sizes).toEqual(sizes.map((_, index) => Math.min(viewing + (index + 1) * loadMore, kept)));
+    expect(part.rows[0].id).toBe('history-0');
     expect(part.rows[0].stamped).toBe(true);
     expect(part.hasLater).toBe(true);
     // And later again, to the end, which the window then follows
@@ -223,11 +215,12 @@ describe('message search', () => {
 /** Files by path, the conversations' as `contents`. */
 function storage(initial) {
   const conversations = 'app:/data/conversation.json';
-  const memory = { files: new Map(initial === undefined ? [] : [[conversations, initial]]), failWrites: false, api: undefined };
+  const memory = { files: new Map(initial === undefined ? [] : [[conversations, initial]]), failWrites: false, reads: 0, api: undefined };
   Object.defineProperty(memory, 'contents', { get: () => memory.files.get(conversations) });
   memory.api = {
     fs: {
       async readFile(path) {
+        memory.reads += 1;
         if (!memory.files.has(path)) {
           throw Object.assign(new Error('No such file has been saved'), { code: 'ENOENT' });
         }

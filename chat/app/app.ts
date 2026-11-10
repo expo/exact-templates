@@ -49,7 +49,7 @@ const sources: Sources = {
         case 'draft': {
           const store = { ...saved, conversations: { ...saved.conversations, [contact]: { ...before, draft: body, reply } } };
           await storage.fs.atomicWriteFile(draftsFile, new TextEncoder().encode(JSON.stringify(drafts(store))));
-          cache.set(storage, store);
+          cache.set(storage, Promise.resolve(store));
           return { id, error: '' };
         }
         case 'delete': {
@@ -70,7 +70,7 @@ const sources: Sources = {
       if (operation === 'reset') {
         await storage.fs.atomicWriteFile(draftsFile, new TextEncoder().encode(JSON.stringify(drafts(store))));
       }
-      cache.set(storage, store);
+      cache.set(storage, Promise.resolve(store));
       return { id, error: '' };
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
@@ -142,48 +142,37 @@ function serially<T>(work: () => Promise<T>): Promise<T> {
 }
 
 /**
- * The saved conversations as last written, by the storage that holds them: the files are read once, and each write
- * that lands replaces them, so an answer reads no file. A write that fails leaves them as they were.
+ * The saved conversations as last read or written, by the storage that holds them: the sources that answer at launch
+ * together wait on one read of the files, and each write that lands replaces what was read, so later answers read no
+ * file. A write that fails leaves them as they were.
  */
-const cache = new WeakMap<Storage, Store>();
-/** The read under way, by storage: the sources that answer at launch, all at once, wait on one read of the files. */
-const reading = new WeakMap<Storage, Promise<Store>>();
+const cache = new WeakMap<Storage, Promise<Store>>();
 
 function load(storage: Storage): Promise<Store> {
   const held = cache.get(storage);
   if (held !== undefined) {
-    return Promise.resolve(held);
+    return held;
   }
-  let read = reading.get(storage);
-  if (read === undefined) {
-    read = readStore(storage).finally((): void => {
-      reading.delete(storage);
-    });
-    reading.set(storage, read);
-  }
+  const read = readStore(storage);
+  cache.set(storage, read);
+  // Let a failed read go, so that the next answer reads the files again
+  read.catch((): void => {
+    cache.delete(storage);
+  });
   return read;
 }
 
-/** The saved conversations, read from the files, or seeded where there are none. */
+/** The saved conversations and their drafts, both files read at once, or the seeds where none are saved. */
 async function readStore(storage: Storage): Promise<Store> {
-  let bytes: ArrayBuffer;
-  try {
-    bytes = await storage.fs.readFile(file);
-  } catch (e) {
-    if ((e as { code?: string }).code === 'ENOENT') {
-      const seeded = withDrafts(seedStore(), await readDrafts(storage));
-      cache.set(storage, seeded);
-      return seeded;
-    }
-    throw e;
+  const [bytes, saved] = await Promise.all([readSaved(storage, file), readDrafts(storage)]);
+  if (bytes === null) {
+    return withDrafts(seedStore(), saved);
   }
-  const saved = upgrade(JSON.parse(new TextDecoder().decode(bytes)));
-  if (saved === null) {
+  const store = upgrade(JSON.parse(new TextDecoder().decode(bytes)));
+  if (store === null) {
     throw new Error('The saved conversations have an unsupported format');
   }
-  const store = withDrafts(saved, await readDrafts(storage));
-  cache.set(storage, store);
-  return store;
+  return withDrafts(store, saved);
 }
 
 /** Each conversation's draft and the message it replies to, as the drafts file holds them. */
@@ -199,9 +188,18 @@ function drafts(store: Store): { version: 1; drafts: Drafts } {
 
 /** The drafts file's drafts, none where there is no file yet: the conversations' own, saved before it, stand. */
 async function readDrafts(storage: Storage): Promise<Drafts | null> {
+  const bytes = await readSaved(storage, draftsFile);
+  if (bytes === null) {
+    return null;
+  }
+  const saved = JSON.parse(new TextDecoder().decode(bytes)) as { version?: number; drafts?: Drafts };
+  return saved.version === 1 && typeof saved.drafts === 'object' && saved.drafts !== null ? saved.drafts : null;
+}
+
+/** A file's bytes, null where it has not been saved yet. */
+async function readSaved(storage: Storage, path: string): Promise<ArrayBuffer | null> {
   try {
-    const saved = JSON.parse(new TextDecoder().decode(await storage.fs.readFile(draftsFile))) as { version?: number; drafts?: Drafts };
-    return saved.version === 1 && typeof saved.drafts === 'object' && saved.drafts !== null ? saved.drafts : null;
+    return await storage.fs.readFile(path);
   } catch (e) {
     if ((e as { code?: string }).code === 'ENOENT') {
       return null;
