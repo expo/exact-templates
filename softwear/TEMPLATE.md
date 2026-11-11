@@ -19,6 +19,7 @@ Keywords: store, shop, shopping, ecommerce, clothing, apparel, catalogue, catalo
 | Membership, restock requests, order history and retryable order failures | `app.ts`, `subscribe`, `notifyMe`, `loadOrder`; `regressions.test.contract` |
 | Native tab stacks, haptics and photo navigation transitions | `app.contract`, `navigationSource`, `sharedElement`, `haptic` |
 | Pinch, pan and double-tap photo zoom, with pull-to-dismiss on web and iOS | `modules/`, the `zoom-image` native view |
+| Bands, photos and card rails to the screen's edges, with text and controls kept in the safe area, clear of rounded corners | `app.contract`, `viewport-fit`, `Wrap`, `Rail`, `-exact-safe-area-corners-inset` |
 | Brand colours and bear mark in light and dark mode | `app.tamber`, `assets/brand/`, `tools/logo.ts` |
 
 ## Files
@@ -38,7 +39,7 @@ Create a copy with `bun new.mjs softwear <path> --name <name> --bundle-id <id>`.
 
 ## Verified
 
-A fresh app created with `new.mjs` on the pinned Exact passes all 28 web UI tests, 5 API/data unit tests (89 assertions), and 4 browser regression tests. `bun exact.mjs verify` reports 16 findings: 12 overlaps at the largest text size involving the added-to-bag toast and product content; a DOM adoption refusal; two deliberately failed network replies from regression tests; and the failed stock resource those tests exercise. Reload checks report no findings. The template is not claimed to pass the full verifier. The app builds for the iOS simulator (`bun exact.mjs ios`) and for iPhone (`bun exact.mjs share`), but its tests have not been run on a native host.
+A fresh app created with `new.mjs` on the pinned Exact passes all 28 web UI tests, 5 API/data unit tests (89 assertions), and 4 browser regression tests. `bun exact.mjs verify` reports 16 findings: 12 overlaps at the largest text size involving the added-to-bag toast and product content; a DOM adoption refusal; two deliberately failed network replies from regression tests; and the failed stock resource those tests exercise. Reload checks report no findings. The template is not claimed to pass the full verifier. The app builds for the iOS simulator (`bun exact.mjs ios`) and for iPhone (`bun exact.mjs share`), but its tests have not been run on a native host. Its edge-to-edge layout was checked by hand on an iPhone Duo.
 
 ## Needs
 
