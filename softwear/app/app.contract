@@ -133,8 +133,11 @@ shape Category
   kind: string
   hex: string
 
+// The app covers the whole screen (`viewport-fit="cover"`), so bands, photos and scrolling content reach every edge;
+// text and controls stay in the safe area, clear of the panel's rounded corners, and 20 points in where that is less.
 style Wrap
-  width="100%" box-sizing="border-box" max-width="75rem" margin-left="auto" margin-right="auto" padding-left=20 padding-right=20
+  width="100%" box-sizing="border-box" max-width="75rem" margin-left="auto" margin-right="auto"
+  padding-left="max(20px, env(-exact-safe-area-corners-inset-left))" padding-right="max(20px, env(-exact-safe-area-corners-inset-right))"
 
 style Eyebrow
   font-size="0.75rem" letter-spacing="0.14em" text-transform="uppercase" font-weight=600 color="muted"
@@ -162,9 +165,12 @@ style Field
   min-height=44 box-sizing="border-box" padding="10px 12px" border="1px solid var(--line)" border-radius=10 background-color="page" color="ink"
 
 // A rail of cards: it snaps card by card and fades at its far end to say there is more; room after the last card
-// keeps it clear of the fade once the rail is scrolled to its end.
+// keeps it clear of the fade once the rail is scrolled to its end. It sits in a `Wrap` but scrolls out past that
+// padding to the screen's edges, the safe area too, its first card starting where the text does.
 style Rail
-  display="flex" gap=16 overflow-x="auto" padding="0 40px 8px 0" scroll-snap-type="x mandatory" scrollbar-width="none" mask-image="linear-gradient(to right, #000 90%, transparent 100%)"
+  display="flex" gap=16 overflow-x="auto" scroll-snap-type="x mandatory" scrollbar-width="none" mask-image="linear-gradient(to right, #000 90%, transparent 100%)"
+  margin-left="calc(0px - max(20px, env(-exact-safe-area-corners-inset-left)))" margin-right="calc(0px - max(20px, env(-exact-safe-area-corners-inset-right)))"
+  padding-left="max(20px, env(-exact-safe-area-corners-inset-left))" padding-right="calc(max(20px, env(-exact-safe-area-corners-inset-right)) + 40px)" padding-bottom=8
 
 // Every button is a capsule, as the links styled as buttons (Pill, Ghost) are and as iOS draws its own.
 style Capsule
@@ -514,7 +520,7 @@ component App
     after(1, applyScheme)
 
   view
-    view navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app" width="100%" height="100%"
+    view navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow viewport-fit="cover" testId="app" width="100%" height="100%"
       display="flex" flex-direction="column" color="ink" background-color="page"
       head title="Softwear" description="Alternative Apparel's hoodies, tees and joggers, sold direct. Eco-Fleece, garment-washed, low-impact dyes."
       column flex=1 min-height=0 position="relative"
@@ -829,16 +835,16 @@ component App
               // The photo at its full size, over the product: a full-screen cover on the phone (iOS 18 zooms it out of the
               // gallery), a dialog in a browser. `zoom-image` is the app's module: it pinches, pans and double-taps.
               if e.name == "photo"
-                column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`zoom-photo-${e.params.slug}` position="absolute" inset=0 display="flex" flex-direction="column" background-color="band" color="onband" testId="lightbox"
+                column navigationKey=`${e.id}` navigationPresentation="fullscreen" navigationSource=`zoom-photo-${e.params.slug}` position="absolute" inset=0 display="flex" flex-direction="column" background-color="band" color="onband" padding-top="env(safe-area-inset-top)" testId="lightbox"
                   if inApp or e.id == top(nav).id
                     // The lightbox's own row, in the app too: UIKit's bar takes its title's colour from the app's theme, dark on
                     // this dark band, and no route can change that. Pulling the photo down closes it as well (`zoomSaid`).
-                    header appearance="none" display="flex" align-items="center" justify-content="space-between" gap=12 padding="8px 8px 4px 20px"
+                    header appearance="none" display="flex" align-items="center" justify-content="space-between" gap=12 padding-top=8 padding-bottom=4 padding-left="max(20px, env(-exact-safe-area-corners-inset-left))" padding-right="max(8px, env(-exact-safe-area-corners-inset-right))"
                       text `${nameOf(catalog, e.params.slug)} in ${colorOf(catalog, e.params.slug, pickedColor)}` role="heading" aria-level=2 flex=1 min-width=0 font-size="0.9375rem" font-weight=500 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
                       button id="back" press=back aria-label="Close" class=IconLink color="onband" testId="zoom-close"
                         image "symbol:close"
                     zoom-image source=`assets/p/${photoOf(catalog, e.params.slug, colorOf(catalog, e.params.slug, pickedColor))}` flex=1 min-height=0 width="100%" message=zoomSaid aria-label=`${nameOf(catalog, e.params.slug)} in ${colorOf(catalog, e.params.slug, pickedColor)}. Pinch or double-tap to zoom; pull down to close` testId="zoom"
-                    text "Pinch or double-tap to zoom" text-align="center" font-size="0.8125rem" color="onbandmuted" padding="8px 16px calc(env(safe-area-inset-bottom) + 12px)"
+                    text "Pinch or double-tap to zoom" text-align="center" font-size="0.8125rem" color="onbandmuted" padding-top=8 padding-bottom="calc(env(safe-area-inset-bottom) + 12px)" padding-left="max(16px, env(-exact-safe-area-corners-inset-left))" padding-right="max(16px, env(-exact-safe-area-corners-inset-right))"
 
               if e.name == "story"
                 column navigationKey=`${e.id}` navigationScroll=`doc-${e.id}` position="absolute" inset=0 display="flex" flex-direction="column"
@@ -1430,7 +1436,7 @@ component RouteToast
     book: bool
   view
     if message != ""
-      view position="absolute" left=(book ? "env(viewport-segment-left 1 0)" : "16px") right=16 bottom=12 z-index=10 pointer-events="none"
+      view position="absolute" left=(book ? "env(viewport-segment-left 1 0)" :"max(16px, env(-exact-safe-area-corners-inset-left))") right="max(16px, env(-exact-safe-area-corners-inset-right))" bottom=12 z-index=10 pointer-events="none"
         Toast(message=message, hide=hide)
 
 // The web's toast: a slot of no height at the end of a page's content that sticks to the viewport's bottom, so the
