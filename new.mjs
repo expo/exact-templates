@@ -28,7 +28,7 @@ function main(argv) {
   const script = resolve(exact2, 'scripts', 'exact.mjs');
   const own = JSON.parse(readFileSync(resolve(from, 'app.json'), 'utf8'));
   if (develop) {
-    developInPlace(template, from, own, script);
+    developInPlace(from, own, script);
   } else {
     makeApp(template, from, own, script, resolve(path), name, bundleId);
   }
@@ -124,10 +124,12 @@ function makeApp(template, from, own, script, target, name, bundleId) {
 }
 
 // The generated files go into the template's app/ beside its own, which stay as they are
-function developInPlace(template, from, own, script) {
+function developInPlace(from, own, script) {
   const scratch = mkdtempSync(join(tmpdir(), 'exact-template-'));
   try {
-    const work = resolve(scratch, template);
+    // Exact names an app's crates after its folder, and `exact.mjs` names the app after the folder
+    // `exact new` made: both must be `app`, the folder the template's app is developed in.
+    const work = resolve(scratch, 'app');
     exactNew(script, work, own.app.name, own.app.id);
     let added = 0;
     for (const entry of readdirSync(work, { recursive: true, withFileTypes: true })) {
