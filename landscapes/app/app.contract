@@ -138,11 +138,15 @@ component Landmarks
   // closed only while no page covers it.
   derive listId = match stack(nav).at(0) { case some(e) => e.id, case none => -1 }
   derive fieldShown = facts.shownRoutes.includes(`${listId}`)
-  // The page search results cover, none while nothing is typed, another page hid them or the field is out
-  // of sight: the one the query was typed over, while it is in the stack, so a result opened over it comes
-  // back to them, unless that is the list with a page beside it (typed closed, then opened); else the top
-  // page. The page stays beneath them, so clearing the field shows it as it was.
-  derive resultsOver = searched == "" or not showsResults or not fieldShown ? -1 : stack(nav).map((e) => e.id).includes(searchAnchor) and (searchAnchor != listId or topPage == listId) ? searchAnchor : topPage
+  // The page search results cover: the one the query was typed over, while it is in the stack, so a result
+  // opened over it comes back to them, unless that is the list with a page beside it (typed closed, then
+  // opened); else the top page. The page stays beneath them, so clearing the field shows it as it was.
+  derive resultsPage = stack(nav).map((e) => e.id).includes(searchAnchor) and not (searchAnchor == listId and fieldShown and topPage != listId) ? searchAnchor : topPage
+  // Where the results show: none while nothing is typed or another page hid them, and only with the field,
+  // over the list whose header holds it or while the list shows. A list a result covers keeps them, as UIKit
+  // keeps a search under a push: UIKit's pop shows the list as Back begins, and the app hears of Back only
+  // as the pop ends.
+  derive resultsOver = searched == "" or not showsResults or not (fieldShown or resultsPage == listId) ? -1 : resultsPage
 
   // A page chosen in the list replaces the detail, as the sample's sidebar does: `open` lands
   // in its declared chain, the list and the page; any other location goes as usual. Another page

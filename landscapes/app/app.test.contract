@@ -96,6 +96,8 @@ test "A result opens over the results, which come back when its page goes; an em
   clock settle
   expect text "detail-name" == "Mount Fuji"
   expect state query == "fuji"
+  // The results stay under the page a result opened, so Back shows them as UIKit's pop begins
+  expect tree has "search-results"
   type "app" "/"
   clock settle
   expect tree has "result-1016"
