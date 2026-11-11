@@ -47,7 +47,7 @@ component Composer
       // One glass group: a press swells either glass, and
       // within 12 points the two merge
       row align-items="flex-end" gap=12 glassGroup=12
-        button appearance="none" press=menuOpened popovertarget="add-menu" retainFocus=true testId="add" aria-label="Add to conversation" class=GlassButton backgroundMaterial="glass"
+        button appearance="none" press=menuOpened popovertarget="add-menu" retainFocus=true testId="add" aria-label="Add to conversation" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
           box width=15.3333 height=15.3333 position="relative"
             box position="absolute" left=6.54165 top=0 width=2.25 height=15.3333 border-radius=1.125 background-color="light-dark(#858e99, #b0b5bd)"
             box position="absolute" top=6.54165 left=0 height=2.25 width=15.3333 border-radius=1.125 background-color="light-dark(#858e99, #b0b5bd)"
@@ -77,8 +77,8 @@ component ChoiceBar
     count: number
     share: action
   view
-    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" padding-top=0.6667 padding-left="calc(var(--exact-layout-margins-inset-left) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))" padding-right="calc(var(--exact-layout-margins-inset-right) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
-      button appearance="none" commandfor="delete-messages" command="show-modal" disabled=(count == 0) testId="delete-chosen" aria-label="Delete" class=GlassButton backgroundMaterial="glass" width=44 height=44 border-radius=22
+    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" align-items="center" min-height=40.3333 padding-top=0.6667 padding-left="calc(var(--exact-layout-margins-inset-left) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))" padding-right="calc(var(--exact-layout-margins-inset-right) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+      button appearance="none" commandfor="delete-messages" command="show-modal" disabled=(count == 0) testId="delete-chosen" aria-label="Delete" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
         image "symbol:delete" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")
-      button appearance="none" press=share disabled=(count == 0) testId="share-chosen" aria-label="Share" class=GlassButton backgroundMaterial="glass" width=44 height=44 border-radius=22
+      button appearance="none" press=share disabled=(count == 0) testId="share-chosen" aria-label="Share" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
         image "symbol:share" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")

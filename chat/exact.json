@@ -1,5 +1,5 @@
 {
-  "repository": "https://github.com/expo/exact.git",
+  "repository": "https://github.com/expo/exact",
   "branch": "chat/runtime-20261110",
-  "commit": "ea365cfc415d98df28661ac5d76ccf288c1d0c10"
+  "commit": "92c8664ee06711b275448693c5eac2dbd9bceea6"
 }
