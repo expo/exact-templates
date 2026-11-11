@@ -155,9 +155,8 @@ component Landmarks
     let page = ["/landmarks", "/map", "/collections"].includes(url)
     let returning = page and basePage == "" and url == leftPage
     // A Back to the list (a closed Duo's) arrives as the list's location: the page it leaves
-    let left = url == "/" and basePage != "" ? basePage : ""
+    leftPage = url == "/" and basePage != "" ? basePage : ""
     nav = page ? open(nav, url) : go(top(nav).name == "info" ? back(nav) : nav, url)
-    leftPage = left
     if page and not returning and url != basePage
       showsResults = false
     if not returning
