@@ -48,7 +48,7 @@ On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.
 
 ## Needs
 
-Exact's safe-area branch with this template's fixes, which `exact.json` pins: `landscapes/live` of github.com/ide/exact2, on `proto/safe-area-live`. They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` with `extend` and `ignore`, the inspector (`navigationInspector`) and its closing with the pop, the split on the Duo, and `app.json`'s `before_build`.
+Exact's safe-area prototype with this template's fixes, which `exact.json` pins: `landscapes/main-live` of github.com/expo/exact, on the iPhone Duo series (`duo/series-rebase`). They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` with `extend` and `ignore`, the inspector (`navigationInspector`) and its closing with the pop, the split on the Duo, and `app.json`'s `before_build`.
 
 ## Limits
 

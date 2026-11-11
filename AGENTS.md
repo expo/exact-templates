@@ -33,7 +33,7 @@ cd <template>/app && bun exact.mjs test web
 A template is `<name>/` with:
 
 - `app/`: only the app's own files: its contracts, `app.ts` and other modules, tests, `app.json`, `art/` and `assets/`. Leave out what `exact new` generates and anything about one machine or one deployment (`$schema`, `deploy`). `app.json`'s `app.id` and `app.name` are placeholders that `new.mjs` replaces, and `app.ts` names the same id as a quoted string.
-- `exact.json`: the Exact the template is built on, `{"repository": "https://github.com/…/exact2.git", "branch": "…", "commit": "<all 40 hex digits>"}`. The commit must be on that branch there, so that `new.mjs` can fetch it. Move the pin when the template needs a newer Exact, and test the template on it.
+- `exact.json`: the Exact the template is built on, `{"repository": "https://github.com/expo/exact", "branch": "…", "commit": "<all 40 hex digits>"}`. The commit must be on that branch there, so that `new.mjs` can fetch it. Move the pin when the template needs a newer Exact, and test the template on it.
 - `TEMPLATE.md`, with the sections of `chat/TEMPLATE.md`: a summary, `Keywords:`, screenshots, what it shows and where (name the identifiers to grep for, not line numbers), files, adapt, verified, needs, limits.
 - `screenshots/`: the main screens on the hosts it was verified on.
 - `QUEUE.md`: what to do next on it.

@@ -39,7 +39,7 @@ function main(argv) {
 function pinOf(template) {
   const file = resolve(import.meta.dirname, template, 'exact.json');
   if (!existsSync(file)) {
-    fail(`${template} pins no Exact: ${file} is missing. A template names the Exact commit it is built on there: {"repository": "https://github.com/…/exact2.git", "branch": "…", "commit": "<40 hex digits>"}.`);
+    fail(`${template} pins no Exact: ${file} is missing. A template names the Exact commit it is built on there: {"repository": "https://github.com/expo/exact", "branch": "…", "commit": "<40 hex digits>"}.`);
   }
   const pin = JSON.parse(readFileSync(file, 'utf8'));
   if (typeof pin.repository !== 'string' || typeof pin.branch !== 'string' || !/^[0-9a-f]{40}$/.test(pin.commit ?? '')) {
