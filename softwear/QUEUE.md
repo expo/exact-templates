@@ -5,4 +5,5 @@
 
 - Investigate the 12 largest-text overlap findings involving the bag toast and product content.
 - Investigate the web DOM adoption refusal on filtered catalogue pages. Distinguish expected stock/order network-failure diagnostics in regression tests from unexpected runtime refusals.
-- Move the pin to an Exact with `bun exact.mjs share`, which builds the iPhone app and prints an AppDrop link. The pinned commit has no `share`: an AppDrop build there means running `host/apple/build.mjs --device --archive <out.ipa> --unsigned` with `deploy.store.ios` set to `"0"` (or deploy signing keys) and `API_BASE_URL` set to a server the phone can reach, then `npx appdrop <out.ipa>`.
+- Before moving the pin past `1cbce180d4`: on `expo/exact` `4f5cc4abf1` and later, `web-build` fails with `TypeError: Invalid URL` in `historyURL` (`host/web/navigation.js`), which builds `new URL(location.origin + path)` while pages render under Bun, whose `location.origin` is empty (`host/web-js/render.mjs`). Move the pin once Exact fixes that.
+- `bun exact.mjs share` refuses this app as it stands: the build is a release, and with an update store it needs `deploy.signing.keys`. Exact's `share` could build a tester's binary without them, as it starts its own stream anyway.

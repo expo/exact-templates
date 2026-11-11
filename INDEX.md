@@ -24,4 +24,4 @@ A clothing store with a searchable catalogue, product photos and pinch zoom, inv
 
 Keywords: store, shop, shopping, ecommerce, clothing, apparel, catalogue, catalog, product, inventory, stock, size, colour, filters, search, bag, cart, checkout, promo code, account, orders, favorites, photo gallery, pinch zoom, native module, REST, SQLite, server rendering, tabs.
 
-Hosts tested: web (28 UI tests pass; full verification has findings listed in `softwear/TEMPLATE.md`). Built on Exact `4756891bc2` (`softwear/exact.json`).
+Hosts tested: web (28 UI tests pass; full verification has findings listed in `softwear/TEMPLATE.md`). Built on Exact `1cbce180d4` (`softwear/exact.json`).
