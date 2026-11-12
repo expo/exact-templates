@@ -66,11 +66,12 @@ test "Delete asks first, then removes the collection and leaves its page"
   expect state cols.2 .id == "1004"
   expect tree missing "route-collection"
 
-test "Search finds landmarks by name or by continent, over the page in front; another page hides them and keeps the text"
+test "Search finds landmarks by name or by continent, as a level on top of the stack; another page leaves it and keeps the text"
   at "/"
   clock settle
   type "search" "mount"
   clock settle
+  expect tree has "route-search"
   expect tree has "result-1016"
   expect tree has "result-1007"
   expect tree missing "result-1017"
@@ -81,13 +82,13 @@ test "Search finds landmarks by name or by continent, over the page in front; an
   type "search" "zzz"
   clock settle
   expect tree has "search-empty"
-  // Another page chosen from the list shows that page, and the field keeps what was typed
+  // Another page chosen from the list leaves the results, and the field keeps what was typed
   type "app" "/map"
   clock settle
   expect state query == "zzz"
-  expect tree missing "search-results"
+  expect tree missing "route-search"
 
-test "A result opens over the results, which come back when its page goes; an empty field ends the search"
+test "A result opens over the results and Back returns to them; Back from them leaves them and keeps the text"
   at "/"
   clock settle
   type "search" "fuji"
@@ -98,9 +99,17 @@ test "A result opens over the results, which come back when its page goes; an em
   expect state query == "fuji"
   // The results stay under the page a result opened, so Back shows them as UIKit's pop begins
   expect tree has "search-results"
-  type "app" "/"
+  back
   clock settle
   expect tree has "result-1016"
+  // Emptying the field keeps the level, which shows only its ground
   type "search" ""
   clock settle
+  expect tree has "route-search"
   expect tree missing "search-results"
+  type "search" "fuji"
+  clock settle
+  back
+  clock settle
+  expect tree missing "route-search"
+  expect state query == "fuji"

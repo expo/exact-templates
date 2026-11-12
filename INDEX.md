@@ -16,4 +16,4 @@ A gallery of the world's landmarks, ported from Apple's sample "Landmarks: Build
 
 Keywords: landmarks, places, travel, gallery, photos, featured hero, background extension, map, MapKit, collections, favorites, sidebar, split view, inspector, segmented control, cards in a row that scrolls sideways, grid, long-press menu, share, badges, edit mode, Liquid Glass, foldable, iPhone Duo, port of an Apple sample.
 
-Hosts verified: iOS 27.1 on the iPhone Duo, open and closed (its iOS tests pass; see `TEMPLATE.md`). Built on Exact `25172d9dc6` (`landscapes/exact.json`).
+Hosts verified: iOS 27.1 on the iPhone Duo, open and closed (its iOS tests pass; see `TEMPLATE.md`). Built on Exact `31fc11f4be` (`landscapes/exact.json`).
