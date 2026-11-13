@@ -265,8 +265,10 @@ component Landmarks
                     text c.name
               scroll id="detail-scroll" flex=1 min-height=0 scroll=pullHero testId="detail-scroll"
                 column gap=14
+                  // Half the route's content height, as the sample's header is half the window's safe height:
+                  // the keyboard, while it covers the route, shortens both.
                   image `assets/apple/${l.id}.jpg` id="hero" width="100%"
-                    margin-top=(0 - heroPull) height=`calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2 + ${heroPull}px)`
+                    margin-top=(0 - heroPull) height=`calc(50cqh + ${heroPull}px)`
                     object-fit="cover" -exact-safe-area="extend" aria-hidden=true
                   // The sample's `VStack` has SwiftUI's default spacing, 2 points between these two texts
                   column gap=2 padding-left=26 padding-right=52
@@ -368,7 +370,7 @@ component Featured
     pull: number
   view
     // A press of its own, so the platform dims it while held, as the sample's plain-styled link.
-    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=`Featured Landmark, ${l.name}` margin-top=(0 - pull) height=`calc((100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2 + ${pull}px)` box-sizing="border-box" position="relative"
+    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=`Featured Landmark, ${l.name}` margin-top=(0 - pull) height=`calc(50cqh + ${pull}px)` box-sizing="border-box" position="relative"
       display="flex" flex-direction="column" justify-content="flex-end" align-items="center" padding-bottom=40 testId="featured"
       // Inside the safe area, its edges mirrored and blurred beyond it (the sample's backgroundExtensionEffect).
       image `assets/apple/${l.id}.jpg` position="absolute" inset=0 height="100%"
