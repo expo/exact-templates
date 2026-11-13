@@ -102,12 +102,13 @@ test "A result opens over the results and Back returns to them; Back from them l
   back
   clock settle
   expect tree has "result-1016"
-  // Emptying the field keeps the level, which shows only its ground
+  // Emptying the field leaves the level and shows the list; typing again enters it
   type "search" ""
   clock settle
-  expect tree has "route-search"
-  expect tree missing "search-results"
+  expect tree missing "route-search"
   type "search" "fuji"
+  clock settle
+  expect tree has "result-1016"
   clock settle
   back
   clock settle

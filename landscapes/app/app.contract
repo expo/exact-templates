@@ -138,17 +138,17 @@ component Landmarks
   // Info shows the inspector, or closes it, as the sample's toggle does.
   action showInfo(id: string)
     nav = top(nav).name == "info" ? back(nav) : push(nav, path("info", id))
-  // Using the search field enters its results (`aria-controls="found"`), a level on top of the stack,
-  // before anything is typed: `go` enters it, returns to it from a result opened over it, and changes
-  // nothing when it is on top. The X, Back from it or another page leaves it, and the host closes the
-  // search then, keeping its text.
-  action enterSearch
-    nav = go(top(nav).name == "info" ? back(nav) : nav, "/search")
-  // Typing never leaves the results; text that arrives with them gone (a test's `type`) enters them again.
+  // The search's results (`aria-controls="found"`) are a level on top of the stack while the field has text,
+  // as UIKit shows a search's results controller: what is typed, or what the field kept when it is used
+  // again, enters them, and emptying the field leaves them, showing the list. `go` enters them, returns
+  // to them from a result opened over them, and changes nothing when they are on top. The X, Back from
+  // them or another page also leaves them, and the host closes the search then, keeping its text.
   action search(v: string)
     query = v
     if v.trim() != ""
       nav = go(top(nav).name == "info" ? back(nav) : nav, "/search")
+    else if top(nav).name == "search"
+      nav = back(nav)
   // The close button leaves what was typed in the field.
   action keepQuery
     preventDefault()
@@ -189,7 +189,7 @@ component Landmarks
             // points high in the sidebar as in the list, where a UIKit sidebar's are 44.
             header
               text "" role="heading" aria-level=2
-              input type="search" value=query input=search focus=enterSearch cancel=keepQuery aria-controls="found" placeholder="Search" aria-label="Search" testId="search"
+              input type="search" value=query input=search focus=search(query) cancel=keepQuery aria-controls="found" placeholder="Search" aria-label="Search" testId="search"
             list id="pages" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="pages"
               section
                 link href="/landmarks" testId="page-landmarks" display="flex" align-items="center" gap=12 min-height=52
@@ -281,7 +281,7 @@ component Landmarks
 
         if e.name == "search"
           // What the search finds, a level on top of the stack. Its ground is the route's own, painted before its
-          // content is laid out; with nothing typed it shows only that ground.
+          // content is laid out.
           column id="found" navigationKey=`${e.id}` navigationScroll="search-list" testId="route-search" position="absolute" inset=0 display="flex" flex-direction="column" background-color="-exact-grouped-background"
             if searched != ""
               SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
