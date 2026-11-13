@@ -32,19 +32,25 @@ private final class MapDelegate: NSObject, MKMapViewDelegate {
         let presenter = sequence(first: mapView as UIResponder, next: \.next).first { $0 is UIViewController } as? UIViewController
         return .mapItemDetail(.automatic(presentationViewController: presenter))
     }
+
+    func mapViewDidFinishRenderingMap(_ mapView: MKMapView, fullyRendered: Bool) {
+        if mapView.window != nil { (mapView as? RegionMap)?.drawn = true }
+    }
 }
 
-/// A map that shows its region, or a box of points, at the size it ends up: MapKit fits a span
-/// to the map's bounds when it is set and keeps that scale as they change, so a map no one
-/// moves fits it again at each new size, as SwiftUI's `Map(position: .region(…))` does; one a
-/// person can move keeps where they took it.
+/// A map that shows its region, or a box of points, fitted to its bounds at each size it takes
+/// until MapKit has drawn it in a window, as SwiftUI's `Map(position: .region(…))` fits it as it
+/// appears. From then MapKit keeps its centre and scale as the bounds change, so a bigger map
+/// shows more around the same centre, as SwiftUI's does as a fold widens its column.
 private final class RegionMap: MKMapView {
     enum Target { case region(MKCoordinateRegion), box(MKMapRect, UIEdgeInsets) }
     private var wanted: Target?
     private var fitted: CGSize?
+    /// MapKit has finished drawing the map in a window since its target was set.
+    var drawn = false
     override func layoutSubviews() {
         super.layoutSubviews()
-        guard let wanted, bounds.width > 0, bounds.height > 0, fitted == nil || (fitted != bounds.size && !isScrollEnabled && !isZoomEnabled) else { return }
+        guard let wanted, bounds.width > 0, bounds.height > 0, fitted == nil || (fitted != bounds.size && !drawn) else { return }
         fitted = bounds.size
         switch wanted {
         case .region(let region): setRegion(region, animated: false)
@@ -54,6 +60,7 @@ private final class RegionMap: MKMapView {
     func show(_ target: Target) {
         wanted = target
         fitted = nil
+        drawn = false
         setNeedsLayout()
     }
 }
