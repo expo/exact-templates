@@ -220,7 +220,9 @@ component Landmarks
         if e.name == "map"
           column navigationKey=`${e.id}` navigationBar="transparent" testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
             // The map shows the landmarks only: unlike Apple's sample, the app never asks where the person is.
-            landmark-map flex=1 min-height=0 width="100%" -exact-safe-area="ignore" items=places(data.landmarks) aria-label="A map of every landmark" testId="map"
+            // Laid out under the bars and the sidebar: a native module's own box takes no safe-area attribute, so a box around it does
+            column flex=1 min-height=0 width="100%" display="flex" flex-direction="column" -exact-safe-area-ignore="container"
+              landmark-map flex=1 min-height=0 width="100%" items=places(data.landmarks) aria-label="A map of every landmark" testId="map"
             Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
 
         if e.name == "collections"
@@ -269,7 +271,7 @@ component Landmarks
                   // the keyboard, while it covers the route, shortens both.
                   image `assets/apple/${l.id}.jpg` id="hero" width="100%"
                     margin-top=(0 - heroPull) height=`calc(50cqh + ${heroPull}px)`
-                    object-fit="cover" -exact-safe-area="extend" aria-hidden=true
+                    object-fit="cover" -exact-background-extension="auto" aria-hidden=true
                   // The sample's `VStack` has SwiftUI's default spacing, 2 points between these two texts
                   column gap=2 padding-left=26 padding-right=52
                     text l.name role="heading" aria-level=1 font="-exact-title1" font-weight=700 testId="detail-name"
@@ -374,7 +376,7 @@ component Featured
       display="flex" flex-direction="column" justify-content="flex-end" align-items="center" padding-bottom=40 testId="featured"
       // Inside the safe area, its edges mirrored and blurred beyond it (the sample's backgroundExtensionEffect).
       image `assets/apple/${l.id}.jpg` position="absolute" inset=0 height="100%"
-        width="100%" object-fit="cover" -exact-safe-area="extend" aria-hidden=true testId="featured-image"
+        width="100%" object-fit="cover" -exact-background-extension="auto" aria-hidden=true testId="featured-image"
       text "Featured Landmark" font="-exact-subheadline" font-weight=700 color="#ffffff" opacity=0.8 position="relative"
       text l.name font="-exact-large-title" font-weight=700 color="#ffffff" position="relative"
       button press=learn(l.id) buttonStyle="bordered-prominent" margin-bottom=6 margin-top=21 position="relative" testId="learn-more"

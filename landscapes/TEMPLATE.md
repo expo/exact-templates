@@ -22,7 +22,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 | --- | --- |
 | The sidebar's three pages and its search field; a page chosen there replaces the detail; the app opens on Landmarks with the list behind Back | `app.contract`, the `home` route (`list id="pages"`), `action follow`; `app.json`'s `start_url` |
 | Search (the sample's field finds nothing): text in the field enters the results, a route on top of the stack that the field names by `aria-controls` (drawn over the list on a closed Duo, pushed on the detail on an open one), and an empty field leaves them; landmarks by name or continent and collections by name; a result opens over them and Back returns; the X, Back from them or another page from the list leaves them and keeps the text | `app.contract`, the `search` route (`id="found"`), `SearchResults`, `action search`, `action keepQuery` |
-| The featured landmark, half the window high, its name and Learn More over the photo; the photo continuing, mirrored and blurred, under the sidebar and the Duo's side strip; the photo growing when the page is pulled down | `Featured`, `-exact-safe-area="extend"`, `pullFeatured` |
+| The featured landmark, half the window high, its name and Learn More over the photo; the photo continuing, mirrored and blurred, under the sidebar and the Duo's side strip; the photo growing when the page is pulled down | `Featured`, `-exact-background-extension="auto"`, `pullFeatured` |
 | Each continent's landmarks as cards in a row that scrolls sideways | `Strip`, `Card` |
 | A card's long-press menu: Share, Favorite, and the collections it is in | `CardMenu`, the card's `contextmenu=aim` and `contextPopover` |
 | The map of every landmark: MapKit on iOS, a web module on the web | the `map` route, `landmark-map`; `modules/apple/LandmarkMap.swift`, `modules/web/index.js` |
@@ -48,7 +48,7 @@ On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.
 
 ## Needs
 
-Exact's safe-area prototype with this template's fixes, which `exact.json` pins: `landscapes/map-resize` of github.com/expo/exact, on `landscapes/search-levels` and `landscapes/main-live` and the iPhone Duo series (`duo/series-rebase`). They are not on Exact's main yet. The template relies on what it adds: `-exact-safe-area` with `extend` and `ignore`, the inspector (`navigationInspector`) and its closing with the pop, a header search whose results are a route (`aria-controls`), the split on the Duo, and `app.json`'s `before_build`.
+Exact's safe-area prototype with this template's fixes, which `exact.json` pins: `landscapes/map-resize` of github.com/expo/exact, rebased on Exact's main. It is not on main itself. The template relies on what it adds: automatic safe-area insets for a route's content, the inspector (`navigationInspector`) and its closing with the pop, a header search whose results are a route (`aria-controls`), the split on the Duo, and `app.json`'s `before_build`.
 
 ## Limits
 
