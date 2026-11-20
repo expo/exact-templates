@@ -114,3 +114,23 @@ test "A result opens over the results and Back returns to them; Back from them l
   clock settle
   expect tree missing "route-search"
   expect state query == "fuji"
+
+test "A landmark's tile in a collection opens the card's menu, whose Favorite adds it to Favorites"
+  at "/collection/1002"
+  clock settle
+  tap "tile-1018" contextmenu
+  expect state aimed == "1018"
+  tap "Favorite"
+  clock data
+  expect state cols.0 .landmarkIds.4 == "1018"
+
+test "A search result opens the card's menu, whose Favorite adds it to Favorites"
+  at "/"
+  clock settle
+  type "search" "mount"
+  clock settle
+  tap "result-1016" contextmenu
+  expect state aimed == "1016"
+  tap "Favorite"
+  clock data
+  expect state cols.0 .landmarkIds.4 == "1016"

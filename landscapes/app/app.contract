@@ -297,14 +297,16 @@ component Landmarks
         if e.name == "collection"
           for c in cols.filter((x) => x.id == e.params.id) key=c.id
             CollectionPage(entry=e.id, c=c, ls=members(c, data.landmarks), back=back, open=follow, select=openSelect,
-              saveName=saveName, saveDescription=saveDescription, remove=deleteCollection)
+              saveName=saveName, saveDescription=saveDescription, remove=deleteCollection, menu=`card-menu-${e.id}`, aim=aim)
+              CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
 
         if e.name == "search"
           // What the search finds, a level on top of the stack. Its ground is the route's own, painted before its
           // content is laid out.
           column id="found" navigationKey=`${e.id}` navigationScroll="search-list" testId="route-search" position="absolute" inset=0 display="flex" flex-direction="column" background-color="-exact-grouped-background"
             if searched != ""
-              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections)
+              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, menu=`card-menu-${e.id}`, aim=aim)
+            CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
 
         if e.name == "select"
           for c in cols.filter((x) => x.id == e.params.id) key=c.id
@@ -412,6 +414,8 @@ component Strip
       for l in ls key=l.id
         Card(l=l, menu=menu, aim=aim, open=open)
 
+// A landmark in a strip. Its long press aims the route's `CardMenu` at the landmark and opens it, as every
+// landmark's link does (`LandmarkGrid`, `SearchResults`), so each lifts with the same menu.
 component Card
   props
     l: Landmark
@@ -456,12 +460,15 @@ component LandmarkGrid
     ls: Landmark[]
     min: number
     links: bool
+    // The route's card menu, which a link's long press opens (`Card`); a grid without links has none
+    menu: string
+    aim: action
     open: action
   view
     view display="grid" grid-template-columns=`repeat(auto-fill, minmax(${min}px, 1fr))` gap=14 justify-items="center"
       for l in ls key=l.id
         if links
-          link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name width="100%" max-width=320 aspect-ratio=1 position="relative" border-radius=15 overflow="hidden"
+          link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name contextmenu=aim(l.id) contextPopover=menu width="100%" max-width=320 aspect-ratio=1 position="relative" border-radius=15 overflow="hidden"
             display="flex" flex-direction="column" justify-content="flex-end" align-items="center" testId=`tile-${l.id}`
             Tile(l=l)
         else
@@ -473,7 +480,7 @@ component Tile
   props
     l: Landmark
   view
-    image `assets/apple/${l.id}-thumb.jpg` position="absolute" inset=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
+    image `assets/apple/${l.id}-thumb.jpg` id=`thumb-${l.id}` position="absolute" inset=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
     view position="absolute" inset=0 background-image="linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 50%)"
     text l.name font="-exact-title3" color="#ffffff" text-align="center" padding-bottom=16 padding-left=8 padding-right=8 position="relative"
 
@@ -514,6 +521,10 @@ component CollectionPage
     saveName: action
     saveDescription: action
     remove: action
+    menu: string
+    aim: action
+  // The route's card menu
+  slot
   state editing = false
   // Edit or Done was pressed on this page: its content fades between the two.
   state toggled = false
@@ -563,7 +574,7 @@ component CollectionPage
             text c.name role="heading" aria-level=1 font="-exact-large-title" font-weight=500 padding-top=16 testId="collection-name"
             // SwiftUI's spacing under the large title is 13 more than the stack's 8 (measured).
             text c.description font="-exact-title2" padding-top=29 padding-bottom=16
-            LandmarkGrid(ls=ls, min=160, links=true, open=open)
+            LandmarkGrid(ls=ls, min=160, links=true, menu=menu, aim=aim, open=open)
       // Its id is the entry's: ids resolve across the whole app, the pages beneath included
       dialog id=`delete-collection-${entry}` role="alertdialog" aria-label=`Delete “${c.name}”?`
         text "This can’t be undone."
@@ -571,6 +582,7 @@ component CollectionPage
           text "Delete"
         button commandfor=`delete-collection-${entry}` command="close" testId="delete-keep"
           text "Keep"
+      children
 
 // What search finds: landmarks whose name or continent holds the query and collections whose name
 // does, each a row that opens its page, in UIKit's grouped list; with none, UIKit's empty search
@@ -582,6 +594,8 @@ component SearchResults
     q: string
     ls: Landmark[]
     cs: Collection[]
+    menu: string
+    aim: action
   view
     column flex=1 min-height=0 display="flex" flex-direction="column" testId="search-results"
       if ls.length == 0 and cs.length == 0
@@ -597,8 +611,8 @@ component SearchResults
               header
                 text "Landmarks"
               for l in ls key=l.id
-                link href=path("landmark", l.id) display="flex" align-items="center" testId=`result-${l.id}`
-                  image `assets/apple/${l.id}-thumb.jpg` width=48 height=48 object-fit="cover" border-radius=8 margin-right=14 aria-hidden=true
+                link href=path("landmark", l.id) contextmenu=aim(l.id) contextPopover=menu display="flex" align-items="center" testId=`result-${l.id}`
+                  image `assets/apple/${l.id}-thumb.jpg` id=`thumb-${l.id}` width=48 height=48 object-fit="cover" border-radius=8 margin-right=14 aria-hidden=true
                   column flex=1
                     text
                       text beforeMatch(l.name, q)
@@ -653,7 +667,7 @@ component CollectionEditor
           button press=select(c.id) padding=0 testId="select-landmarks"
             text "Select"
         if ls.length > 0
-          LandmarkGrid(ls=ls, min=140, links=false, open=select)
+          LandmarkGrid(ls=ls, min=140, links=false, menu="", aim=select, open=select)
 
 // The badges a person earned (BadgesView): a glass button that opens them
 // above it, each on glass, at the bottom trailing corner of the page.
