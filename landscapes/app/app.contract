@@ -57,6 +57,11 @@ shape Ack
   ok: bool
   id: string
 
+// What the badges read of the page: whether it is shown, and whether its window is in front.
+shape Page
+  visibilityState: string
+  hasFocus: bool
+
 // The sample's order (ModelData.orderedContinents).
 fn continents(): string[] = ["Asia", "Africa", "Antarctica", "Australia/Oceania", "Europe", "North America", "South America"]
 
@@ -98,6 +103,7 @@ fn badgeColor(name: string): string = name == "orange" ? "-exact-system-orange" 
 component Landmarks
   resource data = loadData() as shape Data
   resource cols = loadCollections() as shape Collection[]
+  resource window = exactPage() as shape Page
   mutation changed as shape Ack queue refreshes cols
   mutation added as shape Ack refreshes cols then openAdded
   // Activities changed this session, as `landmark:activity`.
@@ -109,6 +115,9 @@ component Landmarks
   // The card whose context menu is open.
   state aimed = ""
   state showingBadges = false
+  // The route the badges were opened on: they close as it is left, as the sample's BadgesView
+  // collapses when it disappears.
+  state badgesRoute = ""
   // How far each page's scroller is pulled past its top: its header image
   // grows by as much, its top staying at the screen's (the sample's FlexibleHeader).
   state featuredPull = 0
@@ -178,6 +187,13 @@ component Landmarks
     heroPull = max(0, 0 - top)
   action toggleBadges
     showingBadges = not showingBadges
+    badgesRoute = `${top(nav).id}`
+  action hideBadges
+    showingBadges = false
+  // The badges close when their page is left, and when the app is put away or another app is in
+  // front, as the sample's BadgesView collapses when its scene is no longer active.
+  task foldBadges when showingBadges and (`${top(nav).id}` != badgesRoute or window.visibilityState != "visible" or not window.hasFocus)
+    after(1, hideBadges)
 
   view
     // `cover`, so `env()` is the window's safe area, which the sample sizes its header images by
@@ -379,7 +395,7 @@ component Featured
         width="100%" object-fit="cover" -exact-background-extension="auto" aria-hidden=true testId="featured-image"
       text "Featured Landmark" font="-exact-subheadline" font-weight=700 color="#ffffff" opacity=0.8 position="relative"
       text l.name font="-exact-large-title" font-weight=700 color="#ffffff" position="relative"
-      button press=learn(l.id) buttonStyle="bordered-prominent" margin-bottom=6 margin-top=21 position="relative" testId="learn-more"
+      button press=learn(l.id) buttonStyle="prominent-glass" margin-bottom=6 margin-top=21 position="relative" testId="learn-more"
         text "Learn More"
 
 // A row of cards that scrolls sideways: a fifth of the page's height, at least 140.
