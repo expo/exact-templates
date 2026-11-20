@@ -630,12 +630,14 @@ component CollectionEditor
         // The sample's editor is 88 high with UIKit's text insets inside it (8 above and below, 5 beside).
         textarea value=description input=editDescription aria-label="Description" border="none" height=72 padding="24px 21px" backgroundMaterial="chrome" border-radius=15 testId="edit-description"
       text "Landmarks" font="-exact-title2" font-weight=600 color="-exact-secondary-label" padding-top=16
-      column backgroundMaterial="chrome" border-radius=15 padding="20px 16px 16px" gap=10
+      // With no landmarks the card holds the button alone, centred in it: no grid, and no gap after the button
+      column backgroundMaterial="chrome" border-radius=15 padding=(ls.length > 0 ? "20px 16px 16px" : "18px 16px") gap=10 testId="edit-landmarks"
         row justify-content="flex-end"
           // A text button with no insets of its own, as SwiftUI's `Button` lays out
           button press=select(c.id) padding=0 testId="select-landmarks"
             text "Select"
-        LandmarkGrid(ls=ls, min=140, links=false, open=select)
+        if ls.length > 0
+          LandmarkGrid(ls=ls, min=140, links=false, open=select)
 
 // The badges a person earned (BadgesView): a glass button that opens them
 // above it, each on glass, at the bottom trailing corner of the page.
