@@ -9,7 +9,13 @@
 import CoreLocation
 import Foundation
 import MapKit
+#if os(macOS)
+import AppKit
+private typealias MapInsets = NSEdgeInsets
+#else
 import UIKit
+private typealias MapInsets = UIEdgeInsets
+#endif
 
 final class LandmarksModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
@@ -23,13 +29,18 @@ private final class MapDelegate: NSObject, MKMapViewDelegate {
     // SwiftUI's `Marker` keeps every marker where two collide and gives way only with its
     // title; MapKit's default view hides the lower-priority marker (Dover beside the Alps).
     func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
-        for view in views where view.annotation is MKMapItemAnnotation { view.displayPriority = .required }
+        for view in views where !(view.annotation is MKUserLocation) { view.displayPriority = .required }
     }
 
+    @available(macOS 15.0, *)
     func mapView(_ mapView: MKMapView, selectionAccessoryFor annotation: any MKAnnotation) -> MKSelectionAccessory? {
         guard annotation is MKMapItemAnnotation else { return nil }
         // A card too large for a callout is presented from the controller that shows the map.
+        #if os(macOS)
+        let presenter = sequence(first: mapView as NSResponder, next: \.nextResponder).first { $0 is NSViewController } as? NSViewController
+        #else
         let presenter = sequence(first: mapView as UIResponder, next: \.next).first { $0 is UIViewController } as? UIViewController
+        #endif
         return .mapItemDetail(.automatic(presentationViewController: presenter))
     }
 
@@ -43,13 +54,23 @@ private final class MapDelegate: NSObject, MKMapViewDelegate {
 /// appears. From then MapKit keeps its centre and scale as the bounds change, so a bigger map
 /// shows more around the same centre, as SwiftUI's does as a fold widens its column.
 private final class RegionMap: MKMapView {
-    enum Target { case region(MKCoordinateRegion), box(MKMapRect, UIEdgeInsets) }
+    enum Target { case region(MKCoordinateRegion), box(MKMapRect, MapInsets) }
     private var wanted: Target?
     private var fitted: CGSize?
     /// MapKit has finished drawing the map in a window since its target was set.
     var drawn = false
+    #if os(macOS)
+    override func layout() {
+        super.layout()
+        fitTarget()
+    }
+    #else
     override func layoutSubviews() {
         super.layoutSubviews()
+        fitTarget()
+    }
+    #endif
+    private func fitTarget() {
         guard let wanted, bounds.width > 0, bounds.height > 0, fitted == nil || (fitted != bounds.size && !drawn) else { return }
         fitted = bounds.size
         switch wanted {
@@ -61,7 +82,11 @@ private final class RegionMap: MKMapView {
         wanted = target
         fitted = nil
         drawn = false
+        #if os(macOS)
+        needsLayout = true
+        #else
         setNeedsLayout()
+        #endif
     }
 }
 
@@ -69,6 +94,7 @@ final class LandmarkMap: ExactNativeInstance {
     private let map = RegionMap(frame: .zero)
     private let delegate = MapDelegate()
     private var props: [String: String] = [:]
+    private var annotations: [any MKAnnotation] = []
     /// The fetch under way, so a newer `items` supersedes it.
     private var generation = 0
 
@@ -101,7 +127,16 @@ final class LandmarkMap: ExactNativeInstance {
         // above than below, which reproduces SwiftUI's centre and span on the Duo.
         if region == nil, !wanted.isEmpty {
             let box = wanted.reduce(MKMapRect.null) { $0.union(MKMapRect(origin: MKMapPoint($1.coordinate), size: MKMapSize())) }
-            map.show(.box(box, UIEdgeInsets(top: 28, left: 0, bottom: 0, right: 0)))
+            map.show(.box(box, MapInsets(top: 28, left: 0, bottom: 0, right: 0)))
+        }
+        guard #available(macOS 15.0, *) else {
+            showAnnotations(wanted.map { item in
+                let pin = MKPointAnnotation()
+                pin.coordinate = item.coordinate
+                pin.title = item.name
+                return pin
+            })
+            return
         }
         Task { @MainActor [weak self] in
             var annotations: [MKMapItemAnnotation] = []
@@ -112,9 +147,14 @@ final class LandmarkMap: ExactNativeInstance {
                 annotations.append(annotation)
             }
             guard let self, self.generation == token else { return }
-            self.map.removeAnnotations(self.map.annotations.filter { $0 is MKMapItemAnnotation })
-            self.map.addAnnotations(annotations)
+            self.showAnnotations(annotations)
         }
+    }
+
+    private func showAnnotations(_ annotations: [any MKAnnotation]) {
+        map.removeAnnotations(self.annotations)
+        self.annotations = annotations
+        map.addAnnotations(annotations)
     }
 
     private func region(_ text: String?) -> MKCoordinateRegion? {
@@ -124,11 +164,11 @@ final class LandmarkMap: ExactNativeInstance {
                                   span: MKCoordinateSpan(latitudeDelta: f[2], longitudeDelta: f[2]))
     }
 
-    private func items(_ text: String) -> [(placeID: String, coordinate: CLLocationCoordinate2D)] {
+    private func items(_ text: String) -> [(placeID: String, coordinate: CLLocationCoordinate2D, name: String)] {
         text.split(separator: ";").compactMap { row in
             let f = row.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
             guard f.count >= 4, !f[0].isEmpty, let latitude = Double(f[1]), let longitude = Double(f[2]) else { return nil }
-            return (f[0], CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+            return (f[0], CLLocationCoordinate2D(latitude: latitude, longitude: longitude), f[3])
         }
     }
 
@@ -143,6 +183,12 @@ final class LandmarkMap: ExactNativeInstance {
         var result: MKMapSnapshotter.Snapshot?
         MKMapSnapshotter(options: options).start(with: .global()) { snap, _ in result = snap; done.signal() }
         guard done.wait(timeout: .now() + 4) == .success, let snap = result else { throw ExactNativeRefusal("map snapshot failed") }
+        #if os(macOS)
+        guard let tiff = snap.image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:]) else { throw ExactNativeRefusal("map snapshot encoding failed") }
+        return png
+        #else
         return UIGraphicsImageRenderer(size: size).pngData { _ in snap.image.draw(in: CGRect(origin: .zero, size: size)) }
+        #endif
     }
 }

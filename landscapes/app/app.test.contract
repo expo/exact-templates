@@ -1,9 +1,11 @@
-test "a compact width opens on the Landmarks page"
+test "a compact window launches on Landmarks" on ios, macos
+  size 390x844
   clock settle
   expect tree has "route-landmarks"
   expect tree has "featured"
 
 test "a card opens its landmark, and Favorite adds it to Favorites"
+  at "/landmarks"
   clock settle
   tap "card-1002"
   clock settle
@@ -13,6 +15,7 @@ test "a card opens its landmark, and Favorite adds it to Favorites"
   expect state cols.0 .landmarkIds.4 == "1002"
 
 test "Favorite on a favorite takes it out of Favorites"
+  at "/landmarks"
   clock settle
   tap "card-1001"
   clock settle
@@ -21,6 +24,7 @@ test "Favorite on a favorite takes it out of Favorites"
   expect state cols.0 .landmarkIds.0 == "1021"
 
 test "Info keeps Map or Activities across a close and another landmark, as the sample's inspector does"
+  at "/landmarks"
   clock settle
   tap "card-1016"
   clock settle
@@ -66,53 +70,62 @@ test "Delete asks first, then removes the collection and leaves its page"
   expect state cols.2 .id == "1004"
   expect tree missing "route-collection"
 
-test "Search finds landmarks by name or by continent, as a level on top of the stack; another page leaves it and keeps the text"
+test "Search finds landmarks within Home and Back from a result keeps the query"
+  size 390x844
   at "/"
   clock settle
+  tap "search"
+  clock settle
+  type "search" "a"
+  clock settle
+  expect layout "search-list" height <= 844
+  expect layout "search-list" height >= 1
   type "search" "mount"
   clock settle
-  expect tree has "route-search"
+  expect tree has "route-home"
   expect tree has "result-1016"
   expect tree has "result-1007"
   expect tree missing "result-1017"
+  expect state visitDepth == 1
   type "search" "Asia"
   clock settle
   expect tree has "result-1017"
   expect tree missing "result-1007"
+  expect state visitDepth == 1
   type "search" "zzz"
   clock settle
   expect tree has "search-empty"
-  // Another page chosen from the list leaves the results, and the field keeps what was typed
-  type "app" "/map"
-  clock settle
-  expect state query == "zzz"
-  expect tree missing "route-search"
-
-test "A result opens over the results and Back returns to them; Back from them leaves them and keeps the text"
-  at "/"
-  clock settle
   type "search" "fuji"
   clock settle
+  expect state visitDepth == 1
   tap "result-1016"
   clock settle
   expect text "detail-name" == "Mount Fuji"
-  expect state query == "fuji"
-  // The results stay under the page a result opened, so Back shows them as UIKit's pop begins
-  expect tree has "search-results"
+  expect state visitDepth == 2
   back
   clock settle
   expect tree has "result-1016"
-  // Emptying the field leaves the level and shows the list; typing again enters it
+  expect state visitDepth == 1
+  expect state query == "fuji"
   type "search" ""
   clock settle
-  expect tree missing "route-search"
+  expect tree has "page-map"
+  tap "page-map"
+  clock settle
+  expect tree has "route-map"
+  expect state visitDepth == 2
+
+test "Home keeps its ordinary rows reachable with results visible" on web, macos
+  at "/"
+  clock settle
+  tap "search"
+  clock settle
   type "search" "fuji"
   clock settle
   expect tree has "result-1016"
+  tap "page-map"
   clock settle
-  back
-  clock settle
-  expect tree missing "route-search"
+  expect tree has "route-map"
   expect state query == "fuji"
 
 test "A landmark's tile in a collection opens the card's menu, whose Favorite adds it to Favorites"
@@ -126,6 +139,8 @@ test "A landmark's tile in a collection opens the card's menu, whose Favorite ad
 
 test "A search result opens the card's menu, whose Favorite adds it to Favorites"
   at "/"
+  clock settle
+  tap "search"
   clock settle
   type "search" "mount"
   clock settle

@@ -17,7 +17,6 @@ routes nav
     collection "/collection/:id"
     info "/info/:id"
     select "/select/:id"
-    search "/search"
 
 // What comes or goes in the sample's `withAnimation` fades (SwiftUI's default transition).
 keyframes appear
@@ -123,18 +122,18 @@ component Landmarks
   state featuredPull = 0
   state heroPull = 0
   derive addedId = match added { case some(r) => r.id, case none => "" }
+  derive visitDepth = depth(nav)
   // What the search field holds, as search compares it, and what it finds, ordered by name.
   derive searched = query.trim().toLowerCase()
   derive foundLandmarks = sortBy(data.landmarks.filter((l) => findsLandmark(l, searched)), (l) => l.name)
   derive foundCollections = sortBy(cols.filter((c) => c.name.toLowerCase().includes(searched)), (c) => c.name)
 
-  // A page chosen in the list replaces the detail, as the sample's sidebar does: `open` lands in its
-  // declared chain, the list and the page, and leaves the search's results; any other location goes as
-  // usual, over them when they are on top (a result opens over its results, as Notes opens a note it
-  // found, and Back returns to them). The inspector closes rather than hold what opens.
+  // A sidebar page or search result selects a direct child of Home.
   action follow(url: string)
     let page = ["/landmarks", "/map", "/collections"].includes(url)
     nav = page ? open(nav, url) : go(top(nav).name == "info" ? back(nav) : nav, url)
+  action openResult(url: string)
+    nav = open(nav, url)
   action back
     nav = back(nav)
   action learn(id: string)
@@ -147,17 +146,8 @@ component Landmarks
   // Info shows the inspector, or closes it, as the sample's toggle does.
   action showInfo(id: string)
     nav = top(nav).name == "info" ? back(nav) : push(nav, path("info", id))
-  // The search's results (`aria-controls="found"`) are a level on top of the stack while the field has text,
-  // as UIKit shows a search's results controller: what is typed, or what the field kept when it is used
-  // again, enters them, and emptying the field leaves them, showing the list. `go` enters them, returns
-  // to them from a result opened over them, and changes nothing when they are on top. The X, Back from
-  // them or another page also leaves them, and the host closes the search then, keeping its text.
   action search(v: string)
     query = v
-    if v.trim() != ""
-      nav = go(top(nav).name == "info" ? back(nav) : nav, "/search")
-    else if top(nav).name == "search"
-      nav = back(nav)
   // The close button leaves what was typed in the field.
   action keepQuery
     preventDefault()
@@ -206,7 +196,7 @@ component Landmarks
             // disclosure chevron, which a sidebar's row does not show.
             header
               text "" role="heading" aria-level=2
-              input type="search" value=query input=search focus=search(query) cancel=keepQuery aria-controls="found" placeholder="Search" aria-label="Search" testId="search"
+              input type="search" value=query input=search cancel=keepQuery aria-controls=`found-${e.id}` placeholder="Search" aria-label="Search" testId="search"
             list id="pages" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="pages"
               section
                 link href="/landmarks" testId="page-landmarks" display="flex" align-items="center" gap=12 min-height=52
@@ -221,6 +211,10 @@ component Landmarks
                   image "symbol:sf/book.closed"
                   text "Collections"
                   image "symbol:forward-chevron"
+
+            column id=`found-${e.id}` display=(searched == "" ? "none" : "flex") flex-direction="column" flex=2 min-height=0 background-color="-exact-grouped-background"
+              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, menu=`card-menu-${e.id}`, aim=aim, open=openResult)
+              CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
 
         if e.name == "landmarks"
           // Under the side strip as under the bar: the pictures reach there, as the
@@ -303,14 +297,6 @@ component Landmarks
             CollectionPage(entry=e.id, c=c, ls=members(c, data.landmarks), back=back, open=follow, select=openSelect,
               saveName=saveName, saveDescription=saveDescription, remove=deleteCollection, menu=`card-menu-${e.id}`, aim=aim)
               CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
-
-        if e.name == "search"
-          // What the search finds, a level on top of the stack. Its ground is the route's own, painted before its
-          // content is laid out.
-          column id="found" navigationKey=`${e.id}` navigationScroll="search-list" testId="route-search" position="absolute" inset=0 display="flex" flex-direction="column" background-color="-exact-grouped-background"
-            if searched != ""
-              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, menu=`card-menu-${e.id}`, aim=aim)
-            CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
 
         if e.name == "select"
           for c in cols.filter((x) => x.id == e.params.id) key=c.id
@@ -597,8 +583,7 @@ component CollectionPage
 // What search finds: landmarks whose name or continent holds the query and collections whose name
 // does, each a row that opens its page, in UIKit's grouped list; with none, UIKit's empty search
 // (`UIContentUnavailableConfiguration.search()`). The part of a name or continent the query matched
-// is bold. The sample's search field finds nothing. In its route's flow and reaching the route's foot,
-// so its list is the route's bottom edge scroller and takes the keyboard as its bottom inset.
+// is bold. The list scrolls within the results viewport.
 component SearchResults
   props
     q: string
@@ -606,6 +591,7 @@ component SearchResults
     cs: Collection[]
     menu: string
     aim: action
+    open: action
   view
     column flex=1 min-height=0 display="flex" flex-direction="column" testId="search-results"
       if ls.length == 0 and cs.length == 0
@@ -621,7 +607,7 @@ component SearchResults
               header
                 text "Landmarks"
               for l in ls key=l.id
-                link href=path("landmark", l.id) contextmenu=aim(l.id) contextPopover=menu display="flex" align-items="center" testId=`result-${l.id}`
+                link href=path("landmark", l.id) press=open(path("landmark", l.id)) contextmenu=aim(l.id) contextPopover=menu display="flex" align-items="center" testId=`result-${l.id}`
                   image `assets/apple/${l.id}-thumb.jpg` id=`thumb-${l.id}` width=48 height=48 object-fit="cover" border-radius=8 margin-right=14 aria-hidden=true
                   column flex=1
                     text
@@ -637,7 +623,7 @@ component SearchResults
               header
                 text "Collections"
               for c in cs key=c.id
-                link href=path("collection", c.id) display="flex" align-items="center" testId=`result-collection-${c.id}`
+                link href=path("collection", c.id) press=open(path("collection", c.id)) display="flex" align-items="center" testId=`result-collection-${c.id}`
                   image "symbol:sf/book.closed" width=48 margin-right=14 color="AccentColor" aria-hidden=true
                   column flex=1
                     text

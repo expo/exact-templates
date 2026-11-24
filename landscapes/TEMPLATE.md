@@ -21,7 +21,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 | Behaviour | Where |
 | --- | --- |
 | The sidebar's three pages and its search field; a page chosen there replaces the detail; the app opens on Landmarks with the list behind Back | `app.contract`, the `home` route (`list id="pages"`), `action follow`; `app.json`'s `start_url` |
-| Search (the sample's field finds nothing): text in the field enters the results, a route on top of the stack that the field names by `aria-controls` (drawn over the list on a closed Duo, pushed on the detail on an open one), and an empty field leaves them; landmarks by name or continent and collections by name; a result opens over them and Back returns; the X, Back from them or another page from the list leaves them and keeps the text | `app.contract`, the `search` route (`id="found"`), `SearchResults`, `action search`, `action keepQuery` |
+| Search finds landmarks by name or continent and collections by name. Home owns the results that the field names with `aria-controls`. iOS shows them through UIKit's search controller. Web and macOS show them below the ordinary sidebar rows. A result opens a direct child of Home, and Back returns to the query. The search close button keeps the text. | `app.contract`, the `home` route, `SearchResults`, `action openResult`, `action keepQuery` |
 | The featured landmark, half the window high, its name and Learn More over the photo; the photo continuing, mirrored and blurred, under the sidebar and the Duo's side strip; the photo growing when the page is pulled down | `Featured`, `-exact-background-extension="auto"`, `pullFeatured` |
 | Each continent's landmarks as cards in a row that scrolls sideways | `Strip`, `Card` |
 | A card's long-press menu: Share, Favorite, and the collections it is in | `CardMenu`, the card's `contextmenu=aim` and `contextPopover` |
@@ -34,7 +34,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 
 ## Files
 
-`app.contract` holds every screen and its state. `app.ts` is the data module: the landmarks from `data/landmarks.json`, and the collections in memory, as the sample keeps them. `strings/en.json` is the location prompt's text. `modules/` is the map, native on iOS and a script on the web. `app.test.contract` drives the UI. `scripts/fetch-images.sh` fetches the photos and the icon into `assets/apple/`; `LICENSE-APPLE.txt` is Apple's notice.
+`app.contract` holds every screen and its state. `app.ts` is the data module: the landmarks from `data/landmarks.json`, and the collections in memory, as the sample keeps them. `strings/en.json` is the location prompt's text. `modules/` is the map, native on iOS and a script on the web. `app.test.contract` drives the UI. `search.test.mjs` checks browser launch, history, and modified links after `bun exact.mjs web-build`. Run it with `EXACT2` set to the checkout used by the build. `scripts/fetch-images.sh` fetches the photos and icon into `assets/apple/`. `LICENSE-APPLE.txt` is Apple's notice.
 
 ## Adapt
 
@@ -44,12 +44,12 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 
 ## Verified
 
-On an iPhone Duo simulator (iOS 27.1), an app made from this template with `new.mjs`, whose first build fetched the photos (`before_build`), shows the Landmarks page, a landmark with Info, and Collections on the open Duo, and Collections on the closed one. `bun exact.mjs test ios` passes its search tests on the open Duo and on the closed one. On a Duo simulator made on 2026-11-12, its taps on bar buttons (Favorite, Info, Delete, the picker's Done) fail the agent's check that nothing covers the target, with this pin and the one before it; on the simulator before that one, all 8 tests passed. `bun exact.mjs test web` has not been run on this Exact; on the last one it failed all 4, the web build opening on the sidebar's list and not on the Landmarks page. The app this template came from gives the same results. The macOS, Linux and Android builds have not been run.
+With the Exact commit in `exact.json`, from `app/`: `bun exact.mjs test web` passes, and after `bun exact.mjs web-build`, `bun test search.test.mjs` passes in Chromium. On a folded iPhone Duo simulator (iOS 27.1), `bun exact.mjs test ios` passes. On the open one it passes all but the search test, whose 390×844 launch at Home finds Home off screen (`QUEUE.md`). On macOS, `bun exact.mjs test macos` passes the launch, Info, search and card-menu tests; the Favorite button and the collection's Edit and Delete fail there (`QUEUE.md`). The Linux and Android builds have not been run.
 
 ## Needs
 
-Exact's safe-area prototype with this template's fixes, which `exact.json` pins: `landscapes/map-resize` of github.com/expo/exact, rebased on Exact's main. It is not on main itself. The template relies on what it adds: automatic safe-area insets for a route's content, the inspector (`navigationInspector`) and its closing with the pop, a header search whose results are a route (`aria-controls`), the split on the Duo, and `app.json`'s `before_build`.
+`exact.json` pins Exact's `landscapes/map-resize` branch of github.com/expo/exact, which is not on Exact's main. The template relies on what that branch adds: automatic safe-area insets for a route's content, the inspector (`navigationInspector`), the split on iPhone Duo, and a header search whose results Home owns through `aria-controls` (LLP 1127.000). It uses `app.json`'s `before_build` to fetch the photos.
 
 ## Limits
 
-`QUEUE.md` has what is left to do. In short, the web build opened on the wrong page when last run. Fetching the photos needs a Mac (`sips` scales them), so on another machine every build stops at `before_build` until `assets/apple/` is copied from a Mac; the script then finds it complete.
+`QUEUE.md` tracks open issues. Fetching the photos needs a Mac because the script scales them with `sips`. On other machines, copy the complete `assets/apple/` directory from a Mac before building.
