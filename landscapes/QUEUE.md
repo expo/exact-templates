@@ -8,7 +8,6 @@ The user's reports, newest first, until each is fixed or answered.
 
 From the list of 2026-11-23, still open:
 
-- **Switching tabs flashes the pictures for a frame.** They should already be decoded and shown when the tab appears.
 - **Search, folded: tapping the field shifts the screen's contents down a little.**
 - **Search: the large X should not clear the field's text.** On the folded Duo simulator at `4ecb7759be`, with real touches, the X closes the search and reopening shows "Fuji" with its results: the text is kept. While the field morphs into the toolbar's button it shows no text, which a hand-built UIKit app shows too (`~/Developer/landscapes-work/searchref`). Ask the person whether the phone's build still empties the field for good.
 - **Search, folded, then a landscape, then unfolding, does not land on that landscape.** Folded and unfolded should be structurally the same screen and controller hierarchy, built from UIKit's own controllers, so a fold or an unfold keeps where the user is. On the Duo simulator at `4ecb7759be` the unfold lands on the landscape, with the query kept in the sidebar; the structure is still not UIKit's: the results are a route pushed on the stack (`/search`), where UIKit shows a search's results in its `UISearchController`'s results controller over the screen that owns the search (LLP 1134 records that a header search has none in Exact).
@@ -18,7 +17,7 @@ From the list of 2026-11-23, still open:
 
 - **The agent cannot reopen a search that a close collapsed back into its toolbar button** (Exact): `tap` aims at a collapsed search through the button centred on its field, and once closed the field leaves the window.
 
-From the same list, fixed on `landscapes/map-resize`, to confirm on the next build: the strips' insets and scroll offsets at a partial fold, the sidebar's rows appearing in place at launch, the purple checkmarks, the hero no longer peekable (expo/exact#1437 upstream), a peeked card following its strip's scroll, the scroll offsets kept through backgrounding, the Map full screen when folded and under the open sidebar, the Maps logo with Info open at a partial fold, the empty collection's Select button, the freeze when searching at a partial fold, and the list rows' chevrons. The newer SwiftUI Landscapes sample was checked for.
+From the same list, fixed on `landscapes/map-resize`, to confirm on the next build: the pictures shown again at once when a page is chosen again (`dd0c6646ee`: bundled pictures stay decoded after the rest trim; filmed, the hero was blank for 14 frames before and none after), the strips' insets and scroll offsets at a partial fold, the sidebar's rows appearing in place at launch, the purple checkmarks, the hero no longer peekable (expo/exact#1437 upstream), a peeked card following its strip's scroll, the scroll offsets kept through backgrounding, the Map full screen when folded and under the open sidebar, the Maps logo with Info open at a partial fold, the empty collection's Select button, the freeze when searching at a partial fold, and the list rows' chevrons. The newer SwiftUI Landscapes sample was checked for.
 
 Earlier reports (build 11, AppDrop, 2026-10-31, runs the Duo series at `8649d0f1a5`; `9a5d74eb5f` since the series was rewritten):
 
