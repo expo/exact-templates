@@ -4,7 +4,21 @@ What to do next for this template, most pressing first. Add a line when you find
 
 ## Reported from the iPhone Duo
 
-The user's reports, newest first, until each is fixed or answered. Build 11 (AppDrop, 2026-10-31) runs the Duo series at `8649d0f1a5` (`9a5d74eb5f` since the series was rewritten).
+The user's reports, newest first, until each is fixed or answered.
+
+From the list of 2026-11-23, still open:
+
+- **Switching tabs flashes the pictures for a frame.** They should already be decoded and shown when the tab appears.
+- **Search, folded: tapping the field shifts the screen's contents down a little.**
+- **Search: the large X should not clear the field's text.**
+- **Search, folded, then a landscape, then unfolding, does not land on that landscape.** Folded and unfolded should be structurally the same screen and controller hierarchy, built from UIKit's own controllers, so a fold or an unfold keeps where the user is.
+- **Swiping back from a landscape to the search results pops the search bar up over the landscape.** The bar belongs to the results' screen and should go back with it.
+- **The hero's press should ease its darkening on the platform's timing.** Exact times a press as LLP 1061 D7 says: the web host and its decision have landed (expo/exact#1451, expo/exact-llp#257), the painted hosts are in review (expo/exact#1471), and the Apple hosts are in a fix round (`ide/press-transition`). Then compare the hero with the SwiftUI sample on the phone; its words no longer darken.
+- **Folded, the main screen's Back menu shows an empty screen name.** The route's own `head title` should name it there, with a compile warning for a blank heading and no new syntax (LLP 1075.003 §9.10, a draft). The draft waits on how UIKit's Back menu names an untitled screen, which the probe on AppDrop shows on the phone.
+
+From the same list, fixed on `landscapes/map-resize`, to confirm on the next build: the strips' insets and scroll offsets at a partial fold, the sidebar's rows appearing in place at launch, the purple checkmarks, the hero no longer peekable (expo/exact#1437 upstream), a peeked card following its strip's scroll, the scroll offsets kept through backgrounding, the Map full screen when folded and under the open sidebar, the Maps logo with Info open at a partial fold, the empty collection's Select button, the freeze when searching at a partial fold, and the list rows' chevrons. The newer SwiftUI Landscapes sample was checked for.
+
+Earlier reports (build 11, AppDrop, 2026-10-31, runs the Duo series at `8649d0f1a5`; `9a5d74eb5f` since the series was rewritten):
 
 - **Info opened closed, then the Duo unfolded, stays a large sheet; dismissed, the page's bar buttons stop working** (2026-11-07, build 15). Not reproduced on the Duo simulator: closed, a landmark's or a collection's landmark's Info is a sheet, and unfolding (at once, swept over two seconds, twice over, and while the sheet was still presenting) moves it to the inspector's column; dismissed by a swipe, Favorite and Info work. The column takes the route in `NavigationHost.sync` (`toColumn`, `placeInspector`), which defers while the split expands or a sheet moves and retries when the presentation ends or the split reports its change. A trace from the phone (a development build's Save Trace) would show which of those the unfold missed.
 - **The sidebar's bar showed Collections' + and its title on the Map page** (2026-11-07, build 15, after unfolding at some point). Not reproduced yet: closed, Collections, then the list and Map, then unfolding, shows the sidebar's own bar.
