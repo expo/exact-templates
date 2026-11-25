@@ -190,7 +190,8 @@ component Landmarks
     main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow width="100%" height="100%" accent-color="-exact-system-indigo" viewport-fit="cover"
       for e in stack(nav) key=e.id
         if e.name == "home"
-          column navigationKey=`${e.id}` navigationScroll="pages" testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column"
+          // The sidebar's ground is the grouped list's, under the floating search too, as UIKit's sidebar paints it
+          column navigationKey=`${e.id}` navigationScroll="pages" testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column" background-color="-exact-grouped-background"
             // The sample's sidebar has no title; its search is the split's. Its rows are SwiftUI's 52 points high in
             // the sidebar as in the list, where a UIKit sidebar's are 44; each pushes its page, so it ends in the
             // disclosure chevron, which a sidebar's row does not show.
