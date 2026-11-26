@@ -21,7 +21,7 @@ test "sending clears the draft and saves the message across a relaunch"
   expect text "receipt-sent-1" == "Delivered"
   reload
   clock data
-  expect state inbox.0.messages.12.body == "I’m on my way!"
+  expect state inbox.0.recent.12.body == "I’m on my way!"
 
 test "whitespace is not sendable and a multiline draft survives a relaunch"
   tap "conversation-alex"
@@ -57,7 +57,7 @@ test "a long transcript keeps the composer usable and the newest message accessi
   tap "options"
   tap "load-history"
   clock data
-  expect state conversation.messages.length == 252
+  expect state conversation.count == 252
   type "composer" "Still here after the earlier messages."
   tap "send"
   clock data
@@ -138,6 +138,26 @@ test "the conversation reopens from the list"
   tap "conversation-alex"
   clock settle
   expect tree has "composer"
+
+test "beside the list, the conversation last opened is open at launch, else the newest"
+  size 1100x760
+  clock data
+  clock settle
+  expect state openId == "alex"
+  // By its location: on an iPhone the split stays collapsed at any size, and Alex's conversation covers the list
+  type "app" "/conversations/jordan"
+  clock settle
+  expect state openId == "jordan"
+  reload
+  clock data
+  clock settle
+  expect state openId == "jordan"
+
+test "a phone opens at the list"
+  clock data
+  clock settle
+  expect state openId == ""
+  expect tree has "conversation-alex"
 
 test "each person keeps their own conversation and draft"
   expect tree has "conversation-priya"

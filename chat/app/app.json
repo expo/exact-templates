@@ -44,7 +44,7 @@
       {
         "finding": "target",
         "node": "composer",
-        "why": "The field is a 40-point single line, keeping native text and caret geometry; the plus and send controls beside it have 44-point hit areas."
+        "why": "The field is a 40-point single line, keeping native text and caret geometry. Send has a 44-point target; the plus remains 40 points, as documented in the template limits."
       },
       {
         "finding": "fixed-type",
