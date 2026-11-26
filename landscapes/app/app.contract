@@ -388,13 +388,11 @@ component Featured
   view
     view margin-top=(0 - pull) height=`calc(50cqh + ${pull}px)` box-sizing="border-box" position="relative"
       display="flex" flex-direction="column" justify-content="flex-end" align-items="center" padding-bottom=40
-      // The link holds the picture, under the words, which presses pass through. Held, it fades the picture and
-      // its mirrored edges together, across the whole width, as the sample's plain-styled link fades its label,
-      // and leaves the words as they are.
+      // The link holds the picture, under the words, which presses pass through. Held, it dims the picture and
+      // its mirrored edges together, across the whole width, with the platform's own press, as the sample's
+      // plain-styled link dims its label, and leaves the words as they are.
       link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=`Featured Landmark, ${l.name}` position="absolute" inset=0
         testId="featured"
-        :active
-          opacity = 0.75
         // Inside the safe area, its edges mirrored and blurred beyond it (the sample's backgroundExtensionEffect).
         image `assets/apple/${l.id}.jpg` position="absolute" inset=0 height="100%"
           width="100%" object-fit="cover" -exact-safe-area-extend="top start end" aria-hidden=true testId="featured-image"
