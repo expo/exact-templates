@@ -132,9 +132,8 @@ component Balloon
 // Rows are laid out by their balloons' bodies: a tail paints into the
 // space below its row and never moves another. A run's last row keeps room
 // for it, and the row holding the receipt room for that instead. A room
-// takes its height with the change that gives it, and the list moves the
-// rows that change shifts, all on one spring, as a collection view's batch
-// update does. When the receipt moves on, the old words fade in 100 ms as
+// takes its height with the change that gives it, and the rows that change
+// shifts take their places by layout (`QUEUE.md`). When the receipt moves on, the old words fade in 100 ms as
 // they leave (a fade, which reduced motion keeps), and the new ones grow
 // about their centre once those are gone. Only the receipt's row holds its
 // words.
@@ -153,6 +152,9 @@ component MessageRow
     hidden: bool
     // Just received: it pops in from its tail's corner
     arriving: bool
+    // The balloon below it is a send still flying there: it keeps its tail
+    // until that balloon lands, and the tail then leaves on its transition
+    holdsTail: bool
     aim: action
     replyTo: action
     // Choosing messages (a balloon's More…): whether this one is chosen,
@@ -161,10 +163,12 @@ component MessageRow
     chosen: bool
     choose: action
   derive hasReceipt = message.id == receiptId
-  derive tail = message.endsRun
+  derive tail = message.endsRun or holdsTail
   // The receipt's room is its offset, its line and 1 point: 19.333 at the
   // default text size. The last row's tail paints into the transcript's foot.
-  derive room = hasReceipt ? 6.3333 + bodySize * 0.764706 : (tail and not message.last ? 6.65 : 0)
+  // The room follows the run, not a tail held while a send flies, so the
+  // rows move once, with the send.
+  derive room = hasReceipt ? 6.3333 + bodySize * 0.764706 : (message.endsRun and not message.last ? 6.65 : 0)
   // Choosing begins and ends in 0.3 s on the default curve, as the platform's does
   derive chooseMotion = reduced ? "none" : "300ms ease-in-out"
   view

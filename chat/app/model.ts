@@ -18,8 +18,6 @@ export type SavedMessage = Omit<Message, 'stamped' | 'endsRun' | 'last' | 'readA
 
 /** A message sent this long after the one before it opens a new part of the conversation, headed by the time. */
 const stampGap = 3_600_000;
-/** A message sent more than this long after the one before it starts a new run of balloons, even from the same side. */
-const runGap = 60_000;
 
 export interface Conversation {
   version: 1;
@@ -330,9 +328,10 @@ function withSeeds(saved: Record<string, Conversation>): Record<string, Conversa
 /** Messages `from` to `to` (exclusive) as the view reads them, each stamped and ending its run as its neighbours say, those outside the range included. */
 export function present(messages: SavedMessage[], from = 0, to = messages.length): Message[] {
   const stamped = (index: number): boolean => index === 0 || messages[index]!.at - messages[index - 1]!.at >= stampGap;
+  // A run ends where the balloon below is from the other side or under a stamp: a balloon keeps its tail unless one from its side lies right below it
   const endsRun = (index: number): boolean => {
     const next = messages[index + 1];
-    return next === undefined || next.mine !== messages[index]!.mine || next.at - messages[index]!.at > runGap;
+    return next === undefined || next.mine !== messages[index]!.mine || stamped(index + 1);
   };
   return messages.slice(from, to).map(({ id, body, mine, at, reply, receipt, readAt }, offset): Message => {
     const index = from + offset;
