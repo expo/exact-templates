@@ -190,7 +190,9 @@ component Landmarks
     main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow width="100%" height="100%" accent-color="-exact-system-indigo" viewport-fit="cover"
       for e in stack(nav) key=e.id
         if e.name == "home"
-          column navigationKey=`${e.id}` navigationSplit="split" navigationScroll="pages" testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column"
+          // The keys cover the sidebar's foot, as they cover a UIKit sidebar's list, which keeps its frame and takes
+          // them as its inset: its block does not end at them
+          column navigationKey=`${e.id}` navigationSplit="split" navigationScroll="pages" testId="route-home" position="absolute" inset=0 display="flex" flex-direction="column" -exact-safe-area-ignore="keyboard"
             // The sample's sidebar has no title; its search is the split's. Its rows are SwiftUI's 52 points high in
             // the sidebar as in the list, where a UIKit sidebar's are 44; each pushes its page, so it ends in the
             // disclosure chevron, which a sidebar's row does not show.
