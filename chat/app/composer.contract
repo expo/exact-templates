@@ -31,8 +31,12 @@ component Composer
     // a side that meets a rounded corner of the display comes in by up to 12
     // points more, as UIKit's corner-adapted safe area says it does (28 from
     // an iPhone 18 Pro's sides): not beside a sidebar, a side strip or a
-    // corner the safe area already clears.
-    column id="composer-bar" testId="composer-bar" swipe=hideKeys swipe-flick="down" position="relative" flex-shrink=0 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))` padding-right=`calc(${margin(platform, "right")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+    // corner the safe area already clears. The corner is the window's (the
+    // bar's own corner is unavailable at the pinned Exact, `QUEUE.md`), less
+    // the bar's own safe area and never below 0, so beside a sidebar that
+    // the split's detail reaches under, as on the open iPhone Duo, whose
+    // sidebar is wider than the window's corner, it adds nothing.
+    column id="composer-bar" testId="composer-bar" swipe=hideKeys swipe-flick="down" position="relative" flex-shrink=0 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left))))` padding-right=`calc(${margin(platform, "right")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right))))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
       // The bar blurs what passes under it: the chrome material at 0.7,
       // rising 12 points above the bar and fading in over its first 30 on a
       // smoothstep, and reaching 40 points below it, under the keyboard's
@@ -83,7 +87,7 @@ component ChoiceBar
     count: number
     share: action
   view
-    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" align-items="center" min-height=40.3333 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))` padding-right=`calc(${margin(platform, "right")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" align-items="center" min-height=40.3333 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left))))` padding-right=`calc(${margin(platform, "right")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right))))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
       button appearance="none" commandfor="delete-messages" command="show-modal" disabled=(count == 0) testId="delete-chosen" aria-label="Delete" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
         image "symbol:delete" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")
       button appearance="none" press=share disabled=(count == 0) testId="share-chosen" aria-label="Share" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
