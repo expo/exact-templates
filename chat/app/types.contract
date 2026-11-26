@@ -154,8 +154,14 @@ keyframes dot
 shape Page
   platform: string
 
-// What lines up with the balloons is inset from the edge `edge`: by the
-// platform's layout margins where it has them (UIKit's 16 or 20 points, 0
-// beside the iPhone Duo's side strip), else 16 points inside the safe area
-// (the web, Linux and Windows, whose layout margins are the safe area)
-fn margin(platform: string, edge: string): string = platform == "web" or platform == "linux" or platform == "windows" ? `calc(16px + env(-exact-layout-margins-inset-${edge}))` : `env(-exact-layout-margins-inset-${edge})`
+// What lines up with the balloons is inset from the edge `edge` by the
+// conversation's layout margins, as UIKit gives a controller's view: the
+// route's safe area at that edge, which the route hands down
+// (`--route-safe-*`), so a sidebar or a side strip beside it counts, and the
+// platform's minimum margin beside it. The minimum is the window's (its
+// margin less its safe area there: 16 points on an iPhone, 20 and 0 on the
+// open iPhone Duo), standing in for the route controller's own, which no
+// box can read at the pinned Exact (`QUEUE.md`); the two agree on the
+// iPhone and the iPhone Duo. Where a host has no margins (the web, Linux and
+// Windows) the inset is 16 points inside the safe area.
+fn margin(platform: string, edge: string): string = platform == "web" or platform == "linux" or platform == "windows" ? `calc(16px + var(--route-safe-${edge}))` : `calc(var(--route-safe-${edge}) + env(-exact-layout-margins-inset-${edge}) - env(safe-area-inset-${edge}))`

@@ -164,7 +164,9 @@ component ExactChat
       flightAt = performanceNow()
       flightRise = 0
       flightSlide = 0
-      let page = frame("conversation")
+      // Measured from the box the flight is placed in, not the route, whose
+      // frame can span the window beside the list
+      let page = frame("flight-ground")
       let rows = frame("transcript")
       let pill = frame("composer-pill")
       flightLeft = rows.x - page.x
@@ -175,7 +177,7 @@ component ExactChat
       // It shrinks less from a taller field: to 0.7 from one line, to 0.9
       // from seven
       flightScale = 0.7 + 0.2 * max(0, min(1, (pill.height - 40.3333) / (6 * 40.3333)))
-      let flies = not (viewport.prefersReducedMotion or page.unavailable or pill.unavailable)
+      let flies = not (viewport.prefersReducedMotion or page.unavailable or rows.unavailable or pill.unavailable)
       flightPhase = flies ? 1 : 0
       // A send shows the conversation's latest, where it lands
       if not atEnd
@@ -375,17 +377,19 @@ component ExactChat
       box position="absolute" width=0 height="1rem" resize=fontChanged aria-hidden=true pointer-events="none"
       for entry in stack(nav) key=entry.id
         if entry.name == "thread"
-          // The route's content is laid out in the safe area, and the
-          // transcript reaches the screen's sides by itself. The route takes
-          // the bottom edge, where the composer docks in the home indicator's
-          // band and pads by the route's inset there (LLP 1123 D4). What
-          // lines up with the balloons (the rows, the typing indicator, the
-          // flight and the composer) pads by the route's layout margins (LLP
-          // 1123 D9). Its header is the
-          // platform's bar, which the iPhone Duo's closed screen moves into
-          // its side strip: the contact, a control with its avatar, is the
-          // bar's title, and Options its trailing item.
-          column id="conversation" navigationKey=`${entry.id}` -exact-safe-area="bottom" position="absolute" inset=0 class=Canvas
+          // The route takes its sides and bottom, where the host would clear
+          // it of the safe area, so its ground reaches under a side strip
+          // and the home indicator; its top stays below the bar. The composer
+          // docks in the home indicator's band and pads by the route's inset
+          // there (LLP 1123 D4). The route hands its safe area at each side
+          // to what it holds (LLP 1123 D5): what lines up with the balloons
+          // (the rows, the typing indicator, the flight and the composer)
+          // pads by the layout margins it makes (`margin`), and a choosing
+          // row's mark clears it. Its header is the platform's bar, which the
+          // iPhone Duo's closed screen moves into its side strip: the
+          // contact, a control with its avatar, is the bar's title, and
+          // Options its trailing item.
+          column id="conversation" navigationKey=`${entry.id}` -exact-safe-area="left right bottom" --route-safe-left="var(--exact-safe-area-inset-left)" --route-safe-right="var(--exact-safe-area-inset-right)" position="absolute" inset=0 class=Canvas
             header display="flex" align-items="center"
               button press=contactPressed contextPopover="contact-menu" testId="contact" display="flex" align-items="center" gap=8
                 // Its fill written here as well as by its class: the compiler
@@ -424,6 +428,9 @@ component ExactChat
                       MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose)
             if failed(inbox)
               text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left=`${margin(platform, "left")}` padding-right=`${margin(platform, "right")}`
+            // The bottom edge of the box the flight is placed in, which the
+            // send measures it from
+            box id="flight-ground" position="absolute" left=0 right=0 bottom=0 height=0 pointer-events="none" aria-hidden=true
             if flightPhase >= 1
               // Laid out as a row is, from the field's bottom, under the
               // composer's glass. While it is as wide as the field, a surface
