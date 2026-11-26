@@ -49,7 +49,7 @@ Earlier reports (build 11, AppDrop, 2026-10-31, runs the Duo series at `8649d0f1
 - **Focusing a new collection's title scrolls too far** (2026-10-31; below).
 - **The right sidebar is not draggable** (2026-10-31). Measured: UIKit, the sample and Landscapes resize the inspector from its leading edge alike, and none opens or closes it with a drag. Waiting on which drag the user tried.
 - **From the split work** (2026-10-30): the main content should follow the sidebar's curve, and the segmented control sometimes loses its background.
-- **While search is focused, a pushed page's bar buttons go, Back included** (2026-11-08). On the open Duo simulator with nothing typed, the sample keeps the landmark page's Back, Share and Favorite (the rest in ⋯ above the keyboard); Exact shows none. The sidebar's own button goes in both, which is UIKit's. Not caused by the search results: it shows with the field empty.
+- **While search is focused, a pushed page's bar buttons go, Back included** (2026-11-08). Still so on build 50's Exact (open Duo simulator, 2026-11-26): the page keeps its six bar items while the sidebar's search is open, so it is UIKit that hides them from the side strip; the sample keeps Back, Share and Favorite (the rest in ⋯ above the keyboard). Next: a hand-built UIKit split with the same items and a sidebar search, then the sample's item placements. The sidebar's own button goes in both, which is UIKit's.
 - **Focusing search moves less than the sample** (2026-11-06). The sample's page scrolls up as the bar goes and its badge button rides above the keyboard; here the page stays and the button stays behind the keyboard.
 
 ## Found while porting
