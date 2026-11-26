@@ -34,6 +34,17 @@ component ExactChat
   state flightBody = ""
   state flightAt = 0
   state squashAt = 0
+  // Whether the flying balloon has reached its row, below the one before it
+  state flightArrived = false
+  // When the rise first took an end, 0 before it has one, and when its end
+  // last moved
+  state riseAt = 0
+  state riseMovedAt = 0
+  // The row the send's scroll last aimed at
+  state revealedRow = ""
+  // The keys came up while a send flew in, whose scroll they left it: theirs
+  // runs once it lands
+  state beganLater = false
   // Where the copy is laid out in the conversation: across the transcript's
   // rows, its bottom at the field's
   state flightLeft = 0
@@ -111,6 +122,10 @@ component ExactChat
   derive swellMotion = flightPhase >= 4 ? "scale -exact-spring(320, 38, 2)" : "none"
   derive narrowMotion = flightPhase >= 3 ? "translate 200ms cubic-bezier(0.541951, 0, 0.58, 1)" : "none"
   derive flightNarrowed = flightPhase >= 3 ? flightNarrow : 0
+  // While a send flies to the end of the transcript, the row before it keeps
+  // its tail: a balloon's tail leaves when one from its side lies below it,
+  // and the sent one lies there once it reaches its row
+  derive heldTail = flightPhase > 0 and not flightArrived and loaded.length >= 2 and match loaded.at(loaded.length - 1) { case some(m) => m.id == flightId, case none => false } ? match loaded.at(loaded.length - 2) { case some(m) => m.id, case none => "" } : ""
   derive transcript = loaded.concat(typing ? [Message(id="typing", body="", mine=false, at=0, reply="", stamped=false, endsRun=true, last=true, receipt="", readAt=0)] : [])
 
   action edit(value: string)
@@ -124,12 +139,16 @@ component ExactChat
     bodySize = height
   action began
     // The newest message comes up with the keys, the latest shown again
-    // where the reader had scrolled away from them
-    if not atEnd
-      latest()
-    let newest = match (atEnd ? transcript : conversation.recent).at(-1) { case some(m) => m.id, case none => "" }
-    if newest != ""
-      scrollIntoView("transcript", newest, block="end")
+    // where the reader had scrolled away from them. A send flying in owns
+    // the scroll that shows it (`send`, `animate`): the keys' scroll waits
+    // for it to land (`keysAfterFlight`).
+    beganLater = flightPhase > 0
+    if flightPhase == 0
+      if not atEnd
+        latest()
+      let newest = match (atEnd ? transcript : conversation.recent).at(-1) { case some(m) => m.id, case none => "" }
+      if newest != ""
+        scrollIntoView("transcript", newest, block="end")
   // The conversation's latest messages, which the list answers with it
   action latest
     windowStart = ""
@@ -164,6 +183,9 @@ component ExactChat
       flightAt = performanceNow()
       flightRise = 0
       flightSlide = 0
+      flightArrived = false
+      riseAt = 0
+      riseMovedAt = 0
       // Measured from the box the flight is placed in, not the route, whose
       // frame can span the window beside the list
       let page = frame("flight-ground")
@@ -179,14 +201,29 @@ component ExactChat
       flightScale = 0.7 + 0.2 * max(0, min(1, (pill.height - 40.3333) / (6 * 40.3333)))
       let flies = not (viewport.prefersReducedMotion or page.unavailable or rows.unavailable or pill.unavailable)
       flightPhase = flies ? 1 : 0
-      // A send shows the conversation's latest, where it lands
+      // Whether the conversation's end shows: its newest balloon lies in the
+      // transcript's port
+      let previous = match loaded.at(loaded.length - 1) { case some(m) => m.id, case none => "" }
+      let newest = frame(`bubble-${previous}`)
+      let near = atEnd and (previous == "" or (not newest.unavailable and newest.y < rows.y + rows.height and newest.y + newest.height > rows.y))
+      // A send shows the conversation's latest, where it lands: a window
+      // away from it is let go for the latest
       if not atEnd
         latest()
       send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
-      // The transcript shows the new row at its end: the list moves the rows
-      // the send shifts on one spring, a reader at the end and one scrolled
-      // away alike
-      scrollIntoView("transcript", id, block="end")
+      // The transcript scrolls the new row in at its end, smoothly from an
+      // end that shows: a smooth scroll the app asks for owns the list until
+      // it rests, so the followed end does not jump to the new row first.
+      // From further away, past rows not built, or with reduced motion, it
+      // shows the row at once. It aims at the transcript's end, a typing
+      // indicator below the row included, and while the send flies follows
+      // it (`animate`).
+      let last = typing ? "typing" : id
+      revealedRow = last
+      if near and not viewport.prefersReducedMotion
+        scrollIntoView("transcript", last, block="end", behavior="smooth")
+      else
+        scrollIntoView("transcript", last, block="end", behavior="instant")
       // With no flight to take it, the draft leaves the field as the row shows
       if not flies
         write("", "")
@@ -212,6 +249,15 @@ component ExactChat
     every(50, tick)
   action animate
     let stamp = performanceNow()
+    // The send's scroll follows the transcript's end while the send flies:
+    // a typing indicator that shows or goes, or a message that comes
+    let lastRow = match transcript.at(transcript.length - 1) { case some(m) => m.id, case none => "" }
+    if lastRow != "" and lastRow != revealedRow
+      revealedRow = lastRow
+      if viewport.prefersReducedMotion
+        scrollIntoView("transcript", lastRow, block="end", behavior="instant")
+      else
+        scrollIntoView("transcript", lastRow, block="end", behavior="smooth")
     if flightPhase == 1
       // The copy is laid out where the row's balloon will be, unseen: it is
       // shown as the field, which it takes the draft from in the same frame
@@ -247,22 +293,35 @@ component ExactChat
     else if flightPhase >= 3
       if flightPhase == 3 and stamp - squashAt >= 185
         flightPhase = 4
+      // The copy rises to where its row comes to rest. The transcript
+      // scrolls the row up from below its end, so it rests no lower than a
+      // last row's balloon: above the transcript's padding and the row's own
+      // (14 and 2 points). A conversation too short to scroll leaves the row
+      // in place. Both frames reach their tail's room below the body. The
+      // balloon reaches its row once the rise has run 300 ms, where its
+      // spring first crosses an end that held, and its end, the row itself
+      // in the port, has held still 100 ms: a row the send's scroll moves
+      // meanwhile is one the balloon, whose spring keeps its speed as its
+      // end moves, follows and reaches soon after it stops.
       if stamp - squashAt >= 55
-        rise()
-  // The copy rises to where its row comes to rest. The transcript scrolls
-  // the row up from below its end, so it rests no lower than a last row's
-  // balloon: above the transcript's padding and the row's own (14 and 2
-  // points). A conversation too short to scroll leaves the row in place.
-  // Both frames reach their tail's room below the body.
-  action rise
-    let rows = frame("transcript")
-    let row = frame(`bubble-${flightId}`)
-    let end = rows.y + rows.height - 16 + tailDepth
-    let bottom = row.unavailable ? end : min(row.y + row.height, end)
-    if not rows.unavailable and max(bottom - flierBottom - flightRise, flightRise - bottom + flierBottom) > 0.5
-      flightRise = bottom - flierBottom
+        let rows = frame("transcript")
+        let row = frame(`bubble-${flightId}`)
+        let end = rows.y + rows.height - 16 + tailDepth
+        let bottom = row.unavailable ? end : min(row.y + row.height, end)
+        if not rows.unavailable and max(bottom - flierBottom - flightRise, flightRise - bottom + flierBottom) > 0.5
+          flightRise = bottom - flierBottom
+          riseMovedAt = stamp
+          if riseAt == 0
+            riseAt = stamp
+        else if riseAt > 0 and stamp - riseAt >= 300 and stamp - riseMovedAt >= 100 and not row.unavailable and row.y + row.height <= end + 0.5
+          flightArrived = true
   task sending when flightPhase > 0
     every(frame, animate)
+  task keysAfterFlight when beganLater and flightPhase == 0
+    after(1, began, wait=scrollend, max=1000)
+  // The field let go, or the conversation left: no scroll waits for the keys
+  action keysEnded
+    beganLater = false
   action menuOpened
     elapsed = performanceNow()
   action contactPressed
@@ -334,6 +393,7 @@ component ExactChat
   action shareChosen
     share(text=sortBy(picked, p => p.at).map(p => p.body).join("\n"))
   action follow(url: string)
+    beganLater = false
     choosing = false
     chosen = []
     picked = []
@@ -349,6 +409,7 @@ component ExactChat
     else
       nav = go(nav, url)
   action back
+    beganLater = false
     nav = back(nav)
   // Beside the list, nothing selected (at launch, or as the iPhone Duo
   // unfolds): the conversation last opened, else the newest. The app is not
@@ -413,19 +474,23 @@ component ExactChat
               // The margin above the reader is as far as a fling of 10,000
               // points a second glides (UIKit glides about half a second of
               // a fling's speed), so a fling goes on as older messages land;
-              // one that would reach the first loaded row stops there
-              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=68 scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+              // one that would reach the first loaded row stops there. A row
+              // not yet measured is laid out at a row's least height, a
+              // one-line balloon inside a run (its body and 2 points above and
+              // below) or the typing indicator's 48 points, so measuring a row
+              // only grows it: one measured smaller than its estimate cuts a
+              // smooth scroll short (`QUEUE.md`), such as the send's to a new
+              // one-line row
+              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=(min(48, bodySize * 1.193359 + 24)) scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
                 // A row that leaves (a deleted message, the typing
-                // indicator) fades where it shows, as the rows the removal
-                // moves go to their places on the platform's spring for a
-                // batch update (a response of 0.3 s, no bounce; the fade's
-                // curve is within 2% of it)
+                // indicator) fades where it shows; the rows the removal moves
+                // take their places by layout (`QUEUE.md`)
                 for message in transcript key=message.id
                   column -exact-exit-animation="fade 350ms cubic-bezier(0.2, 0.1, 0.1, 1) both"
                     if message.id == "typing"
                       Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
                     else
-                      MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose)
+                      MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), holdsTail=(message.id == heldTail), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose)
             if failed(inbox)
               text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left=`${margin(platform, "left")}` padding-right=`${margin(platform, "right")}`
             // The bottom edge of the box the flight is placed in, which the
@@ -448,7 +513,7 @@ component ExactChat
             if choosing
               ChoiceBar(count=chosen.length, share=shareChosen)
             else
-              Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
+              Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, ended=keysEnded, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
         if entry.name == "inbox"
           // Its ground is the platform's: beside the conversation, UIKit's
           // sidebar, from the first frame, before its rows have loaded
