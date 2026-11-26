@@ -123,6 +123,25 @@ test "The map reaches its route's edges, under the bars, the sidebar and the hom
   expect layout "map" bottom == layout "route-map" bottom
   expect layout "map" left == layout "route-map" left
 
+test "A search result opens over the selected page, which Back from it keeps" on web
+  size 1200x800
+  at "/landmarks"
+  clock settle
+  tap "search"
+  clock settle
+  type "search" "fuji"
+  clock settle
+  tap "result-1016"
+  clock settle
+  expect text "detail-name" == "Mount Fuji"
+  expect state visitDepth == 3
+  back
+  clock settle
+  expect state visitDepth == 2
+  expect tree has "route-landmarks"
+  expect tree has "result-1016"
+  expect state query == "fuji"
+
 test "Home keeps its ordinary rows reachable with results visible" on web, macos
   at "/"
   clock settle

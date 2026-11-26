@@ -128,12 +128,11 @@ component Landmarks
   derive foundLandmarks = sortBy(data.landmarks.filter((l) => findsLandmark(l, searched)), (l) => l.name)
   derive foundCollections = sortBy(cols.filter((c) => c.name.toLowerCase().includes(searched)), (c) => c.name)
 
-  // A sidebar page or search result selects a direct child of Home.
+  // A sidebar page selects a direct child of Home; anything else, a card or a search result, opens over the page
+  // shown, which stays the selection under it, as the sample's detail pushes a landmark onto its own stack.
   action follow(url: string)
     let page = ["/landmarks", "/map", "/collections"].includes(url)
     nav = page ? open(nav, url) : go(top(nav).name == "info" ? back(nav) : nav, url)
-  action openResult(url: string)
-    nav = open(nav, url)
   action back
     nav = back(nav)
   action learn(id: string)
@@ -216,7 +215,7 @@ component Landmarks
                   image "symbol:forward-chevron"
 
             column id=`found-${e.id}` display=(searched == "" ? "none" : "flex") flex-direction="column" flex=2 min-height=0 background-color="-exact-grouped-background"
-              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, menu=`card-menu-${e.id}`, aim=aim, open=openResult)
+              SearchResults(q=query.trim(), ls=foundLandmarks, cs=foundCollections, menu=`card-menu-${e.id}`, aim=aim, open=follow)
               CardMenu(id=`card-menu-${e.id}`, l=aimed, name=nameOf(data.landmarks, aimed), cols=cols, toggle=toggle, share=shareLandmark)
             // Names the route's row in Back's history menu; last, as a `head` before the header would take its bar
             head title="Sections"
