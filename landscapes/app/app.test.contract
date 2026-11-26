@@ -115,6 +115,14 @@ test "Search finds landmarks within Home and Back from a result keeps the query"
   expect tree has "route-map"
   expect state visitDepth == 2
 
+test "The map reaches its route's edges, under the bars, the sidebar and the home indicator"
+  at "/map"
+  clock settle
+  expect layout "map" top == layout "route-map" top
+  expect layout "map" right == layout "route-map" right
+  expect layout "map" bottom == layout "route-map" bottom
+  expect layout "map" left == layout "route-map" left
+
 test "Home keeps its ordinary rows reachable with results visible" on web, macos
   at "/"
   clock settle

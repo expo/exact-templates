@@ -238,12 +238,15 @@ component Landmarks
             head title="Landmarks"
 
         if e.name == "map"
-          column navigationKey=`${e.id}` navigationBar="transparent" testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column"
+          // The map reaches every edge, under the bar, the sidebar, the side strip and the home indicator, and keeps
+          // its own controls in the safe area, as a map view does in UIKit
+          column navigationKey=`${e.id}` navigationBar="transparent" testId="route-map" position="absolute" inset=0 display="flex" flex-direction="column" -exact-safe-area="none"
             // The map shows the landmarks only: unlike Apple's sample, the app never asks where the person is.
-            // Laid out under the bars and the sidebar: a native module's own box takes no safe-area attribute, so a box around it does
-            column flex=1 min-height=0 width="100%" display="flex" flex-direction="column" -exact-safe-area-ignore="container"
-              landmark-map flex=1 min-height=0 width="100%" items=places(data.landmarks) aria-label="A map of every landmark" testId="map"
-            Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
+            landmark-map flex=1 min-height=0 width="100%" items=places(data.landmarks) aria-label="A map of every landmark" testId="map"
+            // The badges stand in the route's safe area, which takes no touches but theirs
+            column position="absolute" top="var(--exact-safe-area-inset-top)" right="var(--exact-safe-area-inset-right)"
+              bottom="var(--exact-safe-area-inset-bottom)" left="var(--exact-safe-area-inset-left)" pointer-events="none"
+              Badges(ls=data.landmarks, checked=checked, open=showingBadges, toggle=toggleBadges)
             head title="Map"
 
         if e.name == "collections"
@@ -684,7 +687,7 @@ component Badges
     open: bool
     toggle: action
   view
-    column position="absolute" right=16 bottom=16 width=74 align-items="center" glassGroup=16 testId="badges"
+    column position="absolute" right=16 bottom=16 width=74 align-items="center" glassGroup=16 pointer-events="auto" testId="badges"
       if open
         // Above the button, out of flow: a node leaves layout as its exit starts, and this column would shrink under it.
         // A glass with opacity on its path is isolated from the group, so it fades whole.
