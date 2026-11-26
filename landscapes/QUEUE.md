@@ -6,6 +6,13 @@ What to do next for this template, most pressing first. Add a line when you find
 
 The user's reports, newest first, until each is fixed or answered.
 
+From build 50 (2026-11-26):
+
+- **Partially folding, the hero pictures grew in from the top-left instead of resizing in place** (Landmarks' featured landmark, a landmark's header). Exact tore each picture's mirror down and made a new one inside UIKit's column animation, since an update of the picture's other props cleared the mirror's props. Fixed in Exact ("iOS: a picture's mirror survives an update of its other props"); confirm on the next build.
+- **The Map stopped at the safe areas.** Its box said `-exact-safe-area-ignore="container"`, which applies to a scroller's container inset only. The Map route now turns its clearance off (`-exact-safe-area="none"`), the map fills it, and the badges stand in a box at the route's safe area; the test "The map reaches its route's edges…" checks it open and folded. Confirm on the next build.
+- **Search open unfolded, turned to portrait, shows "No Selection".** On the simulator only with Home alone in the stack: the unfolded detail is then empty, the results fill it beside the sidebar, and in portrait the sidebar hides with the search, as UIKit's does, leaving the empty detail. Home is alone after a Back to the list while folded (Exact empties the detail then, where UIKit and the sample keep it) or after Back from a chosen result (`openResult` replaces the page above Home). Waiting on the person's choice of rule.
+- **Search open unfolded, then folded, shows very skinny results on the cover.** Not reproduced on the simulator from any state tried; the person's steps or a screenshot next.
+
 From builds 48 and 49 (2026-11-25):
 
 - **Unfolded, opening the search makes the sidebar's rows slide up and jump back.** The sidebar's route ended its block at the keys (the default `resizes-content`), so its list shrank inside UIKit's animations, its position and height on two clocks: the rows rose about 130 points past their place and snapped back. A UIKit sidebar's list keeps its frame and takes the keys as its inset; Home's route now says so (`-exact-safe-area-ignore="keyboard"`), and on the open Duo simulator the rows only slide up with the bar as it hides. Confirm on the next build.
