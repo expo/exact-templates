@@ -1,6 +1,9 @@
-use GlassButton, Ink, Secondary from "./types.contract"
+use GlassButton, Ink, Secondary, margin from "./types.contract"
 
 component Composer
+  // The host, which sets the side margins (`margin`)
+  inject
+    platform: string
   props
     draft: string
     reply: string
@@ -17,18 +20,19 @@ component Composer
   action hideKeys
     blur("composer")
   view
-    // The bar rises 16 points from the keys and docks 28 from
-    // the screen's bottom, 57 and 69 points tall: docked is wherever the
-    // route has a bottom safe area. A route the keys end has none, as a view
-    // on UIKit's keyboard layout guide has none (LLP 1123 D9), and the
-    // layout that follows runs in the keyboard's own animation, so the bar
-    // moves between the two on the keyboard's curve in either direction.
+    // The bar rises 16 points from the keys and docks 28 from the screen's
+    // bottom, 57 and 69 points tall, as the platform's composer does: docked
+    // is wherever the route, which takes the bottom edge, has a bottom safe
+    // area (the home indicator's band). Above the keys it has none, as UIKit
+    // keeps the keys' region apart (LLP 1123 D9), and the layout that
+    // follows runs in the keyboard's own animation, so the bar moves between
+    // the two on the keyboard's curve in either direction.
     // Its sides reach as far as the balloons, to the layout margins; docked,
     // a side that meets a rounded corner of the display comes in by up to 12
     // points more, as UIKit's corner-adapted safe area says it does (28 from
     // an iPhone 18 Pro's sides): not beside a sidebar, a side strip or a
     // corner the safe area already clears.
-    column id="composer-bar" testId="composer-bar" swipe=hideKeys swipe-direction="down" position="relative" flex-shrink=0 padding-top=0.6667 padding-left="calc(max(16px, var(--exact-layout-margins-inset-left)) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))" padding-right="calc(max(16px, var(--exact-layout-margins-inset-right)) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+    column id="composer-bar" testId="composer-bar" swipe=hideKeys swipe-flick="down" position="relative" flex-shrink=0 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))` padding-right=`calc(${margin(platform, "right")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
       // The bar blurs what passes under it: the chrome material at 0.7,
       // rising 12 points above the bar and fading in over its first 30 on a
       // smoothstep, and reaching 40 points below it, under the keyboard's
@@ -46,7 +50,7 @@ component Composer
       // One glass group: a press swells either glass, and
       // within 12 points the two merge
       row align-items="flex-end" gap=12 glassGroup=12
-        button appearance="none" press=menuOpened popovertarget="add-menu" retainFocus=true testId="add" aria-label="Add to conversation" class=GlassButton backgroundMaterial="glass"
+        button appearance="none" press=menuOpened popovertarget="add-menu" retainFocus=true testId="add" aria-label="Add to conversation" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
           box width=15.3333 height=15.3333 position="relative"
             box position="absolute" left=6.54165 top=0 width=2.25 height=15.3333 border-radius=1.125 background-color="light-dark(#858e99, #b0b5bd)"
             box position="absolute" top=6.54165 left=0 height=2.25 width=15.3333 border-radius=1.125 background-color="light-dark(#858e99, #b0b5bd)"
@@ -72,12 +76,15 @@ component Composer
 // platform's toolbar has them (its trash and its forward, which shares). It
 // sits where the composer's bar sits, docked.
 component ChoiceBar
+  // The host, which sets the side margins (`margin`)
+  inject
+    platform: string
   props
     count: number
     share: action
   view
-    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" padding-top=0.6667 padding-left="calc(max(16px, var(--exact-layout-margins-inset-left)) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))" padding-right="calc(max(16px, var(--exact-layout-margins-inset-right)) + min(12px, var(--exact-safe-area-inset-bottom), var(--exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))" padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
-      button appearance="none" commandfor="delete-messages" command="show-modal" disabled=(count == 0) testId="delete-chosen" aria-label="Delete" class=GlassButton backgroundMaterial="glass" width=44 height=44 border-radius=22
+    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" align-items="center" min-height=40.3333 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left)))` padding-right=`calc(${margin(platform, "right")} + min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right)))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+      button appearance="none" commandfor="delete-messages" command="show-modal" disabled=(count == 0) testId="delete-chosen" aria-label="Delete" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
         image "symbol:delete" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")
-      button appearance="none" press=share disabled=(count == 0) testId="share-chosen" aria-label="Share" class=GlassButton backgroundMaterial="glass" width=44 height=44 border-radius=22
+      button appearance="none" press=share disabled=(count == 0) testId="share-chosen" aria-label="Share" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
         image "symbol:share" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")

@@ -1,4 +1,4 @@
-use Message, Secondary, arrive, receipt, fade, dot, markIn, markOut from "./types.contract"
+use Message, Secondary, arrive, appear, receipt, fade, dot, markIn, markOut, margin from "./types.contract"
 
 // Calendar days from `at` to `now`, both at the offset
 fn daysBetween(at: number, now: number, offset: number): number = floor((now + offset * 60000) / 86400000) - floor((at + offset * 60000) / 86400000)
@@ -36,26 +36,51 @@ component Balloon
     // a send starts with it where the field had it
     shift: number
     shiftMotion: string
-    // How the tail goes and comes, when a later message takes it or gives it back
+    // How the tail goes and comes, when a later message takes it or gives it
+    // back: a transition of `clip-path`, which moves the outline as its size
+    // changes too
     tailMotion: string
+    // A transcript's balloon, which a long press lifts into the message's
+    // menu and a swipe right replies to; any other is drawn only
+    menu: bool
+    aim: action
+    reply: action
   state width = 0
   state height = 0
+  // Flipped by each measurement, which adds or takes away a line of no
+  // length where the outline closes: a clip whose commands change does not
+  // interpolate (LLP 1003.003 D2), so the outline takes its new size at once,
+  // the text having taken its new lines, and only the tail moves on its
+  // transition
+  state measuredOdd = false
   // Its padding around the text; the outline is drawn around both
   derive padX = 14
   derive padY = 8
   // The root's content box, as `resize` reports it, with that padding back
   action measured(w: number, h: number)
+    measuredOdd = not measuredOdd
     width = w + 2 * padX
     height = h + 2 * padY
   // The first line is the font's natural height; later lines the line box
   derive lead = bodySize * 1.193359 - (bodySize + 3)
   derive r = (bodySize * 1.193359 + 20) / 2
   derive k = r / 20.14355
+  // The tail's scale: as `k`, but never reaching past the corner it replaces
+  // (a narrow balloon at the largest text sizes)
+  derive kt = min(k, eH / 22.22841)
+  // How far below the body the tail reaches (its curve's lowest point): the
+  // balloon's box reaches that far and gives the room back below it, so a
+  // row is laid out by its body
+  derive tailDepth = k * 7.20089 + 0.5
   derive eMax = r * 1.5286655
   derive eV = min(height / 2, eMax)
   derive eH = min(width / 2, eMax)
   derive uV = (eV - r) / (eMax - r)
-  derive uH = (eH - r) / (eMax - r)
+  // A side shorter than the corners' radius twice (a narrow balloon at the
+  // largest text sizes) fits the corners' profile to its half, narrowing
+  // them along it, so their curves stay within their half of the side
+  derive rH = min(r, eH)
+  derive uH = max(0, (eH - r) / (eMax - r))
   derive left = not mine
   derive c1V = r * (0.8732607 + uV * 0.2152297)
   derive c2pV = r * (0.0240926 + uV * -0.0240926)
@@ -64,34 +89,34 @@ component Balloon
   derive endaV = r * (0.6299341 + uV * 0.0015598)
   derive midpV = r * (0.1726399 + uV * -0.0035798)
   derive midaV = r * (0.3747661 + uV * -0.0019421)
-  derive c1H = r * (0.8732607 + uH * 0.2152297)
-  derive c2pH = r * (0.0240926 + uH * -0.0240926)
-  derive c2aH = r * (0.7476761 + uH * 0.1207310)
-  derive endpH = r * (0.0709944 + uH * 0.0039169)
-  derive endaH = r * (0.6299341 + uH * 0.0015598)
-  derive midpH = r * (0.1726399 + uH * -0.0035798)
-  derive midaH = r * (0.3747661 + uH * -0.0019421)
+  derive c1H = rH * (0.8732607 + uH * 0.2152297)
+  derive c2pH = rH * (0.0240926 + uH * -0.0240926)
+  derive c2aH = rH * (0.7476761 + uH * 0.1207310)
+  derive endpH = rH * (0.0709944 + uH * 0.0039169)
+  derive endaH = rH * (0.6299341 + uH * 0.0015598)
+  derive midpH = rH * (0.1726399 + uH * -0.0035798)
+  derive midaH = rH * (0.3747661 + uH * -0.0019421)
   derive topLeft = `M ${point(left, width, 0, eV)} C ${point(left, width, 0, c1V)} ${point(left, width, c2pV, c2aV)} ${point(left, width, endpV, endaV)} C ${point(left, width, midpV, midaV)} ${point(left, width, midaH, midpV)} ${point(left, width, endaH, endpH)} C ${point(left, width, c2aH, c2pH)} ${point(left, width, c1H, 0)} ${point(left, width, eH, 0)}`
   derive topRight = `L ${point(left, width, width - eH, 0)} C ${point(left, width, width - c1H, 0)} ${point(left, width, width - c2aH, c2pH)} ${point(left, width, width - endaH, endpH)} C ${point(left, width, width - midaH, midpH)} ${point(left, width, width - midpH, midaV)} ${point(left, width, width - endpV, endaV)} C ${point(left, width, width - c2pV, c2aV)} ${point(left, width, width, c1V)} ${point(left, width, width, eV)} L ${point(left, width, width, height - eV)}`
-  derive tailCorner = `C ${point(left, width, width, height - k * 15.80647)} ${point(left, width, width - k * 1.42506, height - k * 11.58438)} ${point(left, width, width - k * 4.05681, height - k * 8.13379)} C ${point(left, width, width - k * 5.12321, height - k * 6.73577)} ${point(left, width, width - k * 6.35449, height - k * 5.50354)} ${point(left, width, width - k * 7.71498, height - k * 4.45517)} C ${point(left, width, width - k * 9.65380, height - k * 2.94340)} ${point(left, width, width - k * 10.49278, height - k * 1.36616)} ${point(left, width, width - k * 10.49278, height + k * 0.40647)} C ${point(left, width, width - k * 10.49278, height + k * 1.59796)} ${point(left, width, width - k * 10.28228, height + k * 2.77536)} ${point(left, width, width - k * 8.57108, height + k * 5.02338)} C ${point(left, width, width - k * 7.75023, height + k * 6.10106)} ${point(left, width, width - k * 8.57410, height + k * 7.20089)} ${point(left, width, width - k * 9.85725, height + k * 6.71342)} C ${point(left, width, width - k * 12.49605, height + k * 5.71128)} ${point(left, width, width - k * 15.50147, height + k * 3.88728)} ${point(left, width, width - k * 18.13424, height + k * 1.94041)} C ${point(left, width, width - k * 20.49305, height + k * 0.19597)} ${point(left, width, width - k * 21.12152, height + k * 0.01972)} ${point(left, width, width - k * 22.22841, height + k * 0.01267)} L ${point(left, width, width - eH, height)}`
+  derive tailCorner = `C ${point(left, width, width, height - kt * 15.80647)} ${point(left, width, width - kt * 1.42506, height - kt * 11.58438)} ${point(left, width, width - kt * 4.05681, height - kt * 8.13379)} C ${point(left, width, width - kt * 5.12321, height - kt * 6.73577)} ${point(left, width, width - kt * 6.35449, height - kt * 5.50354)} ${point(left, width, width - kt * 7.71498, height - kt * 4.45517)} C ${point(left, width, width - kt * 9.65380, height - kt * 2.94340)} ${point(left, width, width - kt * 10.49278, height - kt * 1.36616)} ${point(left, width, width - kt * 10.49278, height + kt * 0.40647)} C ${point(left, width, width - kt * 10.49278, height + kt * 1.59796)} ${point(left, width, width - kt * 10.28228, height + kt * 2.77536)} ${point(left, width, width - kt * 8.57108, height + kt * 5.02338)} C ${point(left, width, width - kt * 7.75023, height + kt * 6.10106)} ${point(left, width, width - kt * 8.57410, height + kt * 7.20089)} ${point(left, width, width - kt * 9.85725, height + kt * 6.71342)} C ${point(left, width, width - kt * 12.49605, height + kt * 5.71128)} ${point(left, width, width - kt * 15.50147, height + kt * 3.88728)} ${point(left, width, width - kt * 18.13424, height + kt * 1.94041)} C ${point(left, width, width - kt * 20.49305, height + kt * 0.19597)} ${point(left, width, width - kt * 21.12152, height + kt * 0.01972)} ${point(left, width, width - kt * 22.22841, height + kt * 0.01267)} L ${point(left, width, width - eH, height)}`
   derive roundCorner = `C ${point(left, width, width, height - c1V)} ${point(left, width, width - c2pV, height - c2aV)} ${point(left, width, width - endpV, height - endaV)} C ${point(left, width, width - midpH, height - midaV)} ${point(left, width, width - midaH, height - midpH)} ${point(left, width, width - endaH, height - endpH)} C ${point(left, width, width - c2aH, height - c2pH)} ${point(left, width, width - c1H, height)} ${point(left, width, width - eH, height)}`
-  derive bottomLeft = `L ${point(left, width, eH, height)} C ${point(left, width, c1H, height)} ${point(left, width, c2aH, height - c2pH)} ${point(left, width, endaH, height - endpH)} C ${point(left, width, midaH, height - midpH)} ${point(left, width, midpH, height - midaV)} ${point(left, width, endpV, height - endaV)} C ${point(left, width, c2pV, height - c2aV)} ${point(left, width, 0, height - c1V)} ${point(left, width, 0, height - eV)} Z`
-  derive outline = `${topLeft} ${topRight} ${roundCorner} ${bottomLeft}`
-  // The tail is what lies between the tail's curve and the round corner it
-  // replaces: the tail's curve out to the bottom edge, then the corner's
-  // curves back to where both start
-  derive cornerBack = `C ${point(left, width, width - c1H, height)} ${point(left, width, width - c2aH, height - c2pH)} ${point(left, width, width - endaH, height - endpH)} C ${point(left, width, width - midaH, height - midpH)} ${point(left, width, width - midpH, height - midaV)} ${point(left, width, width - endpV, height - endaV)} C ${point(left, width, width - c2pV, height - c2aV)} ${point(left, width, width, height - c1V)} ${point(left, width, width, height - eV)} Z`
-  derive tailShape = `M ${point(left, width, width, height - eV)} ${tailCorner} ${cornerBack}`
-  // Where the tail shrinks to, inside the body's corner
-  derive tailOrigin = `${(left ? eH : width - eH).toFixed(3)}px ${(height - eV).toFixed(3)}px`
+  derive bottomLeft = `L ${point(left, width, eH, height)} C ${point(left, width, c1H, height)} ${point(left, width, c2aH, height - c2pH)} ${point(left, width, endaH, height - endpH)} C ${point(left, width, midaH, height - midpH)} ${point(left, width, midpH, height - midaV)} ${point(left, width, endpV, height - endaV)} C ${point(left, width, c2pV, height - c2aV)} ${point(left, width, 0, height - c1V)} ${point(left, width, 0, height - eV)}${measuredOdd ? ` L ${point(left, width, 0, height - eV)}` : ""} Z`
+  // The corner without the tail, drawn as the tail is: the round corner's
+  // three curves, then the tail's other four held where the corner ends, so
+  // the tail's transition moves the one into the other
+  derive cornerEnd = point(left, width, width - eH, height)
+  derive held = `C ${cornerEnd} ${cornerEnd} ${cornerEnd}`
+  derive roundAsTail = `${roundCorner} ${held} ${held} ${held} ${held} L ${cornerEnd}`
+  derive outline = `${topLeft} ${topRight} ${tail ? tailCorner : roundAsTail} ${bottomLeft}`
   view
-    // Text narrower than the balloon's smallest width sits in its middle;
-    // wider text fills the balloon, its lines left-aligned
-    box id=identifier testId=identifier position="relative" display="flex" justify-content="center" min-width=48 max-width="100%" box-sizing="border-box" padding=`${padY}px ${padX}px` resize=measured
-      // Paint nothing until the first measurement gives the outline its size.
-      // The tail lies under the body, so it shrinks into it.
-      box position="absolute" left=0 top=0 right=0 bottom=-8 class=(mine ? Sent : Received) clip-path=`path('${tailShape}')` opacity=(width > 0 and tail ? 1 : 0) scale=(tail ? 1 : 0) transform-origin=tailOrigin transition=tailMotion aria-hidden=true pointer-events="none"
-      box position="absolute" left=0 top=0 right=0 bottom=-8 class=(mine ? Sent : Received) clip-path=`path('${outline}')` opacity=(width > 0 ? 1 : 0) aria-hidden=true pointer-events="none"
+    // One box is the body and the tail, the space below the body that the
+    // tail reaches into included, and clips itself to its outline, so a long
+    // press lifts it in that outline, and the tail's transition draws the
+    // tail into the body's corner and out of it. Nothing shows until the
+    // first measurement gives the outline its size, at once: a clip moves
+    // only from another path. Text narrower than the balloon's smallest width
+    // sits in its middle; wider text fills the balloon, its lines left-aligned.
+    box id=identifier testId=identifier position="relative" display="flex" justify-content="center" min-width=48 max-width="100%" box-sizing="border-box" padding=`${padY}px ${padX}px ${padY + tailDepth}px` margin-bottom=(0 - tailDepth) class=(mine ? Sent : Received) clip-path=(width > 0 ? `path('${outline}')` : "none") opacity=(width > 0 ? 1 : 0) transition=tailMotion resize=measured pointer-events=(menu ? "auto" : "none") contextmenu=aim contextPopover="message-menu" swipe=reply swipe-follow="right" touch-action="pan-y"
       // Keep the 10-point inset while allowing ink beyond the tight line box.
       // The first line sits at the font's natural height, so the lead
       // over the line box goes half above the text and half below.
@@ -99,12 +124,17 @@ component Balloon
 
 // Rows are laid out by their balloons' bodies: a tail paints into the
 // space below its row and never moves another. A run's last row keeps room
-// for it, and the row holding the receipt room for that instead. When the
-// receipt moves on, both rooms resize on a critically damped spring while
-// the old words fade in 100 ms as they leave (a fade, which reduced motion
-// keeps), and the new ones grow about their centre once those are gone. Only
-// the receipt's row holds its words.
+// for it, and the row holding the receipt room for that instead. A room
+// takes its height with the change that gives it, and the list moves the
+// rows that change shifts, all on one spring, as a collection view's batch
+// update does. When the receipt moves on, the old words fade in 100 ms as
+// they leave (a fade, which reduced motion keeps), and the new ones grow
+// about their centre once those are gone. Only the receipt's row holds its
+// words.
 component MessageRow
+  // The host, which sets the side margins (`margin`)
+  inject
+    platform: string
   props
     message: Message
     receiptId: string
@@ -128,7 +158,6 @@ component MessageRow
   // The receipt's room is its offset, its line and 1 point: 19.333 at the
   // default text size. The last row's tail paints into the transcript's foot.
   derive room = hasReceipt ? 6.3333 + bodySize * 0.764706 : (tail and not message.last ? 6.65 : 0)
-  derive roomMotion = reduced ? "none" : "height -exact-spring(438.65, 41.888, 1)"
   // Choosing begins and ends in 0.3 s on the default curve, as the platform's does
   derive chooseMotion = reduced ? "none" : "300ms ease-in-out"
   view
@@ -141,31 +170,35 @@ component MessageRow
     // a sent one stays; the row's receipt hides, and a tap anywhere on the
     // row chooses it (the platform's selection mode), the row's one element
     // for VoiceOver then
-    column testId=`row-${message.id}` position="relative" padding-left="max(16px, var(--exact-layout-margins-inset-left))" padding-right="max(16px, var(--exact-layout-margins-inset-right))" padding-top=(message.stamped ? 0 : 2) padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
-      // The day bold and the time regular: "Today 9:41 AM", "Monday 6:12 PM"
+    column testId=`row-${message.id}` position="relative" padding-left=`${margin(platform, "left")}` padding-right=`${margin(platform, "right")}` padding-top=(message.stamped ? 0 : 2) padding-bottom=(message.endsRun and not message.last ? 8 : 2) box-sizing="border-box"
+      // The day bold and the time regular: "Today 9:41 AM", "Monday 6:12 PM".
+      // A sent row's comes in where it is as its balloon flies there.
       if message.stamped
-        text testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" margin-bottom=9
+        text testId=`stamp-${message.id}` class=Secondary text-align="center" font-size="0.647059rem" line-height="0.764706rem" margin-bottom=9 animation=(hidden and not reduced ? "appear 300ms ease-out both" : "none")
           text stampDay(message.at, now, utcOffset) font-weight=600
           text ` ${formatTime(message.at, utcOffset, "short")}`
       if message.reply != ""
-        row justify-content=(message.mine ? "flex-end" : "flex-start") margin-bottom=6 aria-hidden=choosing margin-left=(choosing and not message.mine ? "calc(var(--exact-safe-area-inset-left) + 57px - max(16px, var(--exact-layout-margins-inset-left)))" : "0px") -exact-layout-transition=chooseMotion
+        row justify-content=(message.mine ? "flex-end" : "flex-start") margin-bottom=6 aria-hidden=choosing margin-left=(choosing and not message.mine ? `calc(57px - ${margin(platform, "left")})` : "0px") -exact-layout-transition=chooseMotion
           text message.reply class=Secondary border-left="2px solid -exact-separator" padding-left=8 max-width="85%" font-size="0.764706rem" line-clamp=2
-      box align-self=(message.mine ? "flex-end" : "flex-start") opacity=(hidden ? 0 : 1) aria-hidden=choosing max-width="min(85%, calc(100% - 89.333333px))" contextmenu=aim(message.id, message.body) contextPopover="message-menu" swiperight=replyTo(message.body) touch-action="pan-y" animation=(arriving and not reduced ? "arrive 220ms ease-out both" : "none") transform-origin="0% 100%" margin-left=(choosing and not message.mine ? "calc(var(--exact-safe-area-inset-left) + 57px - max(16px, var(--exact-layout-margins-inset-left)))" : "0px") -exact-layout-transition=chooseMotion
-        Balloon(body=message.body, mine=message.mine, tail=tail, bodySize=bodySize, identifier=`bubble-${message.id}`, shift=0, shiftMotion="none", tailMotion=(reduced ? "none" : "scale -exact-spring(438.649, 41.8879, 1), opacity -exact-spring(438.649, 41.8879, 1)"))
-      column height=room transition=roomMotion flex-shrink=0 pointer-events="none" opacity=(choosing ? 0 : 1)
+      box align-self=(message.mine ? "flex-end" : "flex-start") opacity=(hidden ? 0 : 1) aria-hidden=choosing max-width="min(85%, calc(100% - 89.333333px))" animation=(arriving and not reduced ? "arrive 220ms ease-out both" : "none") transform-origin="0% 100%" margin-left=(choosing and not message.mine ? `calc(57px - ${margin(platform, "left")})` : "0px") -exact-layout-transition=chooseMotion
+        Balloon(body=message.body, mine=message.mine, tail=tail, bodySize=bodySize, identifier=`bubble-${message.id}`, shift=0, shiftMotion="none", tailMotion=(reduced ? "none" : "clip-path -exact-spring(438.649, 41.8879, 1)"), menu=true, aim=aim(message.id, message.body), reply=replyTo(message.body))
+      column height=room flex-shrink=0 pointer-events="none" opacity=(choosing ? 0 : 1)
         if message.mine and hasReceipt
           text (message.receipt == "Read" and message.readAt > 0 ? `Read ${formatDay(message.readAt, now, utcOffset, "list")}` : (message.receipt != "" ? message.receipt : "Delivered")) testId=`receipt-${message.id}` class=Secondary align-self="flex-end" font-size="0.647059rem" line-height="0.764706rem" font-weight=600 margin-top=5.3333 margin-right=19.667 animation=(hasReceipt and message.receipt == "" and now - message.at < 1900 and not reduced ? "receipt 610ms cubic-bezier(0.25, 1, 0.5, 1) 100ms backwards" : "none") -exact-exit-animation="fade 100ms ease-out both"
       if choosing
-        row position="absolute" top=0 bottom=0 left="calc(var(--exact-safe-area-inset-left) + 11px)" align-items="center" pointer-events="none" animation=(reduced ? "none" : "markIn 300ms ease-in-out both") -exact-exit-animation="markOut 300ms ease-in-out both" aria-hidden=true
+        row position="absolute" top=0 bottom=0 left=11 align-items="center" pointer-events="none" animation=(reduced ? "none" : "markIn 300ms ease-in-out both") -exact-exit-animation="markOut 300ms ease-in-out both" aria-hidden=true
           image (chosen ? "symbol:select-fill" : "symbol:circle") font-size=22 testId=`mark-${message.id}` color=(chosen ? "-exact-system-blue" : "-exact-tertiary-label") -exact-symbol-rendering="palette" -exact-symbol-palette=(chosen ? "#ffffff -exact-system-blue" : "-exact-tertiary-label")
         button appearance="none" position="absolute" inset=0 press=choose(message.id) role="checkbox" aria-checked=chosen aria-label=message.body testId=`choose-${message.id}`
 
 component Typing
+  // The host, which sets the side margins (`margin`)
+  inject
+    platform: string
   props
     name: string
     reduced: bool
   view
-    row testId="typing-indicator" aria-label=`${name} is typing` gap=4 align-items="center" justify-content="center" width=58 height=36 border-radius=18 class=Received margin-left="max(16px, var(--exact-layout-margins-inset-left))" margin-top=8 margin-bottom=4
+    row testId="typing-indicator" aria-label=`${name} is typing` gap=4 align-items="center" justify-content="center" width=58 height=36 border-radius=18 class=Received margin-left=`${margin(platform, "left")}` margin-top=8 margin-bottom=4
       box width=8.5 height=8.5 border-radius=4.25 background-color="light-dark(#00000033, #ffffff66)" animation=(reduced ? "none" : "dot 500ms ease-in-out infinite alternate")
       box width=8.5 height=8.5 border-radius=4.25 background-color="light-dark(#00000033, #ffffff66)" animation=(reduced ? "none" : "dot 500ms 250ms ease-in-out infinite alternate")
       box width=8.5 height=8.5 border-radius=4.25 background-color="light-dark(#00000033, #ffffff66)" animation=(reduced ? "none" : "dot 500ms 500ms ease-in-out infinite alternate")

@@ -1,6 +1,6 @@
 // The chat's icons that the platform's set lacks off Apple: a contact card's
 // Call and Video rows.
-tamber chat
+forma chat
 
 icons
   icon.call = icon(sf "phone", svg "icons/call.svg")
