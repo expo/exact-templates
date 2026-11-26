@@ -44,7 +44,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 
 ## Verified
 
-With the Exact commit in `exact.json`, from `app/`: `bun exact.mjs test web` passes, and after `bun exact.mjs web-build`, `bun test search.test.mjs` passes in Chromium. On a folded iPhone Duo simulator (iOS 27.1), `bun exact.mjs test ios` passes. On the open one it passes all but the search test, whose 390×844 launch at Home finds Home off screen (`QUEUE.md`). On macOS, `bun exact.mjs test macos` passes the launch, Info, search and card-menu tests; the Favorite button and the collection's Edit and Delete fail there (`QUEUE.md`). The Linux and Android builds have not been run.
+With the Exact commit in `exact.json`, from `app/`: `bun exact.mjs test web` passes, and after `bun exact.mjs web-build`, `bun test search.test.mjs` passes in Chromium. On an iPhone Duo simulator (iOS 27.1), folded and open, `bun exact.mjs test ios` passes. On macOS, `bun exact.mjs test macos` passes the launch, Info, search and card-menu tests; the Favorite button and the collection's Edit and Delete fail there (`QUEUE.md`). The Linux and Android builds have not been run.
 
 ## Needs
 
