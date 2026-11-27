@@ -234,9 +234,10 @@ component ExactChat
       if not atEnd
         latest()
       send changed = command("send", openId, draft.trim(), reply, wall.epochAtZero + performanceNow())
-      // The transcript scrolls the new row in at its end, smoothly from an
-      // end that shows: a smooth scroll the app asks for owns the list until
-      // it rests, so the followed end does not jump to the new row first.
+      // The send asks for the new row at the transcript's end, smoothly from
+      // an end that shows: a smooth scroll the app asks for owns the list
+      // until it rests, so the followed end does not jump to the new row
+      // first, unless on iOS the batch's rows ride (`QUEUE.md`).
       // From further away, past rows not built, or with reduced motion, it
       // shows the row at once. It aims at the transcript's end, a typing
       // indicator below the row included, and while the send flies follows
@@ -531,8 +532,8 @@ component ExactChat
               // own edge
               list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=(min(48, bodySize * 1.193359 + 24)) scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" -exact-keyboard-dismiss-padding=(composerFocused ? barContent + 15.6667 : 0) flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
                 // A row that leaves (a deleted message, the typing
-                // indicator) fades where it shows; the rows the removal moves
-                // take their places by layout (`QUEUE.md`)
+                // indicator) fades; on iOS it and the rows the removal moves
+                // ride to their places (LLP 1010 §6.12)
                 for message in transcript key=message.id
                   column -exact-exit-animation="fade 350ms cubic-bezier(0.2, 0.1, 0.1, 1) both"
                     if message.id == "typing"
