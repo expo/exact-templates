@@ -180,11 +180,11 @@ test "A search result opens the card's menu, whose Favorite adds it to Favorites
 test "A card carries its landmark's name and photo for a drag"
   at "/landmarks"
   clock settle
-  expect drag "card-1016" has "image/jpeg" name "1016.jpg"
+  expect drag "card-1016" has "image/jpeg" name "Mount Fuji.jpg"
   expect drag "card-1016" has "text/plain" == "Mount Fuji"
 
 test "A collection's tile carries its landmark's name and photo for a drag"
   at "/collection/1002"
   clock settle
-  expect drag "tile-1018" has "image/jpeg" name "1018.jpg"
+  expect drag "tile-1018" has "image/jpeg" name "Mount Everest.jpg"
   expect drag "tile-1018" has "text/plain" == "Mount Everest"
