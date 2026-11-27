@@ -22,7 +22,7 @@ From build 52 (2026-11-27):
 - **The sidebar's rows jumped as the search opened and closed.** Exact moved them twice on its own while UIKit moved the bar: a spring on the list's offset, and the keys taken as Home's safe area as the search closed, though Home ignores the keyboard. Both gone (Exact). Confirm on build 53.
 - **Dragged landmarks: text above the image.** The drag now offers the name before the photo (Exact, LLP 1094.000). Confirm on build 53.
 - **"Search Results" missing from the detail's bar until the app was backgrounded.** Not reproduced; the code sets the title before the results come in on every path. Next time it shows, the dev menu's Save Trace would capture it.
-- **Scroll judder at the rubber band's release on Home.** The trace's one late frame had no Exact work in it, and the code shows no cause; a release trace on the phone (the feel probe) is next.
+- **Scroll judder at the rubber band's release on Home.** UI Gallery's inertial-scroll stutter ended with two changes on main that build 55 carries: text inside a nested scroller, as in the Landmarks strips, asks for preparation during a native scroll only when it can come into view (#2047, profiled on this screen's first strip, in Landscapes since build 54), and a grouped list with no card shadows skips a shadow pass on each scroll layout (#2059, the sidebar's list). Confirm on build 55; if it still judders, a release trace on the phone is next.
 - **The sidebar's hidden state survives a force quit.** UIKit's own: it saves the split's column state in the app's defaults (`com.apple.UIKit.UISplitViewController.Root`). No change.
 
 From build 50 (2026-11-26):
