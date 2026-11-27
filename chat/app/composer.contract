@@ -11,6 +11,11 @@ component Composer
     maximumHeight: number
     error: string
     edit: action
+    // The software keys are up for this field
+    keysUp: bool
+    // The bar took its size, which the transcript starts a drag that takes
+    // the keys down from (its content box: the padding is added)
+    barResized: action
     began: action
     // The field let go of the keys
     ended: action
@@ -22,13 +27,13 @@ component Composer
   action hideKeys
     blur("composer")
   view
-    // The bar rises 16 points from the keys and docks 28 from the screen's
-    // bottom, 57 and 69 points tall, as the platform's composer does: docked
-    // is wherever the route, which takes the bottom edge, has a bottom safe
-    // area (the home indicator's band). Above the keys it has none, as UIKit
-    // keeps the keys' region apart (LLP 1123 D9), and the layout that
-    // follows runs in the keyboard's own animation, so the bar moves between
-    // the two on the keyboard's curve in either direction.
+    // The bar rises 15 points from the keys and docks 28 from the screen's
+    // bottom, as the platform's composer does (measured on the iPhone 18
+    // Pro, iOS 27.0): docked is wherever the route, which takes the bottom
+    // edge, has a bottom safe area (the home indicator's band), and above the
+    // keys is wherever they are up for its field (`keysUp`), whose change runs in
+    // the keyboard's own animation, so the bar moves between the two on the
+    // keyboard's curve in either direction.
     // Its sides reach as far as the balloons, to the layout margins; docked,
     // a side that meets a rounded corner of the display comes in by up to 12
     // points more, as UIKit's corner-adapted safe area says it does (28 from
@@ -38,7 +43,7 @@ component Composer
     // the bar's own safe area and never below 0, so beside a sidebar that
     // the split's detail reaches under, as on the open iPhone Duo, whose
     // sidebar is wider than the window's corner, it adds nothing.
-    column id="composer-bar" testId="composer-bar" swipe=hideKeys swipe-flick="down" position="relative" flex-shrink=0 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left))))` padding-right=`calc(${margin(platform, "right")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right))))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+    column id="composer-bar" testId="composer-bar" resize=barResized swipe=hideKeys swipe-flick="down" position="relative" flex-shrink=0 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left))))` padding-right=`calc(${margin(platform, "right")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right))))` padding-bottom=(keysUp ? "15px" : "max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))")
       // The bar blurs what passes under it: the chrome material at 0.7,
       // rising 12 points above the bar and fading in over its first 30 on a
       // smoothstep, and reaching 40 points below it, under the keyboard's
@@ -88,8 +93,10 @@ component ChoiceBar
   props
     count: number
     share: action
+    // The bar took its size (`Composer`'s `barResized`)
+    barResized: action
   view
-    row testId="choice-bar" position="relative" flex-shrink=0 justify-content="space-between" align-items="center" min-height=40.3333 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left))))` padding-right=`calc(${margin(platform, "right")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right))))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
+    row testId="choice-bar" resize=barResized position="relative" flex-shrink=0 justify-content="space-between" align-items="center" min-height=40.3333 padding-top=0.6667 padding-left=`calc(${margin(platform, "left")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-left) - var(--exact-safe-area-inset-left))))` padding-right=`calc(${margin(platform, "right")} + max(0px, min(12px, var(--exact-safe-area-inset-bottom), env(-exact-safe-area-corners-inset-right) - var(--exact-safe-area-inset-right))))` padding-bottom="max(16px, min(28px, calc(var(--exact-safe-area-inset-bottom) * 12)))"
       button appearance="none" commandfor="delete-messages" command="show-modal" disabled=(count == 0) testId="delete-chosen" aria-label="Delete" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
         image "symbol:delete" font-size=17 color=(count == 0 ? "-exact-tertiary-label" : "-exact-system-blue")
       button appearance="none" press=share disabled=(count == 0) testId="share-chosen" aria-label="Share" class=GlassButton backgroundMaterial="glass" -exact-hit-slop="2px"
