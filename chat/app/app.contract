@@ -571,7 +571,7 @@ component ExactChat
           // above them, and the empty state ends above it.
           column navigationKey=`${entry.id}` navigationSplit="320" position="absolute" inset=0
             header
-              h2 "Chats"
+              h1 "Chats"
               input type="search" value=query input=searchChats placeholder="Search" aria-label="Search conversations" testId="search"
             column flex=1 min-height=0 position="relative" display="flex" flex-direction="column" resize=listResized
               list appearance="auto" listStyle="plain" flex=1 min-height=0
