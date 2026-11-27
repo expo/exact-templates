@@ -618,6 +618,7 @@ component SearchResults
             section
               header
                 text "Landmarks"
+              // Each result pushes its page, so it ends in the disclosure chevron, which each host shows by its rule
               for l in ls key=l.id
                 link href=path("landmark", l.id) press=open(path("landmark", l.id)) contextmenu=aim(l.id) contextPopover=menu display="flex" align-items="center" testId=`result-${l.id}`
                   image `assets/apple/${l.id}-thumb.jpg` id=`thumb-${l.id}` width=48 height=48 object-fit="cover" border-radius=8 margin-right=14 aria-hidden=true
@@ -630,6 +631,7 @@ component SearchResults
                       text beforeMatch(l.continent, q)
                       text matched(l.continent, q) font-weight=600
                       text afterMatch(l.continent, q)
+                  image "symbol:forward-chevron"
           if cs.length > 0
             section
               header
@@ -643,6 +645,7 @@ component SearchResults
                       text matched(c.name, q) font-weight=600
                       text afterMatch(c.name, q)
                     text itemCount(c.landmarkIds.length) font="-exact-subheadline" color="-exact-secondary-label"
+                  image "symbol:forward-chevron"
 
 // A collection being edited (CollectionDetailEditingView): its title, its
 // description and its landmarks, each under a heading, on cards.

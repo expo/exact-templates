@@ -6,6 +6,13 @@ What to do next for this template, most pressing first. Add a line when you find
 
 The user's reports, newest first, until each is fixed or answered.
 
+From build 54 (2026-11-27):
+
+- **Turned to portrait with results up, the sidebar hid and left the left side empty, and shown it covered the "Search Results" title.** UIKit found no room for the sidebar beside the detail at the open Duo's portrait width and laid it over the detail. On a phone Exact now sets the detail's minimum width to 320 points (`minimumSecondaryColumnWidth`), so UIKit tiles the sidebar in both orientations and keeps it shown or hidden through a turn; the results fit beside it, and fill the width when it is hidden (Exact, LLP 1127 D3). Confirm on build 55.
+- **Folding with results up showed the screen beneath the search.** The search is now a level over the detail panes: a fold with results in front keeps them over the list with the query, the selected page kept behind them, and closing the search shows the list (Exact, LLP 1127.000 D3). Confirm on build 55, and say if closing should show the selected page instead.
+- **Folded, the list's chevrons animated when nothing about them changed.** At a fold or an unfold the list read the split's state between UIKit's steps and switched between the sidebar's look, which has no chevrons, and its own, up to three times; it now switches once, as UIKit asks (Exact). Opening and closing the search, folded, changed no row on the simulator; the whole list moves down while the field is open, which UIKit's own split does too (below, 2026-11-23). Confirm on build 55.
+- **Search results should follow the system's chevron rules.** Each result pushes its page, so its row now ends in the disclosure chevron, and each host decides where it shows, as for Home's rows. Confirm on build 55.
+
 From build 52 (2026-11-27):
 
 - **Back with Info open, by swipe or button, was cancelled.** Exact closed the Info column as the detail's pop began, then read the column at the pop's end, empty by then, so the router stayed on Info and put the landmark back. Fixed in Exact ("iOS: Back with the inspector shown goes back past both"). Confirm on build 53.
