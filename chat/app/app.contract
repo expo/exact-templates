@@ -39,6 +39,13 @@ component ExactChat
   // When the rise first took an end, 0 before it has one, and when its end
   // last moved
   state riseAt = 0
+  // The composer's or the choice bar's content height (`barResized`): over
+  // the keys the bar is that, its 0.67 points above and its 15 below, which
+  // a drag in the transcript takes the keys down from
+  state barContent = 40.3333
+  // The composer's field has the focus, so the keys up are its own
+  // (`began`, `keysEnded`): the list's search beside it raises them too
+  state composerFocused = false
   state riseMovedAt = 0
   // The row the send's scroll last aimed at
   state revealedRow = ""
@@ -64,6 +71,9 @@ component ExactChat
   state peeked = ""
   // The person whose card a long press on their avatar in the list shows
   state carded = ""
+  // The list of conversations' width, which a person's card is as wide as,
+  // less a row's margins (`listResized`)
+  state listWidth = 0
   // Choosing messages, from a balloon's More…: the ones chosen to delete or
   // share
   state choosing = false
@@ -76,8 +86,11 @@ component ExactChat
   state windowStart = ""
   state windowEnd = ""
   // The conversation last opened, kept across launches. Beside the list one
-  // is always selected: this one, else the newest. A phone opens at the list
+  // is always selected: this one, else the newest. A phone opens at the list,
+  // or in this conversation when it was open as the app was last left
+  // (`leftOpen`), as the platform's chat restores the screen it was on
   state selected = "" persist
+  state leftOpen = false persist
   resource viewport = exactViewport() as shape Viewport
   resource wall = exactTime() as shape Time
   resource inbox = loadInbox() as shape Thread[] else empty()
@@ -135,13 +148,23 @@ component ExactChat
     editedDraft = text
     editedReply = quoted
     send drafted = command("draft", openId, text, quoted, wall.epochAtZero + performanceNow())
+  // The field's glass, whose top a drag in the transcript takes the keys
+  // down from
+  action listResized(width: number, height: number)
+    listWidth = width
+  action barResized(width: number, height: number)
+    barContent = height
   action fontChanged(width: number, height: number)
     bodySize = height
   action began
-    // The newest message comes up with the keys, the latest shown again
-    // where the reader had scrolled away from them. A send flying in owns
-    // the scroll that shows it (`send`, `animate`): the keys' scroll waits
-    // for it to land (`keysAfterFlight`).
+    composerFocused = true
+    keysReveal()
+  // The newest message comes up with the keys, the latest shown again where
+  // the reader had scrolled away from them. A send flying in owns the scroll
+  // that shows it (`send`, `animate`): the keys' scroll waits for it to land
+  // (`keysAfterFlight`), and only the field's own focus says the keys are its
+  // (`began`)
+  action keysReveal
     beganLater = flightPhase > 0
     if flightPhase == 0
       if not atEnd
@@ -318,10 +341,11 @@ component ExactChat
   task sending when flightPhase > 0
     every(frame, animate)
   task keysAfterFlight when beganLater and flightPhase == 0
-    after(1, began, wait=scrollend, max=1000)
+    after(1, keysReveal, wait=scrollend, max=1000)
   // The field let go, or the conversation left: no scroll waits for the keys
   action keysEnded
     beganLater = false
+    composerFocused = false
   action menuOpened
     elapsed = performanceNow()
   action contactPressed
@@ -374,6 +398,9 @@ component ExactChat
   // The chosen messages' text is kept as each is chosen, as the rows shown
   // may load and let go of them before they are shared
   action more
+    // The choice bar takes the composer's place: the field goes, its keys
+    // with it, whether or not its blur reaches the app first
+    keysEnded()
     choosing = true
     chosen = [selectedId]
     picked = loaded.filter(m => m.id == selectedId).map(m => ChosenMessage(id=m.id, at=m.at, body=m.body))
@@ -398,33 +425,50 @@ component ExactChat
     chosen = []
     picked = []
     latest()
-    if url.startsWith("/conversations/")
-      selected = url.slice(15)
     typing = false
     flightPhase = 0
     arrivedId = ""
     // Beside the list a row swaps the open conversation, where a push would stack it
-    if top(nav).name == "thread" and url.startsWith("/conversations/")
-      nav = replace(nav, url)
-    else
-      nav = go(nav, url)
+    let was = top(nav).id
+    let next = top(nav).name == "thread" and url.startsWith("/conversations/") ? replace(nav, url) : go(nav, url)
+    nav = next
+    let open = top(next).name == "thread"
+    // The composer stays while its visit stays on top (`navigationKey`): a
+    // new visit, or the list, takes the field, its keys with it
+    if not open or top(next).id != was
+      composerFocused = false
+    leftOpen = open
+    if open
+      selected = top(next).params.id
+  // A conversation on top, kept as the one last opened, which a phone
+  // reopens at launch: `follow` keeps it already, so this is the safety net
+  // for one no `follow` opened (a link the app opened at), and idempotent
+  task opened when top(nav).name == "thread" key=top(nav).params.id
+    after(1, noteOpened)
+  action noteOpened
+    if top(nav).name == "thread"
+      selected = top(nav).params.id
+      leftOpen = true
   action back
-    beganLater = false
+    keysEnded()
+    leftOpen = false
     nav = back(nav)
   // Beside the list, nothing selected (at launch, or as the iPhone Duo
   // unfolds): the conversation last opened, else the newest. The app is not
   // told whether the platform's split shows the list beside a conversation,
   // so it opens one from the width the web splits at, 900: the open Duo, an
   // iPad turned sideways and a large iPhone's landscape split there, and no
-  // phone opens a conversation over its list. An upright iPad, which splits
-  // narrower, shows the platform's empty detail instead
-  task select when viewport.width >= 900 and top(nav).name == "inbox" and inbox.length > 0
+  // phone opens a conversation over its list but the one it was left in
+  // (`leftOpen`). An upright iPad, which splits narrower, shows the
+  // platform's empty detail instead, or that conversation
+  task select when (viewport.width >= 900 or leftOpen) and top(nav).name == "inbox" and inbox.length > 0
     after(1, reopen)
   action reopen
     if top(nav).name == "inbox"
       let last = match inbox.filter(t => t.id == selected).at(0) { case some(t) => t.id, case none => "" }
       let newest = match inbox.at(0) { case some(t) => t.id, case none => "" }
-      let id = last != "" ? last : newest
+      // A phone with nothing to restore stays at the list
+      let id = last != "" ? last : (viewport.width >= 900 ? newest : "")
       if id != ""
         follow(path("thread", id))
 
@@ -480,8 +524,12 @@ component ExactChat
               // below) or the typing indicator's 48 points, so measuring a row
               // only grows it: one measured smaller than its estimate cuts a
               // smooth scroll short (`QUEUE.md`), such as the send's to a new
-              // one-line row
-              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=(min(48, bodySize * 1.193359 + 24)) scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+              // one-line row. On iOS a drag in it takes the composer's keys
+              // down from the top of the bar under it, the field and + or a
+              // reply above them (`-exact-keyboard-dismiss-padding`,
+              // `barContent`), and other keys (the list's search) from their
+              // own edge
+              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=(min(48, bodySize * 1.193359 + 24)) scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" -exact-keyboard-dismiss-padding=(composerFocused ? barContent + 15.6667 : 0) flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
                 // A row that leaves (a deleted message, the typing
                 // indicator) fades where it shows; the rows the removal moves
                 // take their places by layout (`QUEUE.md`)
@@ -511,9 +559,9 @@ component ExactChat
                   box max-width="min(85%, calc(100% - 89.333333px))"
                     Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion, tailMotion="none", menu=false, aim=aim(flightId, flightBody), reply=replyTo(flightBody))
             if choosing
-              ChoiceBar(count=chosen.length, share=shareChosen)
+              ChoiceBar(count=chosen.length, share=shareChosen, barResized=barResized)
             else
-              Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, began=began, ended=keysEnded, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
+              Composer(draft=draft, reply=reply, busy=pending(changed), maximumHeight=composerHeight, error=sendError, edit=edit, keysUp=(composerFocused and viewport.keyboardHeight > 0), barResized=barResized, began=began, ended=keysEnded, send=send, cancelReply=cancelReply, menuOpened=menuOpened)
         if entry.name == "inbox"
           // Its ground is the platform's: beside the conversation, UIKit's
           // sidebar, from the first frame, before its rows have loaded
@@ -524,7 +572,7 @@ component ExactChat
             header
               h2 "Chats"
               input type="search" value=query input=searchChats placeholder="Search" aria-label="Search conversations" testId="search"
-            column flex=1 min-height=0 position="relative" display="flex" flex-direction="column"
+            column flex=1 min-height=0 position="relative" display="flex" flex-direction="column" resize=listResized
               list appearance="auto" listStyle="plain" flex=1 min-height=0
                 if needle == ""
                   section
@@ -604,12 +652,17 @@ component ExactChat
           text "Mail"
           image "symbol:mail"
       // A long press on a person's avatar in the list: their card, as wide
-      // as a row, with their avatar and name, over the actions their details
-      // allow, in the platform's order. The card and Message open the
-      // conversation.
+      // as the list less a row's margins (`listWidth`, 288 points before the
+      // list is measured; the window's width would reach past a side strip
+      // or a sidebar, and UIKit shrinks a preview too wide for the screen,
+      // cutting its bottom off), or as its menu where the card is one of the
+      // menu's rows (the web, Linux and Windows), with their
+      // avatar 12 points from the card's top, bottom and leading edge and
+      // their name 12 after it, over the actions their details allow, in the
+      // platform's order. The card and Message open the conversation.
       column id="person-card" popover="auto" role="menu"
         for person in inbox.filter(t => t.id == carded) key=person.id
-          button contextPreview=true press=follow(path("thread", person.id)) popovertarget="person-card" popovertargetaction="hide" aria-label=`Open ${person.name}` testId="person-card" display="flex" align-items="center" gap=10 padding=10 width="calc(100cqw - 32px)" box-sizing="border-box" class=Canvas
+          button contextPreview=true press=follow(path("thread", person.id)) popovertarget="person-card" popovertargetaction="hide" aria-label=`Open ${person.name}` testId="person-card" display="flex" align-items="center" gap=12 padding="12px 16px 12px 12px" width=(platform == "web" or platform == "linux" or platform == "windows" ? "100%" : (listWidth > 0 ? `${listWidth - 32}px` : "288px")) box-sizing="border-box" class=Canvas
             column width=60 height=60 border-radius=30 align-items="center" justify-content="center" class=Avatar
               text person.initials font-size=26.6667 class=Initials
             text person.name font="-exact-headline" line-clamp=2 testId="person-card-name"

@@ -170,10 +170,55 @@ test "beside the list, the conversation last opened is open at launch, else the 
   expect state openId == "jordan"
 
 test "a phone opens at the list"
+  size 402x874
   clock data
   clock settle
   expect state openId == ""
   expect tree has "conversation-alex"
+
+test "a phone reopens the conversation it was left in, and the list once it went Back"
+  size 402x874
+  clock data
+  clock settle
+  tap "conversation-jordan"
+  clock settle
+  reload
+  clock data
+  clock settle
+  expect state openId == "jordan"
+  back
+  clock settle
+  expect tree has "conversation-alex"
+  reload
+  clock data
+  clock settle
+  expect state openId == ""
+  expect tree has "conversation-alex"
+
+test "a link in the conversation's visit leaves its field focused, and a new visit or the list takes it"
+  size 402x874
+  clock data
+  clock settle
+  tap "conversation-jordan"
+  clock settle
+  tap "composer"
+  clock settle
+  expect state composerFocused == true
+  type "app" "/conversations/jordan?source=link"
+  clock settle
+  expect state openId == "jordan"
+  expect state composerFocused == true
+  type "app" "/./conversations/jordan?source=raw"
+  clock settle
+  expect state openId == "jordan"
+  expect state composerFocused == false
+  tap "composer"
+  clock settle
+  expect state composerFocused == true
+  type "app" "/"
+  clock settle
+  expect tree has "conversation-alex"
+  expect state composerFocused == false
 
 test "each person keeps their own conversation and draft"
   expect tree has "conversation-priya"

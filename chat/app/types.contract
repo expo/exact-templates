@@ -79,6 +79,8 @@ shape Change
 shape Viewport
   width: number
   height: number
+  // How much of the layout the software keys cover, 0 with none
+  keyboardHeight: number
   prefersReducedMotion: bool
   accessibilityTextSize: bool
 
