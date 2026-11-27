@@ -421,8 +421,8 @@ component Strip
 
 // A landmark in a strip. Its long press aims the route's `CardMenu` at the landmark and opens it, as every
 // landmark's link does (`LandmarkGrid`, `SearchResults`), so each lifts with the same menu. It and a collection's
-// tile drag the landmark's thumbnail into another app, as the sample's `Transferable` landmark does; a result row
-// does not, as a grouped list takes no drag.
+// tile drag the landmark's name and photo into another app, as the sample's `Transferable` landmark does; a result
+// row does not, as a grouped list takes no drag.
 component Card
   props
     l: Landmark
@@ -430,7 +430,7 @@ component Card
     aim: action
     open: action
   view
-    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name contextmenu=aim(l.id) contextPopover=menu draggable=true dataTransfer=DataTransfer(files=[`assets/apple/${l.id}-thumb.jpg`]) height="100%" aspect-ratio=1.4 flex-shrink=0 position="relative" border-radius=15 overflow="hidden"
+    link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name contextmenu=aim(l.id) contextPopover=menu draggable=true dataTransfer=DataTransfer(text=l.name, files=[`assets/apple/${l.id}.jpg`]) height="100%" aspect-ratio=1.4 flex-shrink=0 position="relative" border-radius=15 overflow="hidden"
       display="flex" flex-direction="column" justify-content="flex-end" align-items="center" testId=`card-${l.id}`
       image `assets/apple/${l.id}-thumb.jpg` id=`thumb-${l.id}` position="absolute" inset=0 width="100%" height="100%" object-fit="cover" aria-hidden=true
       view position="absolute" inset=0 background-image="linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 50%)"
@@ -475,7 +475,7 @@ component LandmarkGrid
     view display="grid" grid-template-columns=`repeat(auto-fill, minmax(${min}px, 1fr))` gap=14 justify-items="center"
       for l in ls key=l.id
         if links
-          link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name contextmenu=aim(l.id) contextPopover=menu draggable=true dataTransfer=DataTransfer(files=[`assets/apple/${l.id}-thumb.jpg`]) width="100%" max-width=320 aspect-ratio=1 position="relative" border-radius=15 overflow="hidden"
+          link href=path("landmark", l.id) press=open(path("landmark", l.id)) aria-label=l.name contextmenu=aim(l.id) contextPopover=menu draggable=true dataTransfer=DataTransfer(text=l.name, files=[`assets/apple/${l.id}.jpg`]) width="100%" max-width=320 aspect-ratio=1 position="relative" border-radius=15 overflow="hidden"
             display="flex" flex-direction="column" justify-content="flex-end" align-items="center" testId=`tile-${l.id}`
             Tile(l=l)
         else

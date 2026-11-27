@@ -177,13 +177,14 @@ test "A search result opens the card's menu, whose Favorite adds it to Favorites
   clock data
   expect state cols.0 .landmarkIds.4 == "1016"
 
-test "A card carries its landmark's thumbnail for a drag"
+test "A card carries its landmark's name and photo for a drag"
   at "/landmarks"
   clock settle
-  expect drag "card-1016" has "image/jpeg" name "1016-thumb.jpg"
-  expect drag "card-1016" missing "text/plain"
+  expect drag "card-1016" has "image/jpeg" name "1016.jpg"
+  expect drag "card-1016" has "text/plain" == "Mount Fuji"
 
-test "A collection's tile carries its landmark's thumbnail for a drag"
+test "A collection's tile carries its landmark's name and photo for a drag"
   at "/collection/1002"
   clock settle
-  expect drag "tile-1018" has "image/jpeg" name "1018-thumb.jpg"
+  expect drag "tile-1018" has "image/jpeg" name "1018.jpg"
+  expect drag "tile-1018" has "text/plain" == "Mount Everest"
