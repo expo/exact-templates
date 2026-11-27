@@ -6,24 +6,10 @@ What to do next for this template, most pressing first. Add a line when you find
 
 The user's reports, newest first, until each is fixed or answered.
 
-From build 54 (2026-11-27):
+From build 52 (2026-11-27), still open:
 
-- **Turned to portrait with results up, the sidebar hid and left the left side empty, and shown it covered the "Search Results" title.** UIKit found no room for the sidebar beside the detail at the open Duo's portrait width and laid it over the detail. On a phone Exact now sets the detail's minimum width to 320 points (`minimumSecondaryColumnWidth`), so UIKit tiles the sidebar in both orientations and keeps it shown or hidden through a turn; the results fit beside it, and fill the width when it is hidden (Exact, LLP 1127 D3). Confirm on build 55.
-- **Folding with results up showed the screen beneath the search.** The search is now a level over the detail panes: a fold with results in front keeps them over the list with the query, the selected page kept behind them, and closing the search shows the list (Exact, LLP 1127.000 D3). Confirm on build 55, and say if closing should show the selected page instead.
-- **Folded, the list's chevrons animated when nothing about them changed.** At a fold or an unfold the list read the split's state between UIKit's steps and switched between the sidebar's look, which has no chevrons, and its own, up to three times; it now switches once, as UIKit asks (Exact). Opening and closing the search, folded, changed no row on the simulator; the whole list moves down while the field is open, which UIKit's own split does too (below, 2026-11-23). Confirm on build 55.
-- **Search results should follow the system's chevron rules.** Each result pushes its page, so its row now ends in the disclosure chevron, and each host decides where it shows, as for Home's rows. Confirm on build 55.
-
-From build 52 (2026-11-27):
-
-- **Back with Info open, by swipe or button, was cancelled.** Exact closed the Info column as the detail's pop began, then read the column at the pop's end, empty by then, so the router stayed on Info and put the landmark back. Fixed in Exact ("iOS: Back with the inspector shown goes back past both"). Confirm on build 53.
-- **Turning the open Duo with results up moved them into the narrow sidebar.** Expanded, the results now stay in the detail column whatever UIKit does with the sidebar (Exact, LLP 1127.000 D2). Confirm on build 53.
-- **The hero grew in from the top-left with Info and on partial folds.** A picture's mirror made inside UIKit's column animation started from a zero frame, and the mirror draws the picture; it now starts where the picture shows (Exact). Confirm on build 53.
 - **The hero's mirror does not show under the Info column.** UIKit gives the detail's route the column's width as safe area, so Exact's mirror reaches under it, but on the iOS 27.1 simulator UIKit's inspector column paints opaque, and this app paints the Info route's ground as the sample's sheet does. A screenshot of the sample's inspector over a hero on the phone would show what iOS 27.3 draws there.
-- **The sidebar's rows jumped as the search opened and closed.** Exact moved them twice on its own while UIKit moved the bar: a spring on the list's offset, and the keys taken as Home's safe area as the search closed, though Home ignores the keyboard. Both gone (Exact). Confirm on build 53.
-- **Dragged landmarks: text above the image.** The drag now offers the name before the photo (Exact, LLP 1094.000). Confirm on build 53.
 - **"Search Results" missing from the detail's bar until the app was backgrounded.** Not reproduced; the code sets the title before the results come in on every path. Next time it shows, the dev menu's Save Trace would capture it.
-- **Scroll judder at the rubber band's release on Home.** UI Gallery's inertial-scroll stutter ended with two changes on main that build 55 carries: text inside a nested scroller, as in the Landmarks strips, asks for preparation during a native scroll only when it can come into view (#2047, profiled on this screen's first strip, in Landscapes since build 54), and a grouped list with no card shadows skips a shadow pass on each scroll layout (#2059, the sidebar's list). Confirm on build 55; if it still judders, a release trace on the phone is next.
-- **The sidebar's hidden state survives a force quit.** UIKit's own: it saves the split's column state in the app's defaults (`com.apple.UIKit.UISplitViewController.Root`). No change.
 
 From build 50 (2026-11-26):
 
