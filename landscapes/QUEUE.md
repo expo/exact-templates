@@ -6,10 +6,21 @@ What to do next for this template, most pressing first. Add a line when you find
 
 The user's reports, newest first, until each is fixed or answered.
 
+From build 52 (2026-11-27):
+
+- **Back with Info open, by swipe or button, was cancelled.** Exact closed the Info column as the detail's pop began, then read the column at the pop's end, empty by then, so the router stayed on Info and put the landmark back. Fixed in Exact ("iOS: Back with the inspector shown goes back past both"). Confirm on build 53.
+- **Turning the open Duo with results up moved them into the narrow sidebar.** Expanded, the results now stay in the detail column whatever UIKit does with the sidebar (Exact, LLP 1127.000 D2). Confirm on build 53.
+- **The hero grew in from the top-left with Info and on partial folds.** A picture's mirror made inside UIKit's column animation started from a zero frame, and the mirror draws the picture; it now starts where the picture shows (Exact). Confirm on build 53.
+- **The hero's mirror does not show under the Info column.** UIKit gives the detail's route the column's width as safe area, so Exact's mirror reaches under it, but on the iOS 27.1 simulator UIKit's inspector column paints opaque, and this app paints the Info route's ground as the sample's sheet does. A screenshot of the sample's inspector over a hero on the phone would show what iOS 27.3 draws there.
+- **The sidebar's rows jumped as the search opened and closed.** Exact moved them twice on its own while UIKit moved the bar: a spring on the list's offset, and the keys taken as Home's safe area as the search closed, though Home ignores the keyboard. Both gone (Exact). Confirm on build 53.
+- **Dragged landmarks: text above the image.** The drag now offers the name before the photo (Exact, LLP 1094.000). Confirm on build 53.
+- **"Search Results" missing from the detail's bar until the app was backgrounded.** Not reproduced; the code sets the title before the results come in on every path. Next time it shows, the dev menu's Save Trace would capture it.
+- **Scroll judder at the rubber band's release on Home.** The trace's one late frame had no Exact work in it, and the code shows no cause; a release trace on the phone (the feel probe) is next.
+- **The sidebar's hidden state survives a force quit.** UIKit's own: it saves the split's column state in the app's defaults (`com.apple.UIKit.UISplitViewController.Root`). No change.
+
 From build 50 (2026-11-26):
 
 - **Partially folding, the hero pictures grew in from the top-left instead of resizing in place** (Landmarks' featured landmark, a landmark's header). Exact tore each picture's mirror down and made a new one inside UIKit's column animation, since an update of the picture's other props cleared the mirror's props. Fixed in Exact ("iOS: a picture's mirror survives an update of its other props"); confirm on the next build.
-- **The Map stopped at the safe areas.** Its box said `-exact-safe-area-ignore="container"`, which applies to a scroller's container inset only. The Map route now turns its clearance off (`-exact-safe-area="none"`), the map fills it, and the badges stand in a box at the route's safe area; the test "The map reaches its route's edges…" checks it open and folded. Confirm on the next build.
 - **Search open unfolded, turned to portrait, shows "No Selection".** The split now takes UIKit's choice of column at each fold and turn, a Back to the list while folded keeps the detail behind it as UIKit and the sample do, and the empty detail has no words (Exact `1c9ea73e52`, LLP 1127 D4, D12, D17). Confirm on build 52.
 
 From builds 48 and 49 (2026-11-25):
