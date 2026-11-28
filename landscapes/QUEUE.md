@@ -6,6 +6,10 @@ What to do next for this template, most pressing first. Add a line when you find
 
 The user's reports, newest first, until each is fixed or answered.
 
+From build 56 (2026-11-28):
+
+- **Folding shows a black gap for a moment, the first time** (dark mode). Each fold blurred the hero's mirror on the main thread, once for each size and decode it passed through, because its extension view is made again partway through a fold and blurs were kept per decode only. Exact now keeps an image's blurs with the image and makes new ones off the main thread, and its controller walk no longer casts views to navigation's protocols; a fold's main-thread time went from 252 to 217 ms (first) and 184 to 174 ms (second) on the simulator, with no blur in it. Confirm on build 57. If a gap remains, the next cuts are the sidebar list's look, which follows UIKit's collapse, expand and collapse within one fold, and the covers told for the columns' passing width inside the early fit.
+
 From build 55 (2026-11-27):
 
 - **Beside the detail, the Info column is opaque, and the segmented control sits on a white band** (in light mode), where the sample shows the column's frosted glass with the picture under it. The app painted the band white and the route grey, and Exact painted the route's and the list's implied grounds and set the list's background, which keeps UIKit from choosing it. The Info route now writes no ground, and Exact leaves a route in the inspector's column, and its lists, on the column's glass (Exact "iOS: a route in the inspector's column is on the column's glass"); the picture now shows through the column. Folded, Info is a sheet on the form's grey, the picker included, where the sample puts the picker on the sheet's white: Exact puts a route that scrolls a grouped list on the list's grey (LLP 1116.007 D5), and the person chose to keep that rule (2026-11-27). Confirm on build 56.
