@@ -1,4 +1,4 @@
-use Message, Thread, Window, ChosenMessage, Found, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials, fade, Page, margin from "./types.contract"
+use Message, Thread, Window, ChosenMessage, Found, Change, Viewport, Time, Canvas, Ink, Secondary, CardRow, CardTile, CardGlyph, Avatar, Initials, fade, Page, margin, timeTravel from "./types.contract"
 use MessageRow, Typing, Balloon, Sent, Received from "./bubble.contract"
 use Composer, ChoiceBar from "./composer.contract"
 use EmptyState from "exact:content"
@@ -79,6 +79,13 @@ component ExactChat
   state choosing = false
   state chosen: string[] = []
   state picked: ChosenMessage[] = []
+  // The transcript's drag toward the leading side, which brings each
+  // message's time in (`timeTravel`, `MessageRow`): the finger's pull since it
+  // began, whether it holds, and the conversation it began in, outside which
+  // it moves nothing (a transcript may go mid-drag)
+  state pull = 0
+  state dragging = false
+  state dragThread = ""
   // The part of the open conversation its transcript shows: its latest
   // messages, which the list answers with it, until the
   // reader reaches the first; then a window of the conversation, between
@@ -101,6 +108,8 @@ component ExactChat
   mutation changed as shape Change queue refreshes inbox, matches, window then afterChange
   mutation drafted as shape Change queue refreshes inbox
   derive openId = top(nav).name == "thread" ? top(nav).params.id : ""
+  // How far the transcript's drag has moved its balloons, in the conversation it began in (`timeTravel`)
+  derive times = dragThread == openId ? timeTravel(pull) : 0
   derive conversation = match inbox.filter(t => t.id == openId).at(0) { case some(t) => t, case none => Thread(id="", name="", short="", initials="", phone="", email="", draft="", reply="", serial=0, count=0, recent=[], hasEarlier=false, earlier="") }
   // The messages the transcript shows: the window's once it has answered,
   // else the latest; and whether they reach the conversation's end
@@ -199,6 +208,9 @@ component ExactChat
       submittedReply = reply
       elapsed = performanceNow()
       flightBody = draft.trim()
+      // The times go away as the send flies
+      pull = 0
+      dragging = false
       // The id the send saves it with: the data module's overlay shows its
       // row from this commit, before the file has it
       let id = `sent-${conversation.serial + 1}`
@@ -402,9 +414,26 @@ component ExactChat
     // The choice bar takes the composer's place: the field goes, its keys
     // with it, whether or not its blur reaches the app first
     keysEnded()
+    pull = 0
+    dragging = false
     choosing = true
     chosen = [selectedId]
     picked = loaded.filter(m => m.id == selectedId).map(m => ChosenMessage(id=m.id, at=m.at, body=m.body))
+  // A horizontal drag in the transcript: toward the leading side it pulls
+  // the times in, and back it lets them go; released, they spring away. A
+  // drag toward the trailing side from rest is the platform's (Back), as the
+  // transcript's `touch-action` says, and while choosing every pan is
+  action drag(dx: number, dy: number)
+    // Choosing messages, or while a send flies (its row's balloon is the
+    // flying copy's to take), the rows hold still; a drag in another
+    // conversation than the last starts from rest
+    let still = choosing or flightPhase != 0
+    pull = still ? 0 : max(0, (dragThread == openId ? pull : 0) - dx)
+    dragging = not still
+    dragThread = openId
+  action release(vx: number, vy: number)
+    pull = 0
+    dragging = false
   action choose(id: string)
     let was = chosen.includes(id)
     chosen = was ? chosen.filter(c => c != id) : chosen.concat([id])
@@ -422,6 +451,9 @@ component ExactChat
     share(text=sortBy(picked, p => p.at).map(p => p.body).join("\n"))
   action follow(url: string)
     beganLater = false
+    // A drag in the transcript it leaves ends there: a host sends no release for a list that goes
+    pull = 0
+    dragging = false
     choosing = false
     chosen = []
     picked = []
@@ -453,6 +485,8 @@ component ExactChat
   action back
     keysEnded()
     leftOpen = false
+    pull = 0
+    dragging = false
     nav = back(nav)
   // Beside the list, nothing selected (at launch, or as the iPhone Duo
   // unfolds): the conversation last opened, else the newest. The app is not
@@ -530,16 +564,32 @@ component ExactChat
               // reply above them (`-exact-keyboard-dismiss-padding`,
               // `barContent`), and other keys (the list's search) from their
               // own edge
-              list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=(min(48, bodySize * 1.193359 + 24)) scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" -exact-keyboard-dismiss-padding=(composerFocused ? barContent + 15.6667 : 0) flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
-                // A row that leaves (a deleted message, the typing
-                // indicator) fades; on iOS it and the rows the removal moves
-                // ride to their places (LLP 1010 §6.12)
-                for message in transcript key=message.id
-                  column -exact-exit-animation="fade 350ms cubic-bezier(0.2, 0.1, 0.1, 1) both"
-                    if message.id == "typing"
-                      Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
-                    else
-                      MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), holdsTail=(message.id == heldTail), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose)
+              // Off iOS the host takes a pan before it sees its direction (the web
+              // glue, AppKit), and would cancel a mark's press while choosing: only
+              // iOS's transcript has the drag until those honour `touch-action`
+              // (the template's queue)
+              if platform != "ios"
+                list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=(min(48, bodySize * 1.193359 + 24)) scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" -exact-keyboard-dismiss-padding=(composerFocused ? barContent + 15.6667 : 0) overflow-x="hidden" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+                  // A row that leaves (a deleted message, the typing
+                  // indicator) fades; on iOS it and the rows the removal moves
+                  // ride to their places (LLP 1010 §6.12)
+                  for message in transcript key=message.id
+                    column -exact-exit-animation="fade 350ms cubic-bezier(0.2, 0.1, 0.1, 1) both"
+                      if message.id == "typing"
+                        Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
+                      else
+                        MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), holdsTail=(message.id == heldTail), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose, travel=times, dragging=dragging and dragThread == openId)
+              else
+                list id="transcript" testId="transcript" appearance="none" virtualized=true estimated-item-height=(min(48, bodySize * 1.193359 + 24)) scroll-start="end" scrollFollowEnd=atEnd reachstart=older reachend=newer reach-margin="5000px 100%" keyboardDismissMode="interactive" -exact-keyboard-dismiss-padding=(composerFocused ? barContent + 15.6667 : 0) pan=drag panrelease=release touch-action=(choosing ? "pan-x pan-y" : "pan-left pan-y") overflow-x="hidden" flex=1 min-height=0 padding-top=15.667 padding-bottom=14 scroll-padding-top=15.667 scroll-padding-bottom=14
+                  // A row that leaves (a deleted message, the typing
+                  // indicator) fades; on iOS it and the rows the removal moves
+                  // ride to their places (LLP 1010 §6.12)
+                  for message in transcript key=message.id
+                    column -exact-exit-animation="fade 350ms cubic-bezier(0.2, 0.1, 0.1, 1) both"
+                      if message.id == "typing"
+                        Typing(name=conversation.short, reduced=viewport.prefersReducedMotion)
+                      else
+                        MessageRow(message=message, receiptId=receiptId, now=now, utcOffset=wall.utcOffset, bodySize=bodySize, reduced=viewport.prefersReducedMotion, hidden=(flightPhase > 0 and flightId == message.id), arriving=(message.id == arrivedId), holdsTail=(message.id == heldTail), aim=aim, replyTo=replyTo, choosing=choosing, chosen=chosen.includes(message.id), choose=choose, travel=times, dragging=dragging and dragThread == openId)
             if failed(inbox)
               text "The saved conversation could not be read. Use Conversation options to reset it." testId="load-error" color="-exact-system-red" font="-exact-footnote" padding=16 padding-left=`${margin(platform, "left")}` padding-right=`${margin(platform, "right")}`
             // The bottom edge of the box the flight is placed in, which the
@@ -558,7 +608,7 @@ component ExactChat
                   box position="absolute" left=flightReach top=0 bottom=0 right=20 overflow="hidden"
                     box position="absolute" inset=0 border-radius=balloonRadius class=Sent translate=`${flightNarrowed}px 0px` transition=narrowMotion
                   box max-width="min(85%, calc(100% - 89.333333px))"
-                    Balloon(body=flightBody, mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion, tailMotion="none", menu=false, aim=aim(flightId, flightBody), reply=replyTo(flightBody))
+                    Balloon(body=flightBody, labelledBy="", mine=true, tail=true, bodySize=bodySize, identifier="flying-balloon", shift=flightShift, shiftMotion=narrowMotion, tailMotion="none", menu=false, aim=aim(flightId, flightBody), reply=replyTo(flightBody))
             if choosing
               ChoiceBar(count=chosen.length, share=shareChosen, barResized=barResized)
             else
@@ -634,7 +684,7 @@ component ExactChat
             for m in thread.recent.slice(-5) key=m.id
               row justify-content=(m.mine ? "flex-end" : "flex-start") padding-left=12 padding-right=12 padding-top=2 padding-bottom=(m.endsRun ? 8 : 2)
                 box max-width="80%"
-                  Balloon(body=m.body, mine=m.mine, tail=m.endsRun, bodySize=bodySize, identifier=`peek-${m.id}`, shift=0, shiftMotion="none", tailMotion="none", menu=false, aim=aim(m.id, m.body), reply=replyTo(m.body))
+                  Balloon(body=m.body, labelledBy="", mine=m.mine, tail=m.endsRun, bodySize=bodySize, identifier=`peek-${m.id}`, shift=0, shiftMotion="none", tailMotion="none", menu=false, aim=aim(m.id, m.body), reply=replyTo(m.body))
         button press=resetPeeked popovertarget="conversation-peek" popovertargetaction="hide" destructive=true testId="peek-reset"
           text "Reset Conversation"
           image "symbol:refresh"

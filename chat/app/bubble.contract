@@ -1,4 +1,4 @@
-use Message, Secondary, arrive, appear, receipt, fade, dot, markIn, markOut, margin from "./types.contract"
+use Message, Secondary, arrive, appear, receipt, fade, dot, markIn, markOut, margin, timeShown, timeColumn, balloonTravel, timeOffset, balloonRoom from "./types.contract"
 
 // Calendar days from `at` to `now`, both at the offset
 fn daysBetween(at: number, now: number, offset: number): number = floor((now + offset * 60000) / 86400000) - floor((at + offset * 60000) / 86400000)
@@ -45,6 +45,10 @@ component Balloon
     menu: bool
     aim: action
     reply: action
+    // The ids that name it to a screen reader, its text's own first: a
+    // transcript's balloon's text and its time, which its row draws only
+    // while dragged, as the platform's chat reads a message; empty for none
+    labelledBy: string
   state width = 0
   state height = 0
   // Flipped by each measurement, which adds or takes away a line of no
@@ -132,7 +136,7 @@ component Balloon
         // Keep the 10-point inset while allowing ink beyond the tight line box.
         // The first line sits at the font's natural height, so the lead
         // over the line box goes half above the text and half below.
-        text body id=`${identifier}-text` testId=`${mine ? "outgoing" : "incoming"}-text-${identifier}` position="relative" padding=`${2 + lead / 2}px 0px` font-size="1rem" line-height=`${bodySize + 3}px` font-family="system-ui" color=(mine ? "light-dark(#ffffff, #ffffff)" : "light-dark(#000000, #ffffff)") white-space="pre-wrap" overflow-wrap="break-word" hyphens=(bodySize > 23 ? "auto" : "manual") text-align="left" min-width=0 translate=`${shift}px 0px` transition=shiftMotion
+        text body id=`${identifier}-text` testId=`${mine ? "outgoing" : "incoming"}-text-${identifier}` aria-labelledby=labelledBy position="relative" padding=`${2 + lead / 2}px 0px` font-size="1rem" line-height=`${bodySize + 3}px` font-family="system-ui" color=(mine ? "light-dark(#ffffff, #ffffff)" : "light-dark(#000000, #ffffff)") white-space="pre-wrap" overflow-wrap="break-word" hyphens=(bodySize > 23 ? "auto" : "manual") text-align="left" min-width=0 translate=`${shift}px 0px` transition=shiftMotion
 
 // Rows are laid out by their balloons' bodies: a tail paints into the
 // space below its row and never moves another. A run's last row keeps room
@@ -167,6 +171,10 @@ component MessageRow
     choosing: bool
     chosen: bool
     choose: action
+    // The transcript's drag toward the leading side (`timeTravel`), and
+    // whether a finger holds it
+    travel: number
+    dragging: bool
   derive hasReceipt = message.id == receiptId
   derive tail = message.endsRun or holdsTail
   // The receipt's room is its offset, its line and 1 point: 19.333 at the
@@ -176,6 +184,12 @@ component MessageRow
   derive room = hasReceipt ? 6.3333 + bodySize * 0.764706 : (message.endsRun and not message.last ? 6.65 : 0)
   // Choosing begins and ends in 0.3 s on the default curve, as the platform's does
   derive chooseMotion = reduced ? "none" : "300ms ease-in-out"
+  // The time column (`types.contract`): how much of it shows, its width, and
+  // how the balloon and it move back on release, on one spring, at once
+  // under a finger or reduced motion
+  derive shown = timeShown(travel)
+  derive column = timeColumn(bodySize)
+  derive release = dragging or reduced ? "none" : "translate -exact-spring(150, 24.5, 1)"
   view
     // Rows keep the conversation's layout margins (the safe area and UIKit's
     // minimum beside it, 0 beside the iPhone Duo's side strip), 16 points
@@ -196,13 +210,25 @@ component MessageRow
           text stampDay(message.at, now, utcOffset) font-weight=600
           text ` ${formatTime(message.at, utcOffset, "short")}`
       if message.reply != ""
-        row justify-content=(message.mine ? "flex-end" : "flex-start") margin-bottom=6 aria-hidden=choosing margin-left=(choosing and not message.mine ? `calc(57px + var(--route-safe-left) - ${margin(platform, "left")})` : "0px") -exact-layout-transition=chooseMotion
+        row justify-content=(message.mine ? "flex-end" : "flex-start") margin-bottom=6 aria-hidden=choosing margin-left=(choosing and not message.mine ? `calc(57px + var(--route-safe-left) - ${margin(platform, "left")})` : "0px") -exact-layout-transition=chooseMotion translate=`${0 - balloonTravel(travel, message.mine, column)}px 0px` transition=release
           text message.reply class=Secondary border-left="2px solid -exact-separator" padding-left=8 max-width="85%" font-size="0.764706rem" line-clamp=2
-      box align-self=(message.mine ? "flex-end" : "flex-start") opacity=(hidden ? 0 : 1) aria-hidden=choosing max-width="min(85%, calc(100% - 89.333333px))" animation=(arriving and not reduced ? "arrive 220ms ease-out both" : "none") transform-origin="0% 100%" margin-left=(choosing and not message.mine ? `calc(57px + var(--route-safe-left) - ${margin(platform, "left")})` : "0px") -exact-layout-transition=chooseMotion
-        Balloon(body=message.body, mine=message.mine, tail=tail, bodySize=bodySize, identifier=`bubble-${message.id}`, shift=0, shiftMotion="none", tailMotion=(reduced ? "none" : "clip-path -exact-spring(438.649, 41.8879, 1)"), menu=true, aim=aim(message.id, message.body), reply=replyTo(message.body))
+      // The balloon and its time, in a box that does not move (the reply it
+      // quotes and its receipt move with it): the time
+      // column stands on the trailing margin, one column for every row
+      // whichever side its balloon is on, centred on the balloon's body (its
+      // tail reaches below the box), and comes in as the balloon goes
+      row position="relative" justify-content=(message.mine ? "flex-end" : "flex-start")
+        box opacity=(hidden ? 0 : 1) aria-hidden=choosing max-width=`min(85%, calc(100% - ${balloonRoom()}px))` animation=(arriving and not reduced ? "arrive 220ms ease-out both" : "none") transform-origin="0% 100%" margin-left=(choosing and not message.mine ? `calc(57px + var(--route-safe-left) - ${margin(platform, "left")})` : "0px") -exact-layout-transition=chooseMotion translate=`${0 - balloonTravel(travel, message.mine, column)}px 0px` transition=release
+          Balloon(body=message.body, labelledBy=(platform == "web" ? "" : `bubble-${message.id}-text time-text-${message.id}`), mine=message.mine, tail=tail, bodySize=bodySize, identifier=`bubble-${message.id}`, shift=0, shiftMotion="none", tailMotion=(reduced ? "none" : "clip-path -exact-spring(438.649, 41.8879, 1)"), menu=true, aim=aim(message.id, message.body), reply=replyTo(message.body))
+          // On the web, where a description on a text is not read in its reading
+          // order, its time after it in words, drawn nowhere (WCAG technique C7)
+          if platform == "web"
+            text formatTime(message.at, utcOffset, "short") position="absolute" width=1 height=1 overflow="hidden" clip-path="inset(50%)" white-space="nowrap" pointer-events="none"
+        column position="absolute" top=0 bottom=0 right=0 width=column justify-content="center" pointer-events="none" aria-hidden=true opacity=(shown * shown) translate=`${timeOffset(shown, column)}px 0px` transition=(dragging or reduced ? "none" : "translate -exact-spring(150, 24.5, 1), opacity 220ms ease-out")
+          text formatTime(message.at, utcOffset, "short") id=`time-text-${message.id}` testId=`time-${message.id}` class=Secondary font-size="0.647059rem" line-height="0.764706rem" text-align="right" white-space="nowrap" font-variant-numeric="tabular-nums"
       column height=room flex-shrink=0 pointer-events="none" opacity=(choosing ? 0 : 1)
         if message.mine and hasReceipt
-          text (message.receipt == "Read" and message.readAt > 0 ? `Read ${formatDay(message.readAt, now, utcOffset, "list")}` : (message.receipt != "" ? message.receipt : "Delivered")) testId=`receipt-${message.id}` class=Secondary align-self="flex-end" font-size="0.647059rem" line-height="0.764706rem" font-weight=600 margin-top=5.3333 margin-right=19.667 animation=(hasReceipt and message.receipt == "" and now - message.at < 1900 and not reduced ? "receipt 610ms cubic-bezier(0.25, 1, 0.5, 1) 100ms backwards" : "none") -exact-exit-animation="fade 100ms ease-out both"
+          text (message.receipt == "Read" and message.readAt > 0 ? `Read ${formatDay(message.readAt, now, utcOffset, "list")}` : (message.receipt != "" ? message.receipt : "Delivered")) testId=`receipt-${message.id}` class=Secondary align-self="flex-end" font-size="0.647059rem" line-height="0.764706rem" font-weight=600 margin-top=5.3333 margin-right=19.667 translate=`${0 - balloonTravel(travel, true, column)}px 0px` transition=release animation=(hasReceipt and message.receipt == "" and now - message.at < 1900 and not reduced ? "receipt 610ms cubic-bezier(0.25, 1, 0.5, 1) 100ms backwards" : "none") -exact-exit-animation="fade 100ms ease-out both"
       if choosing
         row position="absolute" top=0 bottom=0 left="calc(11px + var(--route-safe-left))" align-items="center" pointer-events="none" animation=(reduced ? "none" : "markIn 300ms ease-in-out both") -exact-exit-animation="markOut 300ms ease-in-out both" aria-hidden=true
           image (chosen ? "symbol:select-fill" : "symbol:circle") font-size=22 testId=`mark-${message.id}` color=(chosen ? "-exact-system-blue" : "-exact-tertiary-label") -exact-symbol-rendering="palette" -exact-symbol-palette=(chosen ? "#ffffff -exact-system-blue" : "-exact-tertiary-label")
