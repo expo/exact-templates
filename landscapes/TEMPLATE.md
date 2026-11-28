@@ -28,7 +28,7 @@ It needs only what macOS ships (`curl`, `tar` and `sips`), downloads about 168 M
 | The map of every landmark: MapKit on iOS, a web module on the web | the `map` route, `landmark-map`; `modules/apple/LandmarkMap.swift`, `modules/web/index.js` |
 | A landmark's page: its photo with the mirror, growing when pulled; Share, Favorite, its collections and Info in the bar | the `landmark` route, `pullHero`, `id="collections-menu"` |
 | The Info inspector: beside the page on an open Duo, a sheet when closed; Map or Activities, kept across a close and another landmark; the metadata; the activities and the badge they earn | the `info` route (`navigationInspector=true`), `segment`, `Value`, `activities`, `BadgeMark` |
-| Collections: Favorites as a row of cards, My Collections as a grid; + adds one and opens it | the `collections` route, `CollectionTile`, `addCollection`, `openAdded` |
+| Collections: Favorites as a row of cards, My Collections as a grid; + adds one and opens it; a tile with landmarks drags a photo of each, named for its landmark, and as text its name over theirs | the `collections` route, `CollectionTile`, `addCollection`, `openAdded`, `collectionText`, `photos` |
 | A collection: Edit to rename it, describe it and choose its landmarks in a sheet; Delete behind the platform's alert. Editing is the page's own state, made with it and gone with it, so the sheet over it leaves it editing | the `collection` route, `CollectionPage` (its `editing`), `CollectionEditor`, the `select` route, the `delete-collection-…` dialog, its id the page's entry |
 | The earned badges, behind a glass button in the corner | `Badges`, `toggleBadges` |
 

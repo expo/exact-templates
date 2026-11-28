@@ -188,3 +188,11 @@ test "A collection's tile carries its landmark's name and photo for a drag"
   clock settle
   expect drag "tile-1018" has "image/jpeg" name "Mount Everest.jpg"
   expect drag "tile-1018" has "text/plain" == "Mount Everest"
+
+test "A collection in the grid carries a photo of each of its landmarks, and its name over theirs, for a drag"
+  at "/collections"
+  clock settle
+  expect drag "collection-1002" has "image/jpeg" name "Mount Fuji.jpg"
+  expect drag "collection-1002" has "image/jpeg" name "Kirkjufell Mountain.jpg"
+  expect drag "collection-1002" has "text/plain" == "Towering Peaks\nMount Fuji\nMount Everest\nRocky Mountains\nKirkjufell Mountain"
+  expect drag "collection-1003" none

@@ -77,6 +77,11 @@ fn nameOf(ls: Landmark[], id: string): string = ls.filter((l) => l.id == id).map
 
 // The sample's "%lld items", whose zero is "Empty".
 fn itemCount(n: number): string = n == 0 ? "Empty" : n == 1 ? "1 item" : `${n} items`
+// A collection as text: its name, then its landmarks, one to a line.
+fn collectionText(c: Collection, ls: Landmark[]): string = ls.length == 0 ? c.name : `${c.name}\n${ls.map((l) => l.name).join("\n")}`
+// The landmarks' photos, and the name each is offered under.
+fn photos(ls: Landmark[]): string[] = ls.map((l) => `assets/apple/${l.id}.jpg`)
+fn photoNames(ls: Landmark[]): string[] = ls.map((l) => l.name)
 
 fn activities(): string[] = ["takePhoto", "readDescription", "findNature", "drawSketch"]
 
@@ -333,11 +338,10 @@ component Landmarks
             // The sample's inspector: beside the detail in an expanded split, a sheet at a
             // compact width; its content has no bar.
             column navigationKey=`${e.id}` navigationPresentation="modal" navigationInspector=true navigationScroll="info-list" testId="route-info" position="absolute" inset=0 display="flex" flex-direction="column"
-              // The form's grey, except where there is no form, as the sample's sentence alone shows.
-              background-color=(segment == "activities" and l.badge == "" ? "-exact-background" : "-exact-grouped-background")
-              // The sample's picker on the sheet's own ground, a band above the form's grey: its
-              // padding, then the 5 more points of its stack's spacing before the form.
-              view padding="16px 16px 21px 16px" background-color="-exact-background"
+              // No ground of its own: beside the detail, the inspector column's glass under the picker and the
+              // form, as in the sample; folded, a sheet on the form's grey, as a route that scrolls a grouped list is.
+              // The sample's picker above the form: its padding, then the 5 more points of its stack's spacing.
+              view padding="16px 16px 21px 16px"
                 row role="tablist" aria-label="View Mode" testId="segments"
                   button role="tab" aria-selected=(segment == "map") press=choose("map") flex=1 testId="segment-map"
                     text "Map"
@@ -360,7 +364,7 @@ component Landmarks
                     Value(label="Elevation", value=l.elevation)
                     Value(label="Location", value=l.location)
               else if l.badge == ""
-                // The sample's sentence alone, centred on the sheet's ground: no form.
+                // The sample's sentence alone, centred on the route's ground: no form.
                 column flex=1 justify-content="center" align-items="center" testId="info-activities"
                   padding=16
                   text "There isn’t a badge for this landmark." text-align="center" testId="no-badge"
@@ -493,13 +497,17 @@ component Tile
 
 // A collection in the grid: its first landmark, four of them in a square once
 // it has four, else a book on a grey square; its name and count under it.
+// Held, it lifts as its landmarks, one photo each named for its landmark, so
+// the system counts them, and as text its name over its landmarks; an empty
+// one has nothing to lift.
 component CollectionTile
   props
     c: Collection
     ls: Landmark[]
     open: action
   view
-    link href=path("collection", c.id) press=open(path("collection", c.id)) aria-label=c.name max-width="18.125rem" display="flex" flex-direction="column" align-items="center" gap=4 testId=`collection-${c.id}`
+    link href=path("collection", c.id) press=open(path("collection", c.id)) aria-label=c.name draggable=(ls.length > 0) dataTransfer=DataTransfer(text=collectionText(c, ls), files=photos(ls), names=photoNames(ls))
+      max-width="18.125rem" display="flex" flex-direction="column" align-items="center" gap=4 testId=`collection-${c.id}`
       if ls.length >= 4
         row flex-wrap="wrap" width="100%" aspect-ratio=1 border-radius=8 overflow="hidden"
           for l in ls.slice(0, 4) key=l.id

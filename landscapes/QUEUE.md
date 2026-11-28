@@ -6,9 +6,13 @@ What to do next for this template, most pressing first. Add a line when you find
 
 The user's reports, newest first, until each is fixed or answered.
 
+From build 55 (2026-11-27):
+
+- **Beside the detail, the Info column is opaque, and the segmented control sits on a white band** (in light mode), where the sample shows the column's frosted glass with the picture under it. The app painted the band white and the route grey, and Exact painted the route's and the list's implied grounds and set the list's background, which keeps UIKit from choosing it. The Info route now writes no ground, and Exact leaves a route in the inspector's column, and its lists, on the column's glass (Exact "iOS: a route in the inspector's column is on the column's glass"); the picture now shows through the column. Folded, Info is a sheet on the form's grey, the picker included, where the sample puts the picker on the sheet's white: Exact puts a route that scrolls a grouped list on the list's grey (LLP 1116.007 D5), and the person chose to keep that rule (2026-11-27). Confirm on build 56.
+- **A dragged card shows "(2)"; collections should drag and show their count** (asked 2026-11-27). A card's caption was a drag item of its own; Exact now makes a node's link and text further forms of its first file's item (#2111), so a card is one item. A collection tile with landmarks now drags one photo for each, named for its landmark, so the system shows their count, and as text its name over its landmarks' names; an empty collection does not lift. Confirm on build 56, including what Notes and Photos take from a dropped card and a dropped collection.
+
 From build 52 (2026-11-27), still open:
 
-- **The hero's mirror does not show under the Info column.** UIKit gives the detail's route the column's width as safe area, so Exact's mirror reaches under it, but on the iOS 27.1 simulator UIKit's inspector column paints opaque, and this app paints the Info route's ground as the sample's sheet does. A screenshot of the sample's inspector over a hero on the phone would show what iOS 27.3 draws there.
 - **"Search Results" missing from the detail's bar until the app was backgrounded.** Not reproduced; the code sets the title before the results come in on every path. Next time it shows, the dev menu's Save Trace would capture it.
 
 From build 50 (2026-11-26):
