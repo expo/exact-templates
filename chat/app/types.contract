@@ -156,6 +156,33 @@ keyframes dot
 shape Page
   platform: string
 
+// The transcript's times, which a drag toward the leading side brings in
+// from beyond the trailing margin (`MessageRow`). How far the balloons
+// travel for a finger's pull: one to one at first, approaching 66 points as
+// a scroll view's rubber band approaches its end.
+fn timeTravel(pull: number): number = pull > 0 ? 66 * (1 - 1 / (1 + pull / 66)) : 0
+// The travel that shows the time column whole: 56 points, 370 of pull
+fn timeReveal(): number = 56
+// How much of the time column shows
+fn timeShown(travel: number): number = min(1, travel / timeReveal())
+// The column's width: the room the widest short time takes in the time's
+// own font, 54 points at the default text size, growing with it
+fn timeColumn(bodySize: number): number = bodySize * 54 / 17
+// The room a received balloon leaves at its row's trailing side at its
+// widest (its `max-width`)
+fn balloonRoom(): number = 89.333333
+// How far a balloon travels, so that once the column shows whole it stands
+// 8 points clear of it at any text size: a sent one (column + 8) / reveal of
+// the drag (62/56 at the default size); a received one as far as the drag,
+// or further where the column is wider than its widest leaves room for
+fn balloonTravel(travel: number, mine: bool, column: number): number = mine ? travel * (column + 8) / timeReveal() : travel * max(timeReveal(), column + 8 - balloonRoom()) / timeReveal()
+// How far the column stands toward the trailing side of its place on the
+// margin: at rest, its own width and 16 points more, so it starts clear of
+// a sent balloon even where the margin is 0 (beside the folded iPhone Duo's
+// strip), and nothing once it shows whole. It moves faster than a received
+// balloon, the parallax: 70/56 at the default size.
+fn timeOffset(shown: number, column: number): number = (1 - shown) * (column + 16)
+
 // What lines up with the balloons is inset from the edge `edge` by the
 // conversation's layout margins, as UIKit gives a controller's view: the
 // route's safe area at that edge, which the route hands down
