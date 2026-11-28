@@ -8,7 +8,7 @@ A chat app: a list of conversations, a transcript that follows its newest messag
 
 Keywords: chat, messaging, messenger, conversation, inbox, transcript, bubbles, composer, keyboard, typing indicator, read receipt, reply, context menu, peek, popover, Liquid Glass, split view, sidebar, drafts, local persistence.
 
-Hosts verified: web; iOS 27 on iPhone and the closed iPhone Duo. Built on Exact's main at `2d6df9fcc4` (`chat/exact.json`).
+Hosts verified: web; iOS 27 on iPhone and the closed iPhone Duo. Built on Exact's main at `1fe690b458` (`chat/exact.json`).
 
 ## landscapes
 
